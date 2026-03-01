@@ -1,17 +1,26 @@
 import Header from "../components/header";
 import Footer from "@/components/footer";
-import { Search, Zap, ShieldCheck, PenTool, ArrowRight, Wrench, Lightbulb, Droplets, PaintBucket } from "lucide-react";
+import { 
+  Search, Zap, ShieldCheck, PenTool, ArrowRight, Wrench, 
+  Lightbulb, Droplets, PaintBucket, ClipboardList, Users, CheckCircle2 
+} from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
+  const commonRadius = "20px"; // Malo sam povećao za bolji izgled
+  const smallRadius = "12px";
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <Header />
 
-      {/* 1. HERO SECTION */}
       <main className="flex-grow">
+        {/* 1. HERO SECTION */}
         <section className="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center text-center">
-          <div className="inline-block border-2 border-black px-4 py-1 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-yellow-300 font-black text-xs uppercase tracking-widest">
+          <div 
+            style={{ borderRadius: '50px' }}
+            className="inline-block border-2 border-black px-6 py-2 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-yellow-300 font-black text-xs uppercase tracking-widest"
+          >
             Available in Bosnia & Herzegovina
           </div>
           
@@ -25,42 +34,45 @@ export default function Home() {
             From plumbing to electrical work, get it fixed today.
           </p>
 
-          {/* SEARCH BAR */}
-          <div className="w-full max-w-3xl flex flex-col md:flex-row gap-0 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] border-4 border-black mb-20">
-            <div className="flex-1 bg-white flex items-center px-6 py-4 border-b-4 md:border-b-0 md:border-r-4 border-black">
+          {/* SEARCH BAR - FIKSIRANA LIJEVA STRANA */}
+          <div 
+            style={{ borderRadius: '24px' }}
+            className="w-full max-w-3xl flex flex-col md:flex-row gap-0 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] border-4 border-black mb-20 overflow-hidden bg-white"
+          >
+            <div className="flex-1 flex items-center px-6 py-4 border-b-4 md:border-b-0 md:border-r-4 border-black bg-transparent">
               <Search className="mr-4 text-gray-400" size={24} />
               <input 
                 type="text" 
                 placeholder="What needs fixing? (e.g. Leaking faucet)" 
-                className="w-full outline-none font-bold uppercase text-sm placeholder:text-gray-300"
+                className="w-full outline-none font-bold uppercase text-sm placeholder:text-gray-300 bg-transparent"
               />
             </div>
-            <button className="bg-black text-white px-10 py-5 font-black uppercase hover:bg-gray-800 transition-colors tracking-widest text-sm">
+            <button className="bg-black text-white px-10 py-5 font-black uppercase hover:bg-yellow-300 hover:text-black transition-colors tracking-widest text-sm shrink-0">
               Find Help
             </button>
           </div>
 
           {/* 2. TRUST BADGES */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full text-left">
-            <div className="border-2 border-black p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
-              <Zap className="mb-4" size={32} />
-              <h3 className="font-black uppercase text-xl mb-2">Fast Response</h3>
-              <p className="text-sm font-bold text-gray-500 normal-case">Get connected with experts in under 30 minutes for urgent repairs.</p>
-            </div>
-            <div className="border-2 border-black p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
-              <ShieldCheck className="mb-4" size={32} />
-              <h3 className="font-black uppercase text-xl mb-2">Verified Pros</h3>
-              <p className="text-sm font-bold text-gray-500 normal-case">Every provider is manually vetted and background checked for your safety.</p>
-            </div>
-            <div className="border-2 border-black p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white">
-              <PenTool className="mb-4" size={32} />
-              <h3 className="font-black uppercase text-xl mb-2">Fair Pricing</h3>
-              <p className="text-sm font-bold text-gray-500 normal-case">No hidden fees. Upfront estimates and secure payments through our app.</p>
-            </div>
+            {[
+              { icon: <Zap />, title: "Fast Response", desc: "Get connected with experts in under 30 minutes for urgent repairs." },
+              { icon: <ShieldCheck />, title: "Verified Pros", desc: "Every provider is manually vetted and background checked for your safety." },
+              { icon: <PenTool />, title: "Fair Pricing", desc: "No hidden fees. Upfront estimates and secure payments through our app." }
+            ].map((badge, i) => (
+              <div 
+                key={i}
+                style={{ borderRadius: commonRadius }}
+                className="border-2 border-black p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white"
+              >
+                <div className="mb-6">{badge.icon}</div>
+                <h3 className="font-black uppercase text-xl mb-2">{badge.title}</h3>
+                <p className="text-sm font-bold text-gray-500 normal-case">{badge.desc}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* 3. TRENDING SERVICES SECTION */}
+        {/* 3. TRENDING SERVICES */}
         <section className="bg-gray-50 border-y-2 border-black py-20 px-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-end mb-12">
@@ -68,9 +80,6 @@ export default function Home() {
                 <h2 className="text-4xl font-black uppercase tracking-tighter">Popular Services</h2>
                 <p className="font-bold text-gray-500 uppercase text-sm mt-2">Most requested repairs in your area</p>
               </div>
-              <Link href="/services" className="hidden md:flex items-center gap-2 font-black uppercase text-sm hover:underline underline-offset-4">
-                View all <ArrowRight size={16} />
-              </Link>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -80,8 +89,16 @@ export default function Home() {
                 { name: "Painting", icon: <PaintBucket />, color: "bg-green-100" },
                 { name: "Repairs", icon: <Wrench />, color: "bg-orange-100" },
               ].map((service) => (
-                <div key={service.name} className="group cursor-pointer border-2 border-black p-6 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all text-center">
-                  <div className={`w-16 h-16 ${service.color} border-2 border-black mx-auto mb-4 flex items-center justify-center`}>
+                <div 
+                  key={service.name} 
+                  style={{ borderRadius: commonRadius }}
+                  className="group cursor-pointer border-2 border-black p-6 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all text-center overflow-hidden"
+                >
+                  {/* POPRAVLJENA IKONICA - Dodat margin-top */}
+                  <div 
+                    style={{ borderRadius: smallRadius }}
+                    className={`w-16 h-16 ${service.color} border-2 border-black mx-auto mt-2 mb-4 flex items-center justify-center`}
+                  >
                     {service.icon}
                   </div>
                   <span className="font-black uppercase text-sm tracking-tight">{service.name}</span>
@@ -93,26 +110,43 @@ export default function Home() {
 
         {/* 4. HOW IT WORKS */}
         <section className="max-w-7xl mx-auto px-6 py-24 text-center">
-          <h2 className="text-4xl font-black uppercase tracking-tighter mb-16">How it works?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16 relative">
-            {/* Step 1 */}
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center font-black text-xl mb-6">1</div>
-              <h4 className="font-black uppercase mb-2">Post a Request</h4>
-              <p className="text-sm font-bold text-gray-500 normal-case px-4">Describe what you need and set your preferred time.</p>
-            </div>
-            {/* Step 2 */}
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center font-black text-xl mb-6">2</div>
-              <h4 className="font-black uppercase mb-2">Choose your Pro</h4>
-              <p className="text-sm font-bold text-gray-500 normal-case px-4">Compare quotes, reviews, and profiles of verified pros.</p>
-            </div>
-            {/* Step 3 */}
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center font-black text-xl mb-6">3</div>
-              <h4 className="font-black uppercase mb-2">Get it Fixed</h4>
-              <p className="text-sm font-bold text-gray-500 normal-case px-4">Your pro arrives, fixes the problem, and you pay securely.</p>
-            </div>
+          <h2 className="text-4xl font-black uppercase tracking-tighter mb-4">How it works?</h2>
+          <p className="font-bold text-gray-500 uppercase text-sm mb-16">Get things fixed in three simple steps</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-20">
+            {[
+              { step: "01", title: "Post a Request", desc: "Browse categories and describe your issue. Tell us what's broken.", icon: <ClipboardList size={32} />, color: "hover:bg-yellow-300" },
+              { step: "02", title: "Choose your Pro", desc: "Compare quotes, reviews, and profiles of verified professionals.", icon: <Users size={32} />, color: "hover:bg-blue-400" },
+              { step: "03", title: "Get it Fixed", desc: "Your pro fixes the problem, and you pay securely through the app.", icon: <CheckCircle2 size={32} />, color: "hover:bg-green-400" }
+            ].map((item, i) => (
+              <div 
+                key={i}
+                style={{ borderRadius: commonRadius }}
+                className={`group flex flex-col items-center p-10 border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] ${item.color} transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none overflow-hidden`}
+              >
+                {/* IKONICA - Dodat mt-4 da se odmakne od ivice */}
+                <div 
+                  style={{ borderRadius: smallRadius }}
+                  className=" w-16 h-16  bg-black text-white border-4 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
+                >
+                  {item.icon}
+                </div>
+                <span className="font-black text-xs uppercase mb-2 opacity-50 tracking-widest">Step {item.step}</span>
+                <h4 className="font-black uppercase text-2xl mb-3 tracking-tighter">{item.title}</h4>
+                <p className="text-sm font-bold text-gray-600 normal-case">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="w-full flex justify-center pt-16">
+            <Link 
+              href="/how-it-works" 
+              style={{ borderRadius: '20px' }}
+              className="flex items-center justify-center gap-4 bg-black text-white px-10 py-5 font-black uppercase tracking-widest hover:bg-yellow-300 hover:text-black transition-all border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-2 active:translate-y-2 group overflow-hidden"
+            >
+              <span className="text-base md:text-lg" style={{ whiteSpace: 'nowrap' }}>Learn more detailed</span>
+              <ArrowRight size={28} className="shrink-0 group-hover:translate-x-2 transition-transform" />
+            </Link>
           </div>
         </section>
       </main>
