@@ -1,0 +1,61 @@
+.container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  
+}
+
+.panel {
+  width: 100%;
+  max-width: 900px;
+  background: white;
+  border: 2px solid #000;
+  padding: 16px;
+  border-radius: 20px;
+  box-shadow: 8px 8px 0 rgba(0,0,0,1);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.quickArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.quickButtons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chatArea {
+  height: 420px;
+  overflow: auto;
+  padding: 8px;
+  background: #fafafa;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.footer {
+  margin-top: 12px;
+}
+
+.assistantAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background: #111827;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}

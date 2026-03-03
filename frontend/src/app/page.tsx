@@ -1,228 +1,219 @@
-import Header from "../components/header";
-import Footer from "@/components/footer";
-import {
-  Search,
-  Zap,
-  ShieldCheck,
-  PenTool,
-  ArrowRight,
-  Wrench,
-  Lightbulb,
+"use client";
+
+import React from 'react';
+import Header from '@/components/header';
+import Footer from '@/components/footer';
+import Link from 'next/link';
+import { 
+  Search, 
+  Zap, 
+  ShieldCheck, 
+  PenTool, 
+  ArrowRight, 
+  ArrowUpRight,
+  CheckCircle2, 
+  MapPin,
   Droplets,
+  Lightbulb,
   PaintBucket,
+  Wrench,
   ClipboardList,
-  Users,
-  CheckCircle2,
+  Users
 } from "lucide-react";
-import Link from "next/link";
 
 export default function Home() {
-  const commonRadius = "20px"; // Malo sam povećao za bolji izgled
-  const smallRadius = "12px";
+  const brandColor = "#EF9D39";
+  const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%)";
+  const commonRadius = "24px";
+  const smallRadius = "14px";
+
+  // Reusable Button Style with the specific Arrow Circle effect
+  const PremiumButton = ({ href, text, icon: Icon, isExternal = false }: { href: string, text: string, icon: any, isExternal?: boolean }) => (
+    <Link
+      href={href}
+      style={{ borderRadius: "20px" }}
+      className="flex items-center gap-6 bg-white border-[3px] border-black px-10 py-5 font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all group"
+    >
+      <span>{text}</span>
+      <div className="bg-black p-1.5 rounded-full group-hover:bg-white transition-colors">
+        <Icon 
+          size={18} 
+          className={`text-white group-hover:text-black transition-transform ${isExternal ? 'group-hover:rotate-45' : 'group-hover:translate-x-1'}`} 
+        />
+      </div>
+    </Link>
+  );
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div 
+      className="flex flex-col min-h-screen text-black selection:bg-black selection:text-white font-sans" 
+      style={{ background: softGradient }}
+    >
       <Header />
-
+      
       <main className="flex-grow">
+        
         {/* 1. HERO SECTION */}
-        <section className="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center text-center">
-          <div
-            style={{ borderRadius: "50px" }}
-            className="inline-block border-2 border-black px-6 py-2 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-yellow-300 font-black text-xs uppercase tracking-widest"
-          >
-            Available in Bosnia & Herzegovina
-          </div>
-
-          <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-[0.9] mb-8">
-            Fix everything <br />
-            <span className="text-gray-400">without the stress.</span>
-          </h1>
-
-          <p className="max-w-2xl text-lg font-bold text-gray-600 normal-case mb-10 leading-relaxed">
-            The smartest way to find verified local professionals for your home.
-            From plumbing to electrical work, get it fixed today.
-          </p>
-
-          {/* SEARCH BAR - FIKSIRANA LIJEVA STRANA */}
-          <div
-            style={{ borderRadius: "24px" }}
-            className="w-full max-w-3xl flex flex-col md:flex-row gap-0 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] border-4 border-black mb-20 overflow-hidden bg-white"
-          >
-            <div className="flex-1 flex items-center px-6 py-4 border-b-4 md:border-b-0 md:border-r-4 border-black bg-transparent">
-              <Search className="mr-4 text-gray-400" size={24} />
-              <input
-                type="text"
-                placeholder="What needs fixing? (e.g. Leaking faucet)"
-                className="w-full outline-none font-bold uppercase text-sm placeholder:text-gray-300 bg-transparent"
-              />
-            </div>
-            <button className="bg-black text-white px-10 py-5 font-black uppercase hover:bg-yellow-300 hover:text-black transition-colors tracking-widest text-sm shrink-0">
-              Find Help
-            </button>
-          </div>
-
-          {/* 2. TRUST BADGES */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full text-left">
-            {[
-              {
-                icon: <Zap />,
-                title: "Fast Response",
-                desc: "Get connected with experts in under 30 minutes for urgent repairs.",
-              },
-              {
-                icon: <ShieldCheck />,
-                title: "Verified Pros",
-                desc: "Every provider is manually vetted and background checked for your safety.",
-              },
-              {
-                icon: <PenTool />,
-                title: "Fair Pricing",
-                desc: "No hidden fees. Upfront estimates and secure payments through our app.",
-              },
-            ].map((badge, i) => (
-              <div
-                key={i}
-                style={{ borderRadius: commonRadius }}
-                className="border-2 border-black p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-white"
+        <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8 text-center lg:text-left">
+              <div 
+                className="inline-flex items-center gap-2 bg-white border-2 border-black px-4 py-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black text-[10px] uppercase tracking-[0.2em]"
+                style={{ borderRadius: "100px" }}
               >
-                <div className="mb-6">{badge.icon}</div>
-                <h3 className="font-black uppercase text-xl mb-2">
-                  {badge.title}
-                </h3>
-                <p className="text-sm font-bold text-gray-500 normal-case">
-                  {badge.desc}
-                </p>
+                <MapPin size={12} style={{ color: brandColor }} />
+                <span>Verified in Bosnia & Herzegovina</span>
+              </div>
+
+              <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter italic leading-[0.9]">
+                Fix it <span style={{ color: brandColor }}>right</span> <br />
+                the first time.
+              </h1>
+
+              <p className="text-lg font-bold text-gray-400 max-w-lg leading-relaxed italic  mx-auto lg:mx-0">
+                Connect with verified local experts. Transparent pricing and secure payments without the hassle.
+              </p>
+
+              <div 
+                className="w-full max-w-xl mx-auto lg:mx-0 flex flex-col md:flex-row shadow-[8px_8px_0px_0px_#000] border-[3px] border-black overflow-hidden bg-white" 
+                style={{ borderRadius: "20px" }}
+              >
+                <div className="flex-1 flex items-center px-6 py-4">
+                  <Search className="mr-3 text-gray-300" size={20} />
+                  <input 
+                    type="text" 
+                    placeholder="What needs fixing?" 
+                    className="w-full outline-none font-bold uppercase text-xs placeholder:text-gray-300 bg-transparent" 
+                  />
+                </div>
+                <button 
+                  style={{ backgroundColor: brandColor }} 
+                  className="text-black px-8 py-4 font-black uppercase border-l-[3px] border-black hover:bg-black hover:text-white transition-all tracking-widest text-xs"
+                >
+                  Find Help
+                </button>
+              </div>
+            </div>
+
+            <div className="relative hidden lg:block">
+              <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full opacity-20 blur-3xl" style={{ backgroundColor: brandColor }}></div>
+              <div className="relative bg-white/70 backdrop-blur-xl border-[3px] border-black p-8 shadow-[15px_15px_0px_0px_#000]" style={{ borderRadius: "40px" }}>
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="font-black uppercase italic tracking-tighter text-xl">Recent Fixes</h3>
+                  <div className="flex -space-x-3">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="w-10 h-10 rounded-full border-2 border-black bg-gray-200 overflow-hidden">
+                        <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="user" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {[
+                    { service: "Plumbing", name: "Amel K.", status: "Completed" },
+                    { service: "Electrical", name: "Mirza S.", status: "On the way" }
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]" style={{ borderRadius: "20px" }}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-black flex items-center justify-center text-white" style={{ borderRadius: "12px" }}>
+                          <CheckCircle2 size={18} style={{ color: brandColor }} />
+                        </div>
+                        <div>
+                          <p className="font-black text-xs uppercase">{item.service}</p>
+                          <p className="text-[10px] font-bold text-gray-400">{item.name}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase bg-gray-100 px-3 py-1 rounded-full">{item.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 2. TRUST BADGES */}
+        <section className="max-w-7xl mx-auto px-6 pb-24 text-center md:text-left">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: <Zap />, title: "Fast Response", desc: "Experts arrive in less than 60 minutes." },
+              { icon: <ShieldCheck />, title: "Verified Pros", desc: "Every profile is manually verified." },
+              { icon: <PenTool />, title: "Fixed Prices", desc: "No hidden costs or unexpected fees." },
+            ].map((badge, i) => (
+              <div key={i} className="group border-[3px] border-black p-8 bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all" style={{ borderRadius: "25px" }}>
+                <div className="mb-4 scale-110 flex justify-center md:justify-start" style={{ color: brandColor }}>{badge.icon}</div>
+                <h4 className="font-black uppercase text-lg mb-2 italic">{badge.title}</h4>
+                <p className="text-xs font-bold text-gray-400 leading-relaxed">{badge.desc}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* 3. POPULAR SERVICES */}
-        <section className="bg-gray-50 border-y-2 border-black py-20 px-6">
+        <section className="bg-white border-y-[3px] border-black py-24 px-6">
           <div className="max-w-7xl mx-auto">
-            <div className="flex justify-between items-end mb-12">
-              <div>
-                <h2 className="text-4xl font-black uppercase tracking-tighter">
-                  Popular Services
-                </h2>
-                <p className="font-bold text-gray-500 uppercase text-sm mt-2">
-                  Most requested repairs in your area
-                </p>
-              </div>
+            <div className="mb-12">
+              <h2 className="text-4xl font-black uppercase tracking-tighter italic">Popular Services</h2>
+              <p className="font-bold text-gray-400 uppercase text-xs mt-2 tracking-widest">Most requested services in your city</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
               {[
-                { name: "Plumbing", icon: <Droplets />, color: "bg-blue-100" },
-                {
-                  name: "Electrical",
-                  icon: <Lightbulb />,
-                  color: "bg-yellow-100",
-                },
-                {
-                  name: "Painting",
-                  icon: <PaintBucket />,
-                  color: "bg-green-100",
-                },
-                { name: "Repairs", icon: <Wrench />, color: "bg-orange-100" },
+                { name: "Plumbing", icon: <Droplets />, color: "bg-blue-50" },
+                { name: "Electrical", icon: <Lightbulb />, color: "bg-orange-50" },
+                { name: "Painting", icon: <PaintBucket />, color: "bg-green-50" },
+                { name: "Handyman", icon: <Wrench />, color: "bg-gray-50" },
               ].map((service) => (
-                <div
-                  key={service.name}
-                  style={{ borderRadius: commonRadius }}
-                  className="group cursor-pointer border-2 border-black p-6 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all text-center overflow-hidden"
-                >
-                  {/* POPRAVLJENA IKONICA - Dodat margin-top */}
-                  <div
-                    style={{ borderRadius: smallRadius }}
-                    className={`w-16 h-16 ${service.color} border-2 border-black mx-auto mt-2 mb-4 flex items-center justify-center`}
-                  >
-                    {service.icon}
+                <div key={service.name} style={{ borderRadius: commonRadius }} className="group cursor-pointer border-[3px] border-black p-8 bg-[#FDFBF9] shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[5px] hover:translate-y-[5px] transition-all text-center">
+                  <div style={{ borderRadius: smallRadius }} className={`w-16 h-16 ${service.color} border-2 border-black mx-auto mb-4 flex items-center justify-center group-hover:bg-white transition-colors`}>
+                    <div style={{ color: 'black' }}>{service.icon}</div>
                   </div>
-                  <span className="font-black uppercase text-sm tracking-tight">
-                    {service.name}
-                  </span>
+                  <span className="font-black uppercase text-xs tracking-widest">{service.name}</span>
                 </div>
               ))}
+            </div>
+
+            <div className="flex justify-center">
+                <PremiumButton 
+                  href="/services" 
+                  text="Check All Services" 
+                  icon={ArrowUpRight} 
+                  isExternal={true} 
+                />
             </div>
           </div>
         </section>
 
         {/* 4. HOW IT WORKS */}
         <section className="max-w-7xl mx-auto px-6 py-24 text-center">
-          <h2 className="text-4xl font-black uppercase tracking-tighter mb-4">
-            How it works?
-          </h2>
-          <p className="font-bold text-gray-500 uppercase text-sm mb-16">
-            Get things fixed in three simple steps
-          </p>
+          <h2 className="text-4xl font-black uppercase tracking-tighter mb-4 italic">How it works?</h2>
+          <p className="font-bold text-gray-400 uppercase text-xs mb-16 tracking-widest">Three simple steps to a solution</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-20">
             {[
-              {
-                step: "01",
-                title: "Post a Request",
-                desc: "Browse categories and describe your issue. Tell us what's broken.",
-                icon: <ClipboardList size={32} />,
-                color: "hover:bg-yellow-300",
-              },
-              {
-                step: "02",
-                title: "Choose your Pro",
-                desc: "Compare quotes, reviews, and profiles of verified professionals.",
-                icon: <Users size={32} />,
-                color: "hover:bg-blue-400",
-              },
-              {
-                step: "03",
-                title: "Get it Fixed",
-                desc: "Your pro fixes the problem, and you pay securely through the app.",
-                icon: <CheckCircle2 size={32} />,
-                color: "hover:bg-green-400",
-              },
+              { step: "01", title: "Post a request", desc: "Describe the issue and upload photos of the problem.", icon: <ClipboardList size={32} /> },
+              { step: "02", title: "Pick a pro", desc: "Compare offers, reviews, and pro profiles.", icon: <Users size={32} /> },
+              { step: "03", title: "Fix & Pay", desc: "The pro fixes the issue, and you pay securely via app.", icon: <CheckCircle2 size={32} /> },
             ].map((item, i) => (
-              <div
-                key={i}
-                style={{ borderRadius: commonRadius }}
-                className={`group flex flex-col items-center p-10 border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] ${item.color} transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none overflow-hidden`}
-              >
-                {/* IKONICA - Dodat mt-4 da se odmakne od ivice */}
-                <div
-                  style={{ borderRadius: smallRadius }}
-                  className=" w-16 h-16  bg-black text-white border-4 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
-                >
+              <div key={i} style={{ borderRadius: "30px" }} className="group flex flex-col items-center p-10 border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:bg-[#FDFBF9]">
+                <div style={{ borderRadius: "18px" }} className="w-16 h-16 bg-black text-white border-2 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_#EF9D39]">
                   {item.icon}
                 </div>
-                <span className="font-black text-xs uppercase mb-2 opacity-50 tracking-widest">
-                  Step {item.step}
-                </span>
-                <h4 className="font-black uppercase text-2xl mb-3 tracking-tighter">
-                  {item.title}
-                </h4>
-                <p className="text-sm font-bold text-gray-600 normal-case">
-                  {item.desc}
-                </p>
+                <span className="font-black text-[10px] uppercase mb-2 text-gray-400 tracking-[0.3em]">Step {item.step}</span>
+                <h4 className="font-black uppercase text-xl mb-3 tracking-tight italic">{item.title}</h4>
+                <p className="text-sm font-bold text-gray-400 normal-case leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
 
-          <div className="w-full flex justify-center pt-16">
-            <Link
-              href="/how-it-works"
-              style={{ borderRadius: "20px" }}
-              className="flex items-center justify-center gap-4 bg-black text-white px-10 py-5 font-black uppercase tracking-widest hover:bg-yellow-300 hover:text-black transition-all border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-2 active:translate-y-2 group overflow-hidden"
-            >
-              <span
-                className="text-base md:text-lg"
-                style={{ whiteSpace: "nowrap" }}
-              >
-                Learn more detailed
-              </span>
-              <ArrowRight
-                size={28}
-                className="shrink-0 group-hover:translate-x-2 transition-transform"
-              />
-            </Link>
+          <div className="w-full flex justify-center pt-8">
+            <PremiumButton 
+              href="/how-it-works" 
+              text="Learn more details" 
+              icon={ArrowUpRight} 
+              isExternal={true} 
+            />
           </div>
         </section>
       </main>

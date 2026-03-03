@@ -58,15 +58,23 @@ export default function Header() {
   return (
     <header className="border-b-2 border-black w-full bg-white px-6 py-5 font-sans uppercase tracking-tight relative z-50">
       <div className="max-w-7xl mx-auto flex justify-between items-center relative">
-        {/* 1. LOGO */}
-        <div className="flex-1 flex justify-start">
-          <Link
-            href="/"
-            className="text-2xl font-black normal-case tracking-tighter shrink-0"
-          >
-            GetItFixed
-          </Link>
-        </div>
+        {/* 1. LOGO SEKCIJA */}
+<div className="flex-1 flex justify-start items-center">
+  <Link
+    href="/"
+    className="flex items-center gap-3 text-2xl font-black normal-case tracking-tighter shrink-0"
+  >
+    {/* LOGO SLIKA - LIJEVO */}
+    <img 
+      src="/GetItFixed Logo.png" 
+      alt="GetItFixed Logo" 
+      className="h-10 w-auto object-contain " 
+    />
+    
+    {/* TEKST - DESNO OD SLIKE */}
+    <span>GetItFixed</span>
+  </Link>
+</div>
 
         {/* 2. SREDINA - NAV LINKOVI */}
         <nav className="hidden lg:flex items-center gap-8">

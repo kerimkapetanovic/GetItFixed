@@ -13,7 +13,12 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
         {/* 1. SECTION: LOGO & DESCRIPTION */}
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
+          <div className="items-center gap-2">
+             <img 
+      src="/GetItFixed Logo.png" 
+      alt="GetItFixed Logo" 
+      className="h-10 w-auto object-contain mb-2 " 
+    />
             <span className="text-xl font-black tracking-tighter normal-case">
               GetItFixed
             </span>
@@ -103,7 +108,7 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-3 hover:text-gray-600 transition-colors">
               <FaPhoneAlt className="text-black" />
-              <a href="tel:+38763709440">+387 63 123 321</a>
+              <a href="tel:+38761123456">+387 61 123 456</a>
             </li>
           </ul>
         </div>

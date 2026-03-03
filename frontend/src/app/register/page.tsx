@@ -9,6 +9,8 @@ import Footer from '@/components/footer';
 export default function RegisterPage() {
   const [role, setRole] = useState<'client' | 'pro'>('client');
   const [showPassword, setShowPassword] = useState(false);
+    const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%";
+
 
   const mainCardStyle = { 
     borderRadius: '32px', 
@@ -18,7 +20,7 @@ export default function RegisterPage() {
   const roleRadius = { borderRadius: '20px' };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FDFDFD]">
+    <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
       <Header />
       
       <main className="flex-grow flex items-center justify-center p-6 py-12">
@@ -39,7 +41,7 @@ export default function RegisterPage() {
               style={roleRadius}
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === 'client' 
-                ? 'border-black bg-yellow-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-1 -translate-y-1' 
+                ? 'border-black  bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-1 -translate-y-1' 
                 : 'border-gray-100 bg-white opacity-60'
               }`}
             >
@@ -54,7 +56,7 @@ export default function RegisterPage() {
               style={roleRadius}
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === 'pro' 
-                ? 'border-black bg-yellow-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-1 -translate-y-1' 
+                ? 'border-black  bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-1 -translate-y-1' 
                 : 'border-gray-100 bg-white opacity-60'
               }`}
             >
@@ -105,10 +107,11 @@ export default function RegisterPage() {
       <div className="relative">
         <select 
           /* KORISTIMO TVOJ RADIJUS OVDJE */
-          style={inputRadius} 
-          className="w-full bg-white border-2 border-black p-5 pr-12 text-sm font-bold normal-case tracking-tight outline-none focus:bg-yellow-300 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all appearance-none cursor-pointer"
+          style={inputRadius}
+          defaultValue=""
+          className="w-full bg-white border-2 border-black p-5 pr-12 text-sm font-bold normal-case tracking-tight outline-none focus: bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all appearance-none cursor-pointer"
         >
-          <option value="" disabled selected className="text-gray-400">Select your main service</option>
+          <option value="" disabled className="text-gray-400">Select your main service</option>
           <option value="mechanic">Auto mechanic</option>
           <option value="pools">Pool maintenance & swimming pools</option>
           <option value="carpenter">Carpenter & woodwork</option>
