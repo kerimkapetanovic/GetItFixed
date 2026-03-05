@@ -79,7 +79,7 @@ export default function Footer() {
           </h4>
           <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 uppercase">
             <li>
-              <Link href="/register" className="hover:text-black">
+              <Link href="/register?role=pro" className="hover:text-black">
                 Join as a Pro
               </Link>
             </li>

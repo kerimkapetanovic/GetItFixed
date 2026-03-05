@@ -35,7 +35,7 @@ export default function Footer() {
                 <div>
                     <h4 className="font-black text-sm uppercase mb-6 tracking-widest">For Providers</h4>
                     <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 uppercase">
-                        <li><Link href="/register" className="hover:text-black">Join as a Pro</Link></li>
+                        <li><Link href="/register?role=pro" className="hover:text-black">Join as a Pro</Link></li>
                         <li><Link href="/terms" className="hover:text-black">Terms of Service</Link></li>
                         <li><Link href="/faq-pros" className="hover:text-black">Provider FAQ</Link></li>
                     </ul>

@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { User, Hammer, Eye, EyeOff, MapPin, Phone, Mail, Lock, Globe, Hash, Briefcase } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
+import { useSearchParams } from 'next/navigation';  
 
 export default function RegisterPage() {
+  const searchParams = useSearchParams();
+  const queryRole = searchParams?.get('role') === 'pro' ? 'pro' : 'client';
+
   const [role, setRole] = useState<'client' | 'pro'>('client');
   const [showPassword, setShowPassword] = useState(false);
-    const softGradient ="linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
+  const softGradient ="linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
 
   const mainCardStyle = { 
@@ -18,6 +22,11 @@ export default function RegisterPage() {
   };
   const inputRadius = { borderRadius: '16px' };
   const roleRadius = { borderRadius: '20px' };
+
+  useEffect(() => {
+    const newRole = searchParams?.get('role') === 'pro' ? 'pro' : 'client';
+    setRole(newRole);
+  }, [searchParams]);
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
