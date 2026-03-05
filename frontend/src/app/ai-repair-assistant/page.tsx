@@ -3,7 +3,7 @@ import ChatClient from '../../components/ai-repair/ChatClient';
 import Footer from '@/components/footer';
 
 export default function AiRepairPage() {
-  const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%)";
+  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
   return (
     // Koristimo wrapper div sa min-h-screen da gradient pokrije cijelu visinu ekrana

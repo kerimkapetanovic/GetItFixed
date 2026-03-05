@@ -10,7 +10,7 @@ export default function LoginPage() {
   // Postavljamo 'client' kao defaultno checkiranu ulogu
   const [role, setRole] = useState<'client' | 'pro'>('client');
   const [showPassword, setShowPassword] = useState(false);
-    const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%)";
+    const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
 
   // Stilovi za radijuse i fiksne širine
@@ -64,7 +64,7 @@ export default function LoginPage() {
               style={roleRadius}
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === 'pro' 
-                ? 'border-black  bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)]  shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]' 
+                ? 'border-black  bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)]  shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]' 
                 : 'border-gray-100 bg-white hover:border-gray-200 opacity-60'
               }`}
             >

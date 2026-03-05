@@ -23,7 +23,7 @@ import {
 
 export default function Home() {
   const brandColor = "#EF9D39";
-  const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%)";
+  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
   const commonRadius = "24px";
   const smallRadius = "14px";
 

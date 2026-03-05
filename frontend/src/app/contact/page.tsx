@@ -1,15 +1,32 @@
 "use client";
 
 import React from 'react';
-import { Mail, Phone, MessageSquare, MapPin, Send, ArrowRight } from 'lucide-react';
+import { Mail, Phone, MessageSquare, MapPin, ArrowRight, ArrowUpRight } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
+import Link from 'next/link';
+
+// Sređen PremiumButton - centriran sadržaj i optimizovan padding
+const PremiumButton = ({ href, text, icon: Icon, isExternal = false }: { href: string, text: string, icon: any, isExternal?: boolean }) => (
+    <Link
+      href={href}
+      style={{ borderRadius: "16px" }}
+      className="flex items-center justify-center gap-3 bg-white border-[3px] border-black px-6 py-4 font-black uppercase text-[11px] tracking-[0.1em] shadow-[5px_5px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all group w-full"
+    >
+      <span className="text-black">{text}</span>
+      <div className="bg-black p-1 rounded-full group-hover:bg-white transition-colors flex items-center justify-center">
+        <Icon 
+          size={14} 
+          className={`text-white group-hover:text-black transition-transform ${isExternal ? 'group-hover:rotate-45' : 'group-hover:translate-x-1'}`} 
+        />
+      </div>
+    </Link>
+);
 
 export default function ContactPage() {
     const brandColor = "#EF9D39";
-    const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%)";
+    const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
     const cardRadius = { borderRadius: '24px' };
-    const buttonRadius = { borderRadius: '12px' };
 
     return (
         <div 
@@ -33,13 +50,13 @@ export default function ContactPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     
                     <div className="space-y-6">
-                        {/* EMAIL KARTICA - Izbačena plava, dodat brandColor stil */}
+                        {/* EMAIL KARTICA */}
                         <div 
                             style={cardRadius}
-                            className="bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] group"
+                            className="bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                         >
-                            <div className="flex items-center gap-4 mb-5">
-                                <div className="p-3 bg-gray-50 border-2 border-black rounded-xl group-hover:bg-[#EF9D39]/10 transition-colors">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-gray-50 border-2 border-black rounded-xl">
                                     <Mail size={24} strokeWidth={2.5} />
                                 </div>
                                 <div>
@@ -47,23 +64,24 @@ export default function ContactPage() {
                                     <p className="text-xs font-bold text-gray-400">getitfixed@gmail.com</p>
                                 </div>
                             </div>
-                            
-                            <a 
-                                href="mailto:getitfixed@gmail.com?subject=Support%20Request"
-                                style={buttonRadius}
-                                className="w-full bg-black text-white py-3.5 flex items-center justify-center gap-2 font-black uppercase tracking-wider text-xs hover:bg-gray-800 transition-all shadow-[4px_4px_0px_0px_#EF9D39] active:translate-y-1"
-                            >
-                                Send Email <Send size={14} />
-                            </a>
+                        
+                            <div className="w-full">
+                                <PremiumButton 
+                                    href="mailto:getitfixed@gmail.com?subject=Support%20Request"
+                                    text="Send Email" 
+                                    icon={ArrowUpRight} 
+                                    isExternal={true}
+                                />                     
+                            </div>       
                         </div>
 
-                        {/* PHONE KARTICA - Izbačena zelena, usklađen stil */}
+                        {/* PHONE KARTICA - Sada koristi PremiumButton */}
                         <div 
                             style={cardRadius}
-                            className="bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] group"
+                            className="bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                         >
-                            <div className="flex items-center gap-4 mb-5">
-                                <div className="p-3 bg-gray-50 border-2 border-black rounded-xl group-hover:bg-[#EF9D39]/10 transition-colors">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-gray-50 border-2 border-black rounded-xl">
                                     <Phone size={24} strokeWidth={2.5} />
                                 </div>
                                 <div>
@@ -72,23 +90,24 @@ export default function ContactPage() {
                                 </div>
                             </div>
 
-                            <a 
-                                href="tel:+38761123456"
-                                style={buttonRadius}
-                                className="w-full bg-white border-2 border-black py-3.5 flex items-center justify-center gap-2 font-black uppercase tracking-wider text-xs hover:bg-orange-50 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1"
-                            >
-                                +387 61 123 456 <ArrowRight size={14} />
-                            </a>
+                            <div className="w-full">
+                                <PremiumButton 
+                                    href="tel:+38761123456"
+                                    text="+387 61 123 456" 
+                                    icon={ArrowUpRight} 
+                                    isExternal={true}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    {/* DESNA STRANA - LIVE CHAT SA LINEAR GRADIENTOM */}
+                    {/* DESNA STRANA - LIVE CHAT */}
                     <div 
                         style={{
                             ...cardRadius,
                             background: "linear-gradient(135deg, #EF9D39 0%, #FFD25A 100%)"
                         }}
-                        className="border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] min-h-[380px] flex flex-col justify-between"
+                        className="border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] min-h-[420px] flex flex-col justify-between"
                     >
                         <div>
                             <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)]">

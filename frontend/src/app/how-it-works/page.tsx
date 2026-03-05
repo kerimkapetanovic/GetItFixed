@@ -34,7 +34,7 @@ const PremiumButton = ({ href, text, icon: Icon, isExternal = false }: { href: s
 
 const HowItWorks = () => {
   const brandColor = "#EF9D39";
-  const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%)";
+  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>

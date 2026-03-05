@@ -13,7 +13,7 @@ import {
 export default function Services() {
   const commonRadius = "24px";
   const smallRadius = "12px";
-    const softGradient = "linear-gradient(135deg, #FDFBF9 0%, #F5EFE6 100%)";
+    const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
 
   const serviceCategories = [
