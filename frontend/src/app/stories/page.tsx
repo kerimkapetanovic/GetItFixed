@@ -214,13 +214,13 @@ export default function StoriesPage() {
 
                 {/* CTA SECTION */}
                 <div className="text-center mt-16">
-                    <p className="text-gray-600 font-bold mb-6 text-lg">Ready to get your own success story?</p>
+                    <p className="text-gray-600 font-bold mb-6 text-lg">Ready to share your own story?</p>
                     <a
                         href="/login"
                         style={{ borderRadius: '12px' }}
                         className="inline-flex items-center gap-2 bg-black text-white px-8 py-4 font-black uppercase tracking-widest text-sm hover:bg-orange-400 hover:text-black transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(239,157,57,1)]"
                     >
-                        Start Your Request <ArrowUpRight size={16} />
+                        Share Your Experience <ArrowUpRight size={16} />
                     </a>
                 </div>
             </main>
