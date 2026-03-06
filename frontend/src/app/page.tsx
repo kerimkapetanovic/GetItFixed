@@ -160,17 +160,23 @@ export default function Home() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
               {[
-                { name: "Plumbing", icon: <Droplets />, color: "bg-blue-50" },
-                { name: "Electrical", icon: <Lightbulb />, color: "bg-orange-50" },
-                { name: "Painting", icon: <PaintBucket />, color: "bg-green-50" },
-                { name: "Handyman", icon: <Wrench />, color: "bg-gray-50" },
+                // Added the 'id' property so the Link knows where to go
+                { id: "plumbing", name: "Plumbing", icon: <Droplets />, color: "bg-blue-50" },
+                { id: "electrical", name: "Electrical", icon: <Lightbulb />, color: "bg-orange-50" },
+                { id: "painting", name: "Painting", icon: <PaintBucket />, color: "bg-green-50" },
+                { id: "handyman", name: "Handyman", icon: <Wrench />, color: "bg-gray-50" },
               ].map((service) => (
-                <div key={service.name} style={{ borderRadius: commonRadius }} className="group cursor-pointer border-[3px] border-black p-8 bg-[#FDFBF9] shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[5px] hover:translate-y-[5px] transition-all text-center">
+                <Link 
+                  href={`/services/${service.id}`} // Changed this from a div to a Link!
+                  key={service.name} 
+                  style={{ borderRadius: commonRadius }} 
+                  className="group block cursor-pointer border-[3px] border-black p-8 bg-[#FDFBF9] shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[5px] hover:translate-y-[5px] transition-all text-center"
+                >
                   <div style={{ borderRadius: smallRadius }} className={`w-16 h-16 ${service.color} border-2 border-black mx-auto mb-4 flex items-center justify-center group-hover:bg-white transition-colors`}>
                     <div style={{ color: 'black' }}>{service.icon}</div>
                   </div>
                   <span className="font-black uppercase text-xs tracking-widest">{service.name}</span>
-                </div>
+                </Link>
               ))}
             </div>
 

@@ -7,10 +7,12 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState("client");
 
+  // NEW: Added the Help link right before Contact
   const allBaseLinks = [
     { name: "How It Works?", href: "/how-it-works", adminHide: true },
     { name: "Services", href: "/services", adminHide: false },
     { name: "AI Assistant", href: "/ai-repair-assistant", adminHide: true },
+    { name: "Help", href: "/help", adminHide: false }, 
     { name: "Contact", href: "/contact", adminHide: false },
   ];
 
@@ -59,22 +61,22 @@ export default function Header() {
     <header className="border-b-2 border-black w-full bg-white px-6 py-5 font-sans uppercase tracking-tight relative z-50">
       <div className="max-w-7xl mx-auto flex justify-between items-center relative">
         {/* 1. LOGO SEKCIJA */}
-<div className="flex-1 flex justify-start items-center">
-  <Link
-    href="/"
-    className="flex items-center gap-3 text-2xl font-black normal-case tracking-tighter shrink-0"
-  >
-    {/* LOGO SLIKA - LIJEVO */}
-    <img 
-      src="/GetItFixed Logo.png" 
-      alt="GetItFixed Logo" 
-      className="h-10 w-auto object-contain " 
-    />
-    
-    {/* TEKST - DESNO OD SLIKE */}
-    <span>GetItFixed</span>
-  </Link>
-</div>
+        <div className="flex-1 flex justify-start items-center">
+          <Link
+            href="/"
+            className="flex items-center gap-3 text-2xl font-black normal-case tracking-tighter shrink-0"
+          >
+            {/* LOGO SLIKA - LIJEVO */}
+            <img 
+              src="/GetItFixed Logo.png" 
+              alt="GetItFixed Logo" 
+              className="h-10 w-auto object-contain " 
+            />
+            
+            {/* TEKST - DESNO OD SLIKE */}
+            <span>GetItFixed</span>
+          </Link>
+        </div>
 
         {/* 2. SREDINA - NAV LINKOVI */}
         <nav className="hidden lg:flex items-center gap-8">

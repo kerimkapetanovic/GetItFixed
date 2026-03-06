@@ -47,27 +47,33 @@ export default function TermsPage() {
     <div className="flex flex-col min-h-screen font-sans" style={{ background: softGradient }}>
       <Header />
 
-      <main className="flex-grow max-w-6xl mx-auto px-6 py-16 w-full">
-        <div className="relative mb-12">
-          <div className="absolute inset-0 bg-black translate-x-3 translate-y-3 rounded-[32px]" />
-          <div className="relative bg-white border-[4px] border-black p-10 text-center rounded-[32px]">
-            <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none">
-              TERMS<br />
-              <span style={{ color: brandColor }} className="italic">OF SERVICE</span>
-            </h1>
-            <p className="mt-6 inline-block bg-black text-white px-8 py-3 font-bold uppercase tracking-widest text-sm">
-              PLEASE READ CAREFULLY
-            </p>
-          </div>
+      {/* Changed max-w-6xl to max-w-5xl */}
+      <main className="flex-grow max-w-5xl mx-auto px-6 py-16 w-full">
+        
+        {/* 1. HERO SECTION (Updated to match Help Center search box style) */}
+        <div className="bg-white border-[4px] border-black p-10 md:p-16 rounded-[40px] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-16 text-center">
+          <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-6">
+            TERMS <span style={{ color: brandColor }}>OF SERVICE</span>
+          </h1>
+          <p className="inline-block bg-black text-white px-8 py-3 font-bold uppercase tracking-widest text-sm rounded-xl">
+            PLEASE READ CAREFULLY
+          </p>
         </div>
 
-        <div className="grid gap-8">
+        {/* 2. TERMS CONTENT (Updated to match FAQ styling) */}
+        <div className="space-y-6">
           {sections.map((s, i) => (
-            <div key={i} className="bg-white border-2 border-black p-6 rounded-[20px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-              <h3 className="font-black uppercase text-lg mb-3">{s.title}</h3>
-              {s.content && <p className="text-sm text-gray-700">{s.content}</p>}
+            <div key={i} className="bg-white border-[4px] border-black p-8 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <h3 className="font-black uppercase text-xl mb-4">{s.title}</h3>
+              
+              {s.content && (
+                <p className="font-medium text-gray-700 leading-relaxed">
+                  {s.content}
+                </p>
+              )}
+              
               {s.list && (
-                <ul className="list-disc list-inside text-sm text-gray-700 mt-2">
+                <ul className="list-disc list-inside font-medium text-gray-700 leading-relaxed mt-2 space-y-2">
                   {s.list.map((li, idx) => <li key={idx}>{li}</li>)}
                 </ul>
               )}
