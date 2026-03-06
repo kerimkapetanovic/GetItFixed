@@ -35,10 +35,13 @@ export default function ContactPage() {
         >
             <Header />
 
-            <main className="flex-grow max-w-5xl mx-auto px-6 py-10 w-full">
+            <main className="flex-grow max-w-5xl mx-auto px-6 py-12 w-full">
                 
-                {/* NASLOV SEKCIJA */}
-                <div className="text-center mb-10">
+                {/* NASLOV SEKCIJA SA BIJELIM BOXOM */}
+                <div 
+                    className="text-center mb-12 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] max-w-3xl mx-auto"
+                    style={{ borderRadius: '30px' }}
+                >
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
                         Get in <span style={{ color: brandColor }}>Touch</span>
                     </h1>
@@ -75,7 +78,7 @@ export default function ContactPage() {
                             </div>       
                         </div>
 
-                        {/* PHONE KARTICA - Sada koristi PremiumButton */}
+                        {/* PHONE KARTICA */}
                         <div 
                             style={cardRadius}
                             className="bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
@@ -113,7 +116,7 @@ export default function ContactPage() {
                             <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)]">
                                 <MessageSquare size={32} />
                             </div>
-                            <h2 className="text-3xl font-black uppercase tracking-tighter leading-[0.9] mb-4">
+                            <h2 className="text-3xl font-black uppercase tracking-tighter leading-[0.9] mb-4 text-black">
                                 Live Chat <br />Coming Soon!
                             </h2>
                             <p className="font-bold text-black/80 text-sm leading-relaxed mb-6">
@@ -122,7 +125,7 @@ export default function ContactPage() {
                             </p>
                         </div>
                         
-                        <div className="flex items-center gap-2 font-black uppercase text-[10px] border-b-2 border-black pb-1 w-fit cursor-pointer hover:gap-4 transition-all">
+                        <div className="flex items-center gap-2 font-black uppercase text-[10px] border-b-2 border-black pb-1 w-fit cursor-pointer hover:gap-4 transition-all text-black">
                            <MapPin size={14} /> Sarajevo, BiH
                         </div>
                     </div>

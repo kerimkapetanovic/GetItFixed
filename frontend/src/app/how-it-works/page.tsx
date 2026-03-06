@@ -4,7 +4,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-// FIX: Uvozimo Link iz next/link, a ne iz lucide-react
 import Link from 'next/link'; 
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
@@ -40,12 +39,17 @@ const HowItWorks = () => {
     <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
       <Header />
       
-      <main className="flex-grow max-w-3xl mx-auto px-6 py-16">
-        <div className="mb-16 text-center">
+      <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
+        
+        {/* NASLOV SEKCIJA SA BIJELIM BOXOM - NOVO */}
+        <div 
+          className="text-center mb-12 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+          style={{ borderRadius: '30px' }}
+        >
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
             HOW <span style={{ color: brandColor }}>GETITFIXED</span> WORKS
           </h1>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em]">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em]">
             Step-by-step process
           </p>
         </div>
