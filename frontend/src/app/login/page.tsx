@@ -5,28 +5,71 @@ import Link from 'next/link';
 import { User, Hammer, Eye, EyeOff } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
+import { useRouter } from 'next/navigation';
+// Koristi svoj axios instance ako ga imaš (npr. import api from '@/lib/axios')
+import axios from 'axios'; 
 
 export default function LoginPage() {
-  // Postavljamo 'client' kao defaultno checkiranu ulogu
-  const [role, setRole] = useState<'client' | 'pro'>('client');
+  const router = useRouter();
+  const [role, setRole] = useState<'client' | 'handyman'>('client');
   const [showPassword, setShowPassword] = useState(false);
-  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Stilovi za radijuse i fiksne širine
-  const mainCardStyle = { 
-    borderRadius: '32px', 
-    maxWidth: '500px' 
-  };
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+
+  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
+  const mainCardStyle = { borderRadius: '32px', maxWidth: '500px' };
   const inputRadius = { borderRadius: '16px' };
   const roleRadius = { borderRadius: '20px' };
+
+  // JEDNA FUNKCIJA KOJA RADI SVE
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const loginData = {
+      email: formData.email,
+      password: formData.password,
+      role: role // Šaljemo 'client' ili 'handyman'
+    };
+
+    try {
+      // Koristi puni URL ili svoj 'api' instance
+      const response = await axios.post('http://127.0.0.1:8000/api/accounts/login/', loginData);
+
+      // Spašavanje podataka
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user_first_name', response.data.first_name);
+      localStorage.setItem('user_role', response.data.role);
+
+      router.push('/');
+      router.refresh(); 
+      
+    } catch (err: any) {
+      // Hvatanje greške sa backenda (onu koju smo napisali u serializeru)
+      const backendError = err.response?.data?.non_field_errors?.[0] || 
+                           err.response?.data?.detail || 
+                           "Pogrešan email, lozinka ili uloga.";
+      setError(backendError);
+      console.error("Login error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
       <Header />
       
       <main className="flex-grow flex items-center justify-center p-6 py-12">
-        {/* KARTICA */}
-        <div 
+        {/* onSubmit koristi našu novu funkciju */}
+        <form 
+          onSubmit={onSubmit}
           style={mainCardStyle}
           className="w-full bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 flex flex-col"
         >
@@ -38,14 +81,13 @@ export default function LoginPage() {
 
           {/* ROLE SELECTION */}
           <div className="grid grid-cols-2 gap-4 mb-10">
-            {/* Klijent Kartica */}
             <button 
               type="button"
               onClick={() => setRole('client')}
               style={roleRadius}
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === 'client' 
-                ? 'border-black bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]' 
+                ? 'border-black bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-0.5 -translate-y-0.5' 
                 : 'border-gray-100 bg-white hover:border-gray-200 opacity-60'
               }`}
             >
@@ -56,18 +98,17 @@ export default function LoginPage() {
               <span className="text-[10px] font-bold opacity-70">Looking for help</span>
             </button>
 
-            {/* Majstor Kartica */}
             <button 
               type="button"
-              onClick={() => setRole('pro')}
+              onClick={() => setRole('handyman')}
               style={roleRadius}
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
-                role === 'pro' 
-                ? 'border-black  bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)]  shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]' 
+                role === 'handyman' 
+                ? 'border-black bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-0.5 -translate-y-0.5' 
                 : 'border-gray-100 bg-white hover:border-gray-200 opacity-60'
               }`}
             >
-              <div className={`p-3 rounded-xl mb-3 ${role === 'pro' ? ' text-black' : 'bg-gray-100 text-gray-400'}`}>
+              <div className={`p-3 rounded-xl mb-3 ${role === 'handyman' ? ' text-black' : 'bg-gray-100 text-gray-400'}`}>
                 <Hammer size={24} strokeWidth={3} />
               </div>
               <span className="font-black text-sm uppercase tracking-tight">Handyman</span>
@@ -75,12 +116,22 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* ERROR MESSAGE */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border-2 border-red-500 text-red-700 font-bold text-xs uppercase rounded-xl">
+              {error}
+            </div>
+          )}
+
           {/* FORMA ZA PRIJAVU */}
           <div className="space-y-6">
             <div className="group">
               <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">Email address</label>
               <input 
+                required
                 type="email" 
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
                 placeholder={role === 'client' ? "client@example.com" : "handyman@example.com"}                
                 style={inputRadius}
                 className="w-full bg-white border-2 border-black p-4 text-sm font-bold text-gray-900 outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400"
@@ -94,7 +145,10 @@ export default function LoginPage() {
               
               <div className="relative flex items-center w-full">
                 <input 
+                  required
                   type={showPassword ? "text" : "password"} 
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder="Your password"
                   style={inputRadius}
                   className="w-full bg-white border-2 border-black p-4 pr-12 text-sm font-bold text-gray-900 outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400 block"
@@ -103,8 +157,7 @@ export default function LoginPage() {
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 flex items-center justify-center text-black hover:scale-110 transition-transform z-30"
-                  style={{ height: '24px', width: '24px', background: 'transparent', border: 'none' }}
+                  className="absolute right-4 flex items-center justify-center text-black hover:scale-110 transition-transform z-30 bg-transparent border-none"
                 >
                   {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                 </button>
@@ -112,10 +165,12 @@ export default function LoginPage() {
             </div>
 
             <button 
+              type="submit"
+              disabled={loading}
               style={inputRadius}
-              className="w-full mt-3 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95"
+              className="w-full mt-3 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50"
             >
-              Sign in
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </div>
 
@@ -124,7 +179,7 @@ export default function LoginPage() {
                Don't have an account? <span className="text-black border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 transition-colors">Register here</span>
              </Link>
           </div>
-        </div>
+        </form>
       </main>
 
       <Footer />
