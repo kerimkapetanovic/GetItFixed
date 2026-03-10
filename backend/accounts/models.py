@@ -22,6 +22,8 @@ class User(AbstractUser):
     # Django vec ima first_name, last_name, email i password u AbstractUser, 
     # tako da ih ne moramo ponovo pisati, ali mozemo dodati email kao obavezan
     email = models.EmailField(unique=True)
+    USERNAME_FIELD = 'email'       # Ovo kaže Djangu: "Email je sada glavni za login"
+    REQUIRED_FIELDS = ['username']
 
     # Koristimo email za login umjesto username-a (opcionalno, ali preporuceno za moderne aplikacije)
     # USERNAME_FIELD = 'email' 

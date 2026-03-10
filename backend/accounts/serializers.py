@@ -10,30 +10,21 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 
-            'username', 
-            'email', 
-            'password', 
-            'first_name', 
-            'last_name', 
-            'role', 
-            'phone',        # DODATO
-            'county',       # DODATO (pazi, na frontu ti je 'country', ovdje 'county')
-            'city',         # DODATO
-            'zip_code',     # DODATO
-            'service_type' 
+            'id', 'username', 'email', 'password', 
+            'first_name', 'last_name', 'role', 'phone',
+            'county', 'city', 'zip_code', 'service_type' 
         )
 
     def validate(self, attrs):
-        # Provjera za majstore
-        if attrs.get('role') == 'pro' and not attrs.get('service_type'):
+        # Provjera za majstore (handyman)
+        if attrs.get('role') == 'handyman' and not attrs.get('service_type'):
             raise serializers.ValidationError(
-                {"service_type": "Majstori moraju odabrati vrstu usluge."}
+                {"service_type": "Handyman must select a service type."}
             )
         return attrs
 
     def create(self, validated_data):
-        # Kreiramo usera sa SVIM poljima
+        # create_user se brine za hashiranje lozinke
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -41,47 +32,63 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
             role=validated_data.get('role', 'client'),
-            phone=validated_data.get('phone', ''),           # DODATO
-            county=validated_data.get('county', ''),         # DODATO
-            city=validated_data.get('city', ''),             # DODATO
-            zip_code=validated_data.get('zip_code', ''),     # DODATO
+            phone=validated_data.get('phone', ''),
+            county=validated_data.get('county', ''),
+            city=validated_data.get('city', ''),
+            zip_code=validated_data.get('zip_code', ''),
             service_type=validated_data.get('service_type', None)
         )
         return user
+
 class EmailAuthSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
-    role = serializers.CharField(required=True) # Obavezno proslijedi ulogu sa frontenda
+    role = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
         email = attrs.get('email')
         password = attrs.get('password')
-        selected_role = attrs.get('role') # 'client' ili 'handyman'
+        selected_role = attrs.get('role')
 
-        if email and password:
-            try:
-                # 1. Pronađi korisnika po emailu
-                user_obj = User.objects.get(email=email)
-                
-                # 2. KLJUČNA PROVJERA: Da li se uloga u bazi poklapa sa odabranom?
-                if user_obj.role != selected_role:
+        if not email or not password:
+            raise serializers.ValidationError('You must provide an email and password.', code='authorization')
+
+        try:
+            # 1. Pronalaženje korisnika po emailu
+            user_obj = User.objects.get(email=email)
+            
+            # 2. Provjera uloge (Admin ima "free pass")
+            is_privileged = user_obj.is_superuser or user_obj.is_staff or user_obj.role == 'admin'
+            
+            if not is_privileged:
+                if selected_role and user_obj.role != selected_role:
                     raise serializers.ValidationError(
-                        f"Ovaj nalog nije registrovan kao {selected_role}."
+                        f"This account is registered as {user_obj.role}.", 
+                        code='authorization'
                     )
 
-                # 3. Provjera lozinke
+            # 3. Autentifikacija
+            # Prvo pokušavamo sa sistemskim username-om (najsigurnije za admina)
+            user = authenticate(
+                request=self.context.get('request'),
+                username=user_obj.username,
+                password=password
+            )
+            
+            # Ako ne uspije, pokušavamo sa emailom (ako je USERNAME_FIELD = 'email')
+            if not user:
                 user = authenticate(
                     request=self.context.get('request'),
-                    username=user_obj.username,
+                    username=email,
                     password=password
                 )
-            except User.DoesNotExist:
-                user = None
 
-            if not user:
-                raise serializers.ValidationError('Pogrešan email ili lozinka.', code='authorization')
-        else:
-            raise serializers.ValidationError('Morate unijeti i email i lozinku.', code='authorization')
+        except User.DoesNotExist:
+            # Ne otkrivamo da li email postoji radi sigurnosti, samo bacamo opšti error
+            user = None
+
+        if not user:
+            raise serializers.ValidationError('Incorrect email or password.', code='authorization')
 
         attrs['user'] = user
         return attrs

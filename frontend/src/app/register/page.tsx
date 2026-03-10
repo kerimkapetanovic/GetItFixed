@@ -1,23 +1,65 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { User, Hammer, Eye, EyeOff, MapPin, Phone, Mail, Lock, Globe, Hash, Briefcase } from 'lucide-react';
+import { User, Hammer, Eye, EyeOff, MapPin, Phone, Mail, Lock, Globe, Hash, Briefcase, AlertCircle } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { useSearchParams, useRouter } from 'next/navigation'; 
 import api from '../../../lib/axios';
+import countryList from 'react-select-country-list';
+import 'react-phone-number-input/style.css';
+import PhoneInput from 'react-phone-number-input';
+
+// POBOLJŠAN CSS - Da PhoneInput izgleda 1:1 kao tvoji ostali inputi
+const phoneInputCustomStyles = `
+  .PhoneInput {
+    width: 100%;
+    background: white;
+    border: 2px solid black;
+    padding: 1rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+  }
+  .PhoneInput:focus-within {
+    background-color: #fefce8; /* yellow-50 */
+  }
+  .PhoneInputInput {
+    border: none !important;
+    outline: none !important;
+    font-weight: bold;
+    font-size: 0.875rem;
+    background: transparent;
+    width: 100%;
+    color: black;
+  }
+  .PhoneInputCountry {
+    display: flex;
+    align-items: center;
+    border-right: 1px solid #000;
+    padding-right: 10px;
+    margin-right: 4px;
+  }
+  .PhoneInputCountrySelectArrow {
+    margin-left: 5px;
+    opacity: 0.7;
+  }
+`;
 
 export default function RegisterPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // --- UI STATES ---
+  const countries = useMemo(() => countryList().getData(), []);
+
   const [role, setRole] = useState<'client' | 'handyman'>('client');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState(false); // State za error lozinke
 
-  // --- FORM DATA STATE ---
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -50,6 +92,7 @@ export default function RegisterPage() {
       .replace(/[^a-z0-9-]/g, ""); 
   };
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -57,6 +100,14 @@ export default function RegisterPage() {
     const baseUsername = `${cleanString(formData.firstName)}-${cleanString(formData.lastName)}`;
     const randomNum = Math.floor(10 + Math.random() * 90);
     const finalUsername = `${baseUsername}-${randomNum}`;
+
+    // VALIDACIJA LOZINKE
+    if (formData.password.length < 8) {
+      setPasswordError(true);
+      return;
+    }
+    setPasswordError(false);
+    setLoading(true);
 
     const dataToSubmit = {
       username: finalUsername,
@@ -86,6 +137,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex flex-col min-h-screen text-black" style={{ background: softGradient }}>
+      <style>{phoneInputCustomStyles}</style>
       <Header />
       
       <main className="flex-grow flex items-center justify-center p-6 py-12">
@@ -148,17 +200,24 @@ export default function RegisterPage() {
                 <input required type="email" placeholder="john@example.com" style={inputRadius} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Phone size={12} /> Phone Number</label>
-                <input type="tel" placeholder="+387 61 123 456" style={inputRadius} value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
+                  <Phone size={12} /> Phone Number
+                </label>
+                <PhoneInput
+                  international
+                  placeholder="61 123 456"
+                  value={formData.phone}
+                  onChange={(value) => setFormData({...formData, phone: value || ''})}
+                />
               </div>
             </div>
 
+            {/* EXPERTISE SECTION */}
             {role === 'handyman' && (
-              <div className="p-6 border-4 border-black bg-gray-50 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] animate-in fade-in slide-in-from-top-4 duration-300" style={{ borderRadius: '24px' }}>
+              <div className="p-6 border-4 border-black bg-gray-50 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]" style={{ borderRadius: '24px' }}>
                 <div className="group relative">
                   <label className="block text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2">
-                    <Briefcase size={14} className="text-black" /> handyman
-                fessional Expertise
+                    <Briefcase size={14} className="text-black" /> Professional Expertise
                   </label>
                   <div className="relative">
                     <select 
@@ -197,9 +256,7 @@ export default function RegisterPage() {
                       <option value="pest_control">Pest control & extermination</option>
                     </select>
                     <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none border-l-2 border-black pl-3">
-                      <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M1 1L6 6L11 1" stroke="black" strokeWidth="3" strokeLinecap="round"/>
-                      </svg>
+                       <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1L6 6L11 1" stroke="black" strokeWidth="3" strokeLinecap="round"/></svg>
                     </div>
                   </div>
                 </div>
@@ -207,32 +264,65 @@ export default function RegisterPage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-               <div className="group">
+              <div className="group">
                 <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Globe size={12} /> Country</label>
-                <input type="text" placeholder="BiH" style={inputRadius} value={formData.country} onChange={(e) => setFormData({...formData, country: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <div className="relative">
+                  <select 
+                    required 
+                    style={inputRadius}
+                    value={formData.country} 
+                    onChange={(e) => setFormData({...formData, country: e.target.value})} 
+                    className="w-full bg-white border-2 border-black p-4 pr-10 text-sm font-bold outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>Select</option>
+                    {countries.map((c) => <option key={c.value} value={c.label}>{c.label}</option>)}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="black" strokeWidth="2" strokeLinecap="round"/></svg>
+                  </div>
+                </div>
               </div>
               <div className="group">
                 <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><MapPin size={12} /> City</label>
-                <input type="text" placeholder="Mostar" style={inputRadius} value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <input type="text" placeholder="Mostar" style={inputRadius} value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
               </div>
               <div className="group">
                 <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Hash size={12} /> Zip Code</label>
-                <input type="text" placeholder="88000" style={inputRadius} value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <input type="text" placeholder="88000" style={inputRadius} value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
               </div>
             </div>
 
+           {/* PASSWORD WITH VALIDATION */}
             <div className="group">
               <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Lock size={12} /> Create Password</label>
-              <div className="relative flex items-center w-full">
-                <input required type={showPassword ? "text" : "password"} placeholder="Strong password" style={inputRadius} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-white border-2 border-black p-4 pr-12 text-sm font-bold outline-none focus:bg-yellow-50 transition-all block placeholder:text-gray-400" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 text-black hover:scale-110 transition-transform z-30">
-                  {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
-                </button>
+              <div className="relative flex flex-col w-full">
+                <div className="relative flex items-center">
+                  <input 
+                    required 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Create a password" 
+                    style={inputRadius} 
+                    value={formData.password} 
+                    onChange={(e) => {
+                      setFormData({...formData, password: e.target.value});
+                      if(e.target.value.length >= 8) setPasswordError(false);
+                    }} 
+                    className={`w-full bg-white border-2 p-4 pr-12 text-sm font-bold outline-none transition-all block ${passwordError ? 'border-red-500 bg-red-50' : 'border-black focus:bg-yellow-50'}`} 
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 text-black z-30">
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+                {passwordError && (
+                  <p className="text-red-600 text-[10px] font-black uppercase mt-2 ml-2 flex items-center gap-1">
+                    <AlertCircle size={12} /> Password must be at least 8 characters long
+                  </p>
+                )}
               </div>
             </div>
 
-            <button disabled={loading} type="submit" style={inputRadius} className="w-full mt-6 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? 'handymancessing...' : 'Create Account'}
+            <button disabled={loading} type="submit" style={inputRadius} className="w-full mt-6 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50">
+              {loading ? 'Processing...' : 'Create Account'}
             </button>
           </form>
 
