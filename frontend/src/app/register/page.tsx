@@ -93,21 +93,21 @@ export default function RegisterPage() {
   };
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
+ const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    
+    // 1. VALIDACIJA LOZINKE (Prije nego što uopšte pokreneš loading)
+    if (formData.password.length < 8) {
+      setPasswordError(true);
+      return; // Ovdje izlazimo, loading još nije ni krenuo
+    }
+    
+    setPasswordError(false);
+    setLoading(true); // TEK SAD kreće loading jer su podaci validni
 
     const baseUsername = `${cleanString(formData.firstName)}-${cleanString(formData.lastName)}`;
     const randomNum = Math.floor(10 + Math.random() * 90);
     const finalUsername = `${baseUsername}-${randomNum}`;
-
-    // VALIDACIJA LOZINKE
-    if (formData.password.length < 8) {
-      setPasswordError(true);
-      return;
-    }
-    setPasswordError(false);
-    setLoading(true);
 
     const dataToSubmit = {
       username: finalUsername,
@@ -129,8 +129,11 @@ export default function RegisterPage() {
       router.push('/login'); 
     } catch (error: any) {
       console.error("Registration error:", error.response?.data);
+      // Ako server vrati grešku (npr. email već postoji), alert će iskočiti
+      // a finally blok će ugasiti loading
       alert("Error: " + JSON.stringify(error.response?.data || "Something went wrong"));
     } finally {
+      // OVO JE KLJUČNO: gasi loading i u slučaju uspjeha i u slučaju greške na serveru
       setLoading(false);
     }
   };
