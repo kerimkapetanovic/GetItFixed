@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL, // Ovo čita http://127.0.0.1:8000
+  baseURL: process.env.NEXT_PUBLIC_API_URL, // http://127.0.0.1:8000
+  withCredentials: true, // OBAVEZNO: Omogućava slanje i primanje kukija
   headers: {
     'Content-Type': 'application/json',
   },

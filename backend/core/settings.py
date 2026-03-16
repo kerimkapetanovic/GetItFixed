@@ -51,6 +51,18 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'core.urls'
+# OBAVEZNO: Dozvoljava browseru da prihvati kukije
+CORS_ALLOW_CREDENTIALS = True
+
+# OBAVEZNO: Lista adresa sa kojih dolazi tvoj Next.js
+CORS_ALLOWED_ORIGINS = [
+    env('FRONTEND_URL'), # Ovo čita iz .env, npr.
+]
+
+# Dodaj i ovo za svaki slučaj (CSRF zaštita)
+CSRF_TRUSTED_ORIGINS = [
+    env('FRONTEND_URL'),
+]
 
 TEMPLATES = [
     {
@@ -96,9 +108,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'accounts.authentication.CookieTokenAuthentication', # Tvoja nova klasa
     ],
 }
 AUTHENTICATION_BACKENDS = [

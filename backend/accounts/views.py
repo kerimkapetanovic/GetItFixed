@@ -1,23 +1,16 @@
 from rest_framework import generics, status, serializers
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import update_last_login
+from django.conf import settings
 from .serializers import RegisterSerializer
 
 User = get_user_model()
 
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+# --- SERIALIZERS ---
 
 class EmailAuthSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -32,41 +25,21 @@ class EmailAuthSerializer(serializers.Serializer):
         if not email or not password:
             raise serializers.ValidationError('Email and password are required.')
 
-        try:
-            # 1. Pronađi korisnika preko emaila da dobijemo njegov sistemski username
-            user_obj = User.objects.get(email=email)
-            
-            # 2. Provjera uloge (Admin/Staff/Superuser preskaču "role" provjeru)
-            is_privileged = user_obj.is_superuser or user_obj.is_staff or user_obj.role == 'admin'
-            
-            if not is_privileged:
-                if selected_role and user_obj.role != selected_role:
-                    raise serializers.ValidationError(
-                        f"This account is registered as {user_obj.role}."
-                    )
-            
-            # 3. KLJUČNA ISPRAVKA: Autentifikacija preko USERNAME-a
-            # Budući da admin ima username 'admin', a ne email string, 
-            # moramo proslijediti user_obj.username.
-            user = authenticate(
-                request=self.context.get('request'),
-                username=user_obj.username, 
-                password=password
-            )
-
-            # Fallback: Ako ipak koristiš Email za login (USERNAME_FIELD = 'email')
-            if not user:
-                user = authenticate(
-                    request=self.context.get('request'),
-                    username=email,
-                    password=password
-                )
-
-        except User.DoesNotExist:
-            user = None
+        # Autentifikacija (Django sada zna da je email primarno polje)
+        user = authenticate(
+            request=self.context.get('request'),
+            username=email,
+            password=password
+        )
 
         if not user:
             raise serializers.ValidationError('Incorrect email or password.')
+
+        # Provjera uloge (Admini preskaču provjeru)
+        is_privileged = user.is_superuser or user.is_staff or user.role == 'admin'
+        if not is_privileged and selected_role:
+            if user.role != selected_role:
+                raise serializers.ValidationError(f"This account is registered as {user.role}.")
 
         if not user.is_active:
             raise serializers.ValidationError('User account is disabled.')
@@ -75,28 +48,65 @@ class EmailAuthSerializer(serializers.Serializer):
         return attrs
 
 
+# --- VIEWS ---
+
+class RegisterView(generics.CreateAPIView):
+    serializer_class = RegisterSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class CustomLoginView(ObtainAuthToken):
     serializer_class = EmailAuthSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data,
-                                           context={'request': request})
-        
-        # Ako podaci nisu ispravni (netačan pass ili pogrešna uloga), ovdje vraća 400
+        serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         
-        # Ažuriraj vrijeme zadnjeg logina
         update_last_login(None, user) 
-        
-        # Kreiraj ili preuzmi postojeći Token
         token, created = Token.objects.get_or_create(user=user)
         
-        return Response({
-            'token': token.key,
+        # Pripremamo podatke za frontend (bez tokena u body-ju jer ide u cookie)
+        response_data = {
             'user_id': user.pk,
             'email': user.email,
+            'username': user.username,  # <-- Ova linija ti je falila
             'role': user.role,
             'first_name': user.first_name,
+            'last_name': user.last_name, # Dobro je imati i prezime za header
             'is_staff': user.is_staff
-        })
+        }
+        
+        response = Response(response_data, status=status.HTTP_200_OK)
+
+        # Postavljanje HttpOnly Cookie-ja
+        response.set_cookie(
+            key='auth_token',
+            value=token.key,
+            httponly=True,   # Onemogućava JS pristup (zaštita od XSS)
+            secure=False,    # Postavi na True samo ako koristiš HTTPS
+            samesite='Lax',  # Štiti od CSRF-a
+            max_age=60 * 60 * 24 * 7 # Trajanje 7 dana
+        )
+        
+        return response
+
+
+class LogoutView(APIView):
+    def post(self, request):
+        response = Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
+        
+        # Brišemo kuki tako što mu postavimo trajanje na nulu
+        response.delete_cookie('auth_token')
+        
+        # Opcionalno: Obriši token iz baze ako želiš potpunu sigurnost
+        # if request.user.is_authenticated:
+        #    Token.objects.filter(user=request.user).delete()
+            
+        return response

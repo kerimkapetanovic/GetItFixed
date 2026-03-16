@@ -1,13 +1,51 @@
 "use client";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import api from "../../lib/axios";
 
 export default function Header() {
+  const router = useRouter();
+  
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState("client");
+  const [userData, setUserData] = useState({ firstName: "", lastName: "" });
+  const [username, setUsername] = useState("");
 
   const brandColor = "#EF9D39";
+
+  // 1. UČITAVANJE SESIJE (UI DIO)
+  useEffect(() => {
+    const role = localStorage.getItem("user_role");
+    const loggedIn = localStorage.getItem("is_logged_in") === "true";
+    const fName = localStorage.getItem("first_name") || "";
+    const lName = localStorage.getItem("last_name") || "";
+    const storedUsername = localStorage.getItem("username") || "";
+  setUsername(storedUsername);
+
+    if (loggedIn && role) {
+      setIsLoggedIn(true);
+      setUserRole(role);
+      setUserData({ firstName: fName, lastName: lName });
+    }
+  }, []);
+
+
+  // 2. LOGOUT LOGIKA (ČISTI I KUKI I LOCALSTORAGE)
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/accounts/logout/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      localStorage.clear();
+      setIsLoggedIn(false);
+      setUserRole("client");
+      setIsMenuOpen(false);
+      router.push("/login");
+    }
+  };
 
   const allBaseLinks = [
     { name: "How It Works?", href: "/how-it-works", adminHide: true },
@@ -20,48 +58,43 @@ export default function Header() {
   const visibleBaseLinks = allBaseLinks.filter(
     (link) => !isLoggedIn || userRole !== "admin" || !link.adminHide,
   );
+const getRoleLinks = (role: string) => {
+  if (!isLoggedIn || !username) return []; // Dodaj provjeru za username
+  
+  switch (role) {
+    case "client":
+      return [
+        { name: "New Request", href: `/${username}/new-request` },
+        { name: "My Requests", href: `/${username}/requests` },
+      ];
+    case "handyman":
+      return [
+        { name: "Dashboard", href: `/${username}/dashboard` },
+        { name: "Calendar", href: `/${username}/calendar` },
+      ];
+    case "admin":
+      return [
+        { name: "Users", href: "/admin/users" },
+        { name: "Tracking", href: "/admin/tracking" },
+      ];
+    default:
+      return [];
+  }
+};
 
-  const getRoleLinks = (role: string) => {
-    if (!isLoggedIn) return [];
-    switch (role) {
-      case "client":
-        return [
-          { name: "New Request", href: "/client/new-request" },
-          { name: "My Requests", href: "/client/requests" },
-        ];
-      case "provider":
-        return [
-          { name: "Dashboard", href: "/provider/dashboard" },
-          { name: "Calendar", href: "/provider/calendar" },
-        ];
-      case "admin":
-        return [
-          { name: "Users", href: "/admin/users" },
-          { name: "Tracking", href: "/admin/tracking" },
-          { name: "Disputes", href: "/admin/disputes" },
-        ];
-      default:
-        return [];
+  // Generisanje inicijala (npr. Amar Kapetanović -> AK)
+  const getInitials = () => {
+    if (userData.firstName && userData.lastName) {
+      return (userData.firstName[0] + userData.lastName[0]).toUpperCase();
     }
-  };
-
-  const loginAs = (role: string) => {
-    setUserRole(role);
-    setIsLoggedIn(true);
-    setIsMenuOpen(false);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserRole("client");
-    setIsMenuOpen(false);
+    return userRole.charAt(0).toUpperCase();
   };
 
   return (
     <header className="border-b-2 border-black w-full bg-white px-6 py-5 font-sans uppercase tracking-tight relative z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
-        {/* 1. LOGO */}
+        {/* LOGO */}
         <div className="flex items-center shrink-0">
           <Link href="/" className="flex items-center gap-3 text-2xl font-black normal-case tracking-tighter">
             <img src="/GetItFixed Logo.png" alt="Logo" className="h-10 w-auto object-contain" />
@@ -69,9 +102,8 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* 2. SREDINA - NAV LINKOVI (Vraćeni fontovi i dodata boja) */}
+        {/* NAV LINKOVI */}
         <nav className="hidden lg:flex flex-grow justify-center items-center gap-x-8 px-4">
-          {/* Osnovni linkovi - Vraćeno na text-sm */}
           {visibleBaseLinks.map((link) => (
             <Link
               key={link.href}
@@ -82,7 +114,6 @@ export default function Header() {
             </Link>
           ))}
 
-          {/* Role-specific linkovi - Brand Boja (Narandžasta) */}
           {isLoggedIn && (
             <div className="flex items-center gap-4 ml-2 pl-8 border-l-2 border-gray-100">
               {getRoleLinks(userRole).map((link) => (
@@ -99,19 +130,12 @@ export default function Header() {
           )}
         </nav>
 
-        {/* 3. DESNA STRANA */}
+        {/* DESNA STRANA (Login ili Profile) */}
         <div className="flex items-center gap-4 shrink-0">
           {!isLoggedIn ? (
             <div className="flex items-center gap-4">
-              {/* DEV HELPER */}
-              <div className="hidden md:flex gap-1 border border-dashed border-gray-300 p-1.5 text-[9px] font-bold lowercase rounded-xl bg-gray-50">
-                <button onClick={() => loginAs("client")} className="px-1 hover:text-[#EF9D39]">c</button>
-                <button onClick={() => loginAs("provider")} className="px-1 hover:text-[#EF9D39]">p</button>
-                <button onClick={() => loginAs("admin")} className="px-1 hover:text-[#EF9D39]">a</button>
-              </div>
-
               <Link href="/login">
-                  <button className="text-sm font-black px-5py-2.5 rounded-[30px] border-2 border-transparent cursor-pointer hover:underline underline-offset-8 decoration-2 transition-all whitespace-nowrap text-black  transition-all active:scale-95 normal-case tracking-tight">
+                  <button className="text-sm font-black px-5 py-2.5 rounded-[30px] border-2 border-transparent cursor-pointer hover:underline underline-offset-8 decoration-2 transition-all whitespace-nowrap text-black transition-all active:scale-95 normal-case tracking-tight">
                     Login
                   </button>
                 </Link>              
@@ -128,11 +152,13 @@ export default function Header() {
                 className="flex items-center gap-3 border-2 border-black p-1.5 pl-4 bg-white rounded-[16px] hover:bg-gray-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
               >
                 <div className="text-right hidden sm:block">
-                  <p className="text-[10px] font-black leading-none uppercase">{userRole}</p>
-                  <p className="text-[8px] font-bold text-gray-400 mt-1 uppercase leading-none">Settings</p>
+                  <p className="text-[10px] font-black leading-none uppercase">
+                    {userData.firstName ? `${userData.firstName} ${userData.lastName}` : userRole}
+                  </p>
+                  <p className="text-[8px] font-bold text-gray-400 mt-1 uppercase leading-none">{userRole}</p>
                 </div>
                 <div className="w-8 h-8 bg-black flex items-center justify-center text-white text-xs font-bold border border-black rounded-lg uppercase">
-                  {userRole[0]}
+                  {getInitials()}
                 </div>
               </button>
 

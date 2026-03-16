@@ -8,7 +8,7 @@ import Footer from '@/components/footer';
 import { useRouter } from 'next/navigation';
 // Koristi svoj axios instance ako ga imaš (npr. import api from '@/lib/axios')
 import axios from 'axios'; 
-
+import api from '../../../lib/axios';
 export default function LoginPage() {
   const router = useRouter();
   const [role, setRole] = useState<'client' | 'handyman'>('client');
@@ -27,40 +27,42 @@ export default function LoginPage() {
   const roleRadius = { borderRadius: '20px' };
 
   // JEDNA FUNKCIJA KOJA RADI SVE
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    const loginData = {
-      email: formData.email,
-      password: formData.password,
-      role: role // Šaljemo 'client' ili 'handyman'
-    };
-
-    try {
-      // Koristi puni URL ili svoj 'api' instance
-      const response = await axios.post('http://127.0.0.1:8000/api/accounts/login/', loginData);
-
-      // Spašavanje podataka
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user_first_name', response.data.first_name);
-      localStorage.setItem('user_role', response.data.role);
-
-      router.push('/');
-      router.refresh(); 
-      
-    } catch (err: any) {
-      // Hvatanje greške sa backenda (onu koju smo napisali u serializeru)
-      const backendError = err.response?.data?.non_field_errors?.[0] || 
-                           err.response?.data?.detail || 
-                           "Pogrešan email, lozinka ili uloga.";
-      setError(backendError);
-      console.error("Login error:", err);
-    } finally {
-      setLoading(false);
-    }
+  const loginData = {
+    email: formData.email,
+    password: formData.password,
+    role: role
   };
+
+  try {
+    // 1. Koristimo 'api' (zbog kukija) umjesto 'axios'
+    const response = await api.post('/api/accounts/login/', loginData);
+
+    // 2. Spašavanje podataka - MORA SE POKLAPATI SA HEADEROM
+    localStorage.setItem('is_logged_in', 'true'); // Ovo Header provjerava!
+    localStorage.setItem('user_role', response.data.role);
+    localStorage.setItem('first_name', response.data.first_name); // Header traži 'first_name'
+    localStorage.setItem('last_name', response.data.last_name || ""); 
+    localStorage.setItem('username', response.data.username);
+
+    // 3. Preusmjeravanje
+    // window.location.href je sigurniji za "buđenje" Headera od router.push
+    window.location.href = '/'; 
+    
+  } catch (err: any) {
+    const backendError = err.response?.data?.non_field_errors?.[0] || 
+                         err.response?.data?.detail || 
+                         "Pogrešan email, lozinka ili uloga.";
+    setError(backendError);
+    console.error("Login error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
