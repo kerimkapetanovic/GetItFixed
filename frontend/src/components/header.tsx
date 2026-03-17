@@ -12,6 +12,8 @@ export default function Header() {
   const [userRole, setUserRole] = useState("client");
   const [userData, setUserData] = useState({ firstName: "", lastName: "" });
   const [username, setUsername] = useState("");
+  const avatarSeed = username || `${userData.firstName}${userData.lastName}` || userRole;
+  const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
 
   const brandColor = "#EF9D39";
 
@@ -82,14 +84,6 @@ const getRoleLinks = (role: string) => {
   }
 };
 
-  // Generisanje inicijala (npr. Amar Kapetanović -> AK)
-  const getInitials = () => {
-    if (userData.firstName && userData.lastName) {
-      return (userData.firstName[0] + userData.lastName[0]).toUpperCase();
-    }
-    return userRole.charAt(0).toUpperCase();
-  };
-
   return (
     <header className="border-b-2 border-black w-full bg-white px-6 py-5 font-sans uppercase tracking-tight relative z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -149,17 +143,19 @@ const getRoleLinks = (role: string) => {
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center gap-3 border-2 border-black p-1.5 pl-4 bg-white rounded-[16px] hover:bg-gray-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+                className="flex items-center gap-3 border-2 border-black p-2 pl-4 bg-white rounded-[16px] hover:bg-gray-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
               >
                 <div className="text-right hidden sm:block">
-                  <p className="text-[10px] font-black leading-none uppercase">
+                  <p className="text-xs font-black leading-none uppercase">
                     {userData.firstName ? `${userData.firstName} ${userData.lastName}` : userRole}
                   </p>
-                  <p className="text-[8px] font-bold text-gray-400 mt-1 uppercase leading-none">{userRole}</p>
+                  <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase leading-none">{userRole}</p>
                 </div>
-                <div className="w-8 h-8 bg-black flex items-center justify-center text-white text-xs font-bold border border-black rounded-lg uppercase">
-                  {getInitials()}
-                </div>
+                <img
+                  src={avatarUrl}
+                  alt="Profile avatar"
+                  className="w-10 h-10 rounded-full border-2 border-black object-cover shrink-0"
+                />
               </button>
 
               {isMenuOpen && (
