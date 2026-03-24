@@ -140,35 +140,51 @@ const getRoleLinks = (role: string) => {
               </Link>
             </div>
           ) : (
-            <div className="relative">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center gap-3 border-2 border-black p-2 pl-4 bg-white rounded-[16px] hover:bg-gray-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
-              >
-                <div className="text-right hidden sm:block">
-                  <p className="text-xs font-black leading-none uppercase">
-                    {userData.firstName ? `${userData.firstName} ${userData.lastName}` : userRole}
-                  </p>
-                  <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase leading-none">{userRole}</p>
-                </div>
-                <img
-                  src={avatarUrl}
-                  alt="Profile avatar"
-                  className="w-10 h-10 rounded-full border-2 border-black object-cover shrink-0"
-                />
-              </button>
+            <div className="relative group">
+  {/* PROFILE BUTTON */}
+  <button
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className={`flex items-center gap-3 border-2 border-black p-2 pl-4 bg-white transition-all z-[60] relative ${
+      isMenuOpen 
+        ? 'rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1' 
+        : 'rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none'
+    }`}
+  >
+    <div className="text-right hidden sm:block">
+      <p className="text-xs font-black leading-none uppercase tracking-tight">
+        {userData.firstName ? `${userData.firstName} ${userData.lastName}` : userRole}
+      </p>
+      <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase leading-none">{userRole}</p>
+    </div>
+    <img
+      src={avatarUrl}
+      alt="Profile avatar"
+      className="w-10 h-10 rounded-full border-2 border-black object-cover shrink-0"
+    />
+  </button>
 
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-3 w-52 bg-white border-2 border-black z-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[20px] overflow-hidden">
-                  <ul className="flex flex-col text-sm font-bold">
-                    <li className="p-4 border-b-2 border-black hover:bg-gray-50 cursor-pointer">Account Settings</li>
-                    <li onClick={handleLogout} className="p-4 bg-black text-white hover:bg-red-600 cursor-pointer text-center font-black uppercase tracking-widest transition-colors">
-                      Logout
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
+  {/* DROPDOWN MENU */}
+  {isMenuOpen && (
+    <div 
+      className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white border-2 border-black z-50  rounded-b-[16px] overflow-hidden"
+    >
+      <ul className="flex flex-col text-[11px] font-black uppercase tracking-widest">
+        <Link href="/profile" className="p-4 border-b-2 border-black hover:bg-yellow-50 transition-colors cursor-pointer block">
+          Profile
+        </Link>
+        <Link href="/settings" className="p-4 border-b-2 border-black hover:bg-yellow-50 transition-colors cursor-pointer block">
+          Settings
+        </Link>
+        <li 
+          onClick={handleLogout} 
+          className="p-4 bg-black text-white hover:bg-[#EF9D39] hover:text-black cursor-pointer text-center transition-colors"
+        >
+          Logout
+        </li>
+      </ul>
+    </div>
+  )}
+</div>
           )}
         </div>
       </div>
