@@ -4,25 +4,23 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import ChatClient from './ChatClient';
 import styles from './launcher.module.css';
+import { useLanguage } from '@/components/providers/language-provider';
 
 const HIDE_PATHS = ['/register', '/login']; // add any other paths you want to hide on
 
 export default function ChatLauncher() {
   const pathname = usePathname() || '/';
-  const [open, setOpen] = useState(false);
+  const [openPathname, setOpenPathname] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const { t } = useLanguage();
+  const open = openPathname === pathname;
 
   // hide launcher on certain pages
   const hidden = HIDE_PATHS.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
-    // Close panel when path changes (optional)
-    setOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') setOpenPathname(null);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -36,7 +34,7 @@ export default function ChatLauncher() {
         // allow clicking the launcher button to toggle, so check target
         const target = e.target as HTMLElement | null;
         if (target && target.closest(`.${styles.launcherButton}`)) return;
-        setOpen(false);
+        setOpenPathname(null);
       }
     }
     document.addEventListener('mousedown', onDocClick);
@@ -49,9 +47,9 @@ export default function ChatLauncher() {
     <>
       {/* Floating launcher button */}
       <button
-        aria-label={open ? 'Close chat' : 'Open chat'}
+        aria-label={open ? t('chat.close') : t('chat.open')}
         className={styles.launcherButton}
-        onClick={() => setOpen((s) => !s)}
+        onClick={() => setOpenPathname((current) => (current === pathname ? null : pathname))}
         type="button"
       >
         {/* simple icon: you can replace with an SVG */}
@@ -71,14 +69,14 @@ export default function ChatLauncher() {
         className={`${styles.panel} ${open ? styles.open : ''}`}
         role="dialog"
         aria-hidden={!open}
-        aria-label="AI Repair Assistant"
+        aria-label={t('chat.title')}
       >
         <div className={styles.panelHeader}>
-          <div className={styles.panelTitle}>AI Repair Assistant</div>
+          <div className={styles.panelTitle}>{t('chat.title')}</div>
           <button
-            aria-label="Close chat"
+            aria-label={t('chat.close')}
             className={styles.closeBtn}
-            onClick={() => setOpen(false)}
+            onClick={() => setOpenPathname(null)}
             type="button"
           >
             ✕

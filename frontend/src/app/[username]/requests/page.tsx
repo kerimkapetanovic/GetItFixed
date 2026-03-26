@@ -6,7 +6,6 @@ import { Clock, CheckCircle, AlertCircle, MapPin, Wrench, Star, User } from "luc
 
 export default function RequestsPage() {
   const brandColor = "#EF9D39";
-  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
   
   // DUMMY PODACI SA HANDYMAN INFORMACIJAMA
   const dummyRequests = [
@@ -59,10 +58,7 @@ export default function RequestsPage() {
   };
 
   return (
-    <div 
-      className="flex flex-col min-h-screen text-black selection:bg-black selection:text-white font-sans" 
-      style={{ background: softGradient }}
-    >
+    <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
       <Header />
       
       <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">

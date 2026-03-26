@@ -14,7 +14,6 @@ export default function Services() {
   const commonRadius = "24px";
   const smallRadius = "12px";
   const brandColor = "#EF9D39";
-  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
   const serviceCategories = [
     { id: "plumbing", name: "Plumbing", icon: <Droplets size={24} />, color: "bg-blue-100", desc: "Leaks, pipes & emergency repairs." },
@@ -44,7 +43,7 @@ export default function Services() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
+    <div className="page-gradient flex flex-col min-h-screen dark:text-white">
       <Header />
       <main className="flex-grow max-w-6xl mx-auto px-6 py-12 w-full">
         

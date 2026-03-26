@@ -50,8 +50,6 @@ export default function CategoryPage() {
   const params = useParams(); 
   const id = params?.id as string || ""; 
 
-  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
-
   // FILTER DATA
   const filteredProviders = mockProviders.filter(
     (provider) => provider.category === id
@@ -61,7 +59,7 @@ export default function CategoryPage() {
   const displayTitle = id ? id.replace('_', ' ') : '';
 
   return (
-    <div className="flex flex-col min-h-screen font-sans" style={{ background: softGradient }}>
+    <div className="page-gradient flex flex-col min-h-screen font-sans dark:text-white">
       <Header />
 
       <main className="flex-grow max-w-5xl mx-auto px-6 py-16 w-full">

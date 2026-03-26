@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ChatLauncher from "@/components/ai-repair/ChatLauncher";
+import { LanguageProvider } from "@/components/providers/language-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
+const antiFlashScript = `(function(){try{var t=localStorage.getItem('site_theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,11 +34,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Anti-flash: set dark class before React hydrates to prevent white flash */}
+        <script dangerouslySetInnerHTML={{ __html: antiFlashScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-                <ChatLauncher />
+        <ThemeProvider>
+          <LanguageProvider>
+            {children}
+            <ChatLauncher />
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

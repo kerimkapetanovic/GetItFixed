@@ -25,14 +25,10 @@ const PremiumButton = ({ href, text, icon: Icon, isExternal = false }: { href: s
 
 export default function ContactPage() {
     const brandColor = "#EF9D39";
-    const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
     const cardRadius = { borderRadius: '24px' };
 
     return (
-        <div 
-            className="flex flex-col min-h-screen text-black selection:bg-black selection:text-white font-sans" 
-            style={{ background: softGradient }}
-        >
+        <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
             <Header />
 
             <main className="flex-grow max-w-5xl mx-auto px-6 py-12 w-full">

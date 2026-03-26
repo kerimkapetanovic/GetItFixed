@@ -5,12 +5,17 @@ import Link from 'next/link';
 import { User, Hammer, Eye, EyeOff } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/components/providers/language-provider';
 // Koristi svoj axios instance ako ga imaš (npr. import api from '@/lib/axios')
-import axios from 'axios'; 
 import api from '../../../lib/axios';
+
+type ApiErrorResponse = {
+  non_field_errors?: string[];
+  detail?: string;
+};
+
 export default function LoginPage() {
-  const router = useRouter();
+  const { t } = useLanguage();
   const [role, setRole] = useState<'client' | 'handyman'>('client');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,7 +26,6 @@ export default function LoginPage() {
     password: ''
   });
 
-  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
   const mainCardStyle = { borderRadius: '32px', maxWidth: '500px' };
   const inputRadius = { borderRadius: '16px' };
   const roleRadius = { borderRadius: '20px' };
@@ -53,10 +57,11 @@ const onSubmit = async (e: React.FormEvent) => {
     // window.location.href je sigurniji za "buđenje" Headera od router.push
     window.location.href = '/'; 
     
-  } catch (err: any) {
-    const backendError = err.response?.data?.non_field_errors?.[0] || 
-                         err.response?.data?.detail || 
-                         "Pogrešan email, lozinka ili uloga.";
+  } catch (err: unknown) {
+    const apiError = err as { response?: { data?: ApiErrorResponse } };
+    const backendError = apiError.response?.data?.non_field_errors?.[0] || 
+               apiError.response?.data?.detail || 
+               t('login.errorFallback');
     setError(backendError);
     console.error("Login error:", err);
   } finally {
@@ -65,7 +70,7 @@ const onSubmit = async (e: React.FormEvent) => {
 };
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
+    <div className="page-gradient flex flex-col min-h-screen dark:text-white">
       <Header />
       
       <main className="flex-grow flex items-center justify-center p-6 py-12">
@@ -73,12 +78,12 @@ const onSubmit = async (e: React.FormEvent) => {
         <form 
           onSubmit={onSubmit}
           style={mainCardStyle}
-          className="w-full bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 flex flex-col"
+          className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(239,157,57,0.25)] p-8 md:p-12 flex flex-col"
         >
           
           <div className="text-center mb-10">
-            <h1 className="text-[32px] font-black text-gray-900 uppercase tracking-tighter">Welcome Back</h1>
-            <p className="text-gray-500 font-bold text-sm mt-2 uppercase">Sign in to your account</p>
+            <h1 className="text-[32px] font-black text-gray-900 dark:text-white uppercase tracking-tighter">{t('login.title')}</h1>
+            <p className="text-gray-500 dark:text-zinc-400 font-bold text-sm mt-2 uppercase">{t('login.subtitle')}</p>
           </div>
 
           {/* ROLE SELECTION */}
@@ -96,8 +101,8 @@ const onSubmit = async (e: React.FormEvent) => {
               <div className={`p-3 rounded-xl mb-3 ${role === 'client' ? ' text-black' : 'bg-gray-100 text-gray-400'}`}>
                 <User size={24} strokeWidth={3} />
               </div>
-              <span className="font-black text-sm uppercase tracking-tight">Client</span>
-              <span className="text-[10px] font-bold opacity-70">Looking for help</span>
+              <span className="font-black text-sm uppercase tracking-tight">{t('login.client')}</span>
+              <span className="text-[10px] font-bold opacity-70">{t('login.clientDesc')}</span>
             </button>
 
             <button 
@@ -113,8 +118,8 @@ const onSubmit = async (e: React.FormEvent) => {
               <div className={`p-3 rounded-xl mb-3 ${role === 'handyman' ? ' text-black' : 'bg-gray-100 text-gray-400'}`}>
                 <Hammer size={24} strokeWidth={3} />
               </div>
-              <span className="font-black text-sm uppercase tracking-tight">Handyman</span>
-              <span className="text-[10px] font-bold opacity-70">Offering services</span>
+              <span className="font-black text-sm uppercase tracking-tight">{t('login.handyman')}</span>
+              <span className="text-[10px] font-bold opacity-70">{t('login.handymanDesc')}</span>
             </button>
           </div>
 
@@ -128,7 +133,7 @@ const onSubmit = async (e: React.FormEvent) => {
           {/* FORMA ZA PRIJAVU */}
           <div className="space-y-6">
             <div className="group">
-              <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">Email address</label>
+              <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1">{t('login.email')}</label>
               <input 
                 required
                 type="email" 
@@ -136,13 +141,13 @@ const onSubmit = async (e: React.FormEvent) => {
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 placeholder={role === 'client' ? "client@example.com" : "handyman@example.com"}                
                 style={inputRadius}
-                className="w-full bg-white border-2 border-black p-4 text-sm font-bold text-gray-900 outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400"
+              className={`w-full bg-white border-2 border-black dark:border-zinc-600 p-4 text-sm font-bold text-gray-900 dark:bg-zinc-800 dark:text-white outline-none focus:bg-yellow-50 dark:focus:bg-zinc-700 transition-all placeholder:text-gray-400 dark:placeholder:text-zinc-500`}
               />
             </div>
 
             <div className="group">
-              <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">
-                Password
+              <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1">
+                {t('login.password')}
               </label>
               
               <div className="relative flex items-center w-full">
@@ -151,9 +156,9 @@ const onSubmit = async (e: React.FormEvent) => {
                   type={showPassword ? "text" : "password"} 
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="Your password"
+                  placeholder={t('login.passwordPlaceholder')}
                   style={inputRadius}
-                  className="w-full bg-white border-2 border-black p-4 pr-12 text-sm font-bold text-gray-900 outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400 block"
+                  className="w-full bg-white border-2 border-black dark:border-zinc-600 p-4 pr-12 text-sm font-bold text-gray-900 dark:bg-zinc-800 dark:text-white outline-none focus:bg-yellow-50 dark:focus:bg-zinc-700 transition-all placeholder:text-gray-400 dark:placeholder:text-zinc-500 block"
                 />
                 
                 <button 
@@ -172,13 +177,13 @@ const onSubmit = async (e: React.FormEvent) => {
               style={inputRadius}
               className="w-full mt-3 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? t('login.signingIn') : t('login.signIn')}
             </button>
           </div>
 
           <div className="mt-10 text-center">
              <Link href="/register" className="text-gray-500 text-xs font-bold uppercase tracking-tight">
-               Don't have an account? <span className="text-black border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 transition-colors">Register here</span>
+               {t('login.registerPrompt')} <span className="text-black dark:text-white border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 dark:hover:bg-yellow-700 transition-colors">{t('login.registerHere')}</span>
              </Link>
           </div>
         </form>

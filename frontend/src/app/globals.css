@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
+/* Override Tailwind v4's default media-query dark mode with class-based dark mode */
+@custom-variant dark (&:is(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #f4f4f5;
 }
 
 @theme inline {
@@ -12,11 +20,27 @@
   --font-mono: var(--font-geist-mono);
 }
 
-
-
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Page background — orange gradient in light, dark zinc in dark */
+.page-gradient {
+  background: linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%);
+}
+
+.dark .page-gradient {
+  background: #09090b;
+}
+
+/* In dark mode, keep content readable inside intentionally light cards. */
+.dark .bg-white {
+  color: #000;
+}
+
+.dark .bg-gray-50 {
+  color: #000;
 }

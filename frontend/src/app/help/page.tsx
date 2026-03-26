@@ -6,7 +6,6 @@ import Footer from '@/components/footer';
 import { Search, X, Ticket, Send } from 'lucide-react';
 
 export default function HelpCenter() {
-    const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
     const brandColor = "#EF9D39";
 
     // Modal States
@@ -43,7 +42,7 @@ export default function HelpCenter() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen font-sans relative" style={{ background: softGradient }}>
+        <div className="page-gradient flex flex-col min-h-screen font-sans relative dark:text-white">
             <Header />
 
             <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">

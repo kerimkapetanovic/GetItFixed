@@ -5,10 +5,13 @@ import {
   FaEnvelope,
   FaPhoneAlt,
 } from "react-icons/fa";
+import { useLanguage } from "@/components/providers/language-provider";
 
 export default function Footer() {
+  const { t } = useLanguage();
+
   return (
-    <footer className="border-t-2 border-black bg-white w-full py-12 px-6 mt-auto font-sans uppercase tracking-tight">
+    <footer className="border-t-2 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 w-full py-12 px-6 mt-auto font-sans uppercase tracking-tight">
       {" "}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
         {/* 1. SECTION: LOGO & DESCRIPTION */}
@@ -23,9 +26,8 @@ export default function Footer() {
               GetItFixed
             </span>
           </div>
-          <p className="text-sm text-gray-600 leading-relaxed normal-case font-medium">
-            Find the best local experts for any home repair. Secure,
-            professional, and efficient service at your fingertips.
+          <p className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed normal-case font-medium">
+            {t("footer.description")}
           </p>
           <div className="flex gap-4 mt-2">
             <Link href="#" className="hover:text-gray-500 transition-colors">
@@ -39,34 +41,34 @@ export default function Footer() {
 
         {/* 2. SECTION: FOR USERS */}
         <div>
-          <h4 className="font-black text-sm uppercase mb-6 tracking-widest">
-            For Clients
+          <h4 className="font-black text-sm uppercase mb-6 tracking-widest dark:text-white">
+            {t("footer.forClients")}
           </h4>
-          <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 uppercase">
+          <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 dark:text-zinc-400 uppercase">
             <li>
               <Link href="/services" className="hover:text-black">
-                Our Services
+                {t("footer.ourServices")}
               </Link>
             </li>
 
             <li>
               <Link href="/how-it-works" className="hover:text-black">
-                How it works
+                {t("header.howItWorks")}
               </Link>
             </li>
             <li>
               <Link href="/stories" className="hover:text-black">
-                Success Stories
+                {t("footer.successStories")}
               </Link>
             </li>
             <li>
               <Link href="/help" className="hover:text-black">
-                Help Center
+                {t("footer.helpCenter")}
               </Link>
             </li>
             <li>
               <Link href="/privacy" className="hover:text-black">
-                Privacy Policy
+                {t("footer.privacyPolicy")}
               </Link>
             </li>
           </ul>
@@ -74,23 +76,23 @@ export default function Footer() {
 
         {/* 3. SECTION: FOR PROFESSIONALS */}
         <div>
-          <h4 className="font-black text-sm uppercase mb-6 tracking-widest">
-            For Providers
+          <h4 className="font-black text-sm uppercase mb-6 tracking-widest dark:text-white">
+            {t("footer.forProviders")}
           </h4>
-          <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 uppercase">
+          <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 dark:text-zinc-400 uppercase">
             <li>
               <Link href="/register?role=pro" className="hover:text-black">
-                Join as a Pro
+                {t("footer.joinAsPro")}
               </Link>
             </li>
             <li>
               <Link href="/terms" className="hover:text-black">
-                Terms of Service
+                {t("footer.termsOfService")}
               </Link>
             </li>
             <li>
               <Link href="/faq-pros" className="hover:text-black">
-                Provider FAQ
+                {t("footer.providerFaq")}
               </Link>
             </li>
           </ul>
@@ -98,8 +100,8 @@ export default function Footer() {
 
         {/* 4. SECTION: CONTACT */}
         <div>
-          <h4 className="font-black text-sm uppercase mb-6 tracking-widest">
-            Contact
+          <h4 className="font-black text-sm uppercase mb-6 tracking-widest dark:text-white">
+            {t("footer.contact")}
           </h4>
           <ul className="flex flex-col gap-4 text-sm font-bold">
             <li className="flex items-center gap-3 lowercase hover:text-gray-600 transition-colors">
@@ -114,10 +116,9 @@ export default function Footer() {
         </div>
       </div>
       {/* BOTTOM: COPYRIGHT */}
-      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-gray-100">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center md:text-left">
-          © 2026 GetItFixed. All rights reserved. Graduation project by Kerim
-          Kapetanović, Amar Dizdarević, Faris Balić and Haris Šuta.
+      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-gray-100 dark:border-zinc-700">
+        <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest text-center md:text-left">
+          {t("footer.copyright")}
         </p>
       </div>
     </footer>

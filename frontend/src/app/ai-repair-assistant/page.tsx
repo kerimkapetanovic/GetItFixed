@@ -7,10 +7,9 @@ import Footer from '@/components/footer';
 
 export default function AiRepairPage() {
     const brandColor = "#EF9D39";
-    const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
     return (
-        <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
+        <div className="page-gradient flex flex-col min-h-screen dark:text-white">
             <Header />
             
             <main className="flex-grow max-w-4xl mx-auto px-6 py-12 w-full">

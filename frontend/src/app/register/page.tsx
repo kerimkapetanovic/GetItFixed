@@ -10,6 +10,9 @@ import api from '../../../lib/axios';
 import countryList from 'react-select-country-list';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
+import { useLanguage } from '@/components/providers/language-provider';
+
+type ApiErrorPayload = Record<string, unknown>;
 
 // POBOLJŠAN CSS - Da PhoneInput izgleda 1:1 kao tvoji ostali inputi
 const phoneInputCustomStyles = `
@@ -52,8 +55,19 @@ const phoneInputCustomStyles = `
 export default function RegisterPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useLanguage();
   
   const countries = useMemo(() => countryList().getData(), []);
+  const serviceOptions = useMemo(
+    () => [
+      'mechanic', 'pools', 'carpenter', 'tiler', 'cleaning', 'electrician',
+      'excavation', 'facade', 'fencing', 'flooring', 'renovation', 'gardener',
+      'heating', 'hvac', 'it_support', 'masonry', 'painter', 'plumber',
+      'security', 'solar', 'transport', 'upholstery', 'windows', 'roofing',
+      'appliances', 'pest_control'
+    ] as const,
+    [],
+  );
 
   const [role, setRole] = useState<'client' | 'handyman'>('client');
   const [showPassword, setShowPassword] = useState(false);
@@ -72,7 +86,6 @@ export default function RegisterPage() {
     expertise: ''
   });
 
-  const softGradient ="linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
   const mainCardStyle = { borderRadius: '32px', maxWidth: '650px' };
   const inputRadius = { borderRadius: '16px' };
   const roleRadius = { borderRadius: '20px' };
@@ -125,13 +138,14 @@ export default function RegisterPage() {
 
     try {
       await api.post('/api/accounts/register/', dataToSubmit);
-      alert(`Success! Account created for ${formData.firstName}.`);
+      alert(t('register.success', { name: formData.firstName }));
       router.push('/login'); 
-    } catch (error: any) {
-      console.error("Registration error:", error.response?.data);
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: ApiErrorPayload } };
+      console.error("Registration error:", apiError.response?.data);
       // Ako server vrati grešku (npr. email već postoji), alert će iskočiti
       // a finally blok će ugasiti loading
-      alert("Error: " + JSON.stringify(error.response?.data || "Something went wrong"));
+      alert(`${t('register.errorPrefix')} ${JSON.stringify(apiError.response?.data || t('register.genericError'))}`);
     } finally {
       // OVO JE KLJUČNO: gasi loading i u slučaju uspjeha i u slučaju greške na serveru
       setLoading(false);
@@ -139,18 +153,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen text-black" style={{ background: softGradient }}>
+    <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white">
       <style>{phoneInputCustomStyles}</style>
       <Header />
       
       <main className="flex-grow flex items-center justify-center p-6 py-12">
         <div 
           style={mainCardStyle}
-          className="w-full bg-white border-2 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 flex flex-col"
+          className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] dark:shadow-[12px_12px_0px_0px_rgba(239,157,57,0.25)] p-8 md:p-12 flex flex-col"
         >
           <div className="text-center mb-10">
-            <h1 className="text-[32px] font-black text-gray-900 uppercase tracking-tighter">Create Account</h1>
-            <p className="text-gray-500 font-bold text-sm mt-2 uppercase">Join the GetItFixed community</p>
+            <h1 className="text-[32px] font-black text-gray-900 dark:text-white uppercase tracking-tighter">{t('register.title')}</h1>
+            <p className="text-gray-500 dark:text-zinc-400 font-bold text-sm mt-2 uppercase">{t('register.subtitle')}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-10">
@@ -161,12 +175,12 @@ export default function RegisterPage() {
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === 'client' 
                 ? 'border-black bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-1 -translate-y-1' 
-                : 'border-gray-100 bg-white opacity-60 hover:opacity-100 text-gray-400'
+                : 'border-gray-100 dark:border-zinc-700 bg-white dark:bg-zinc-800 opacity-60 hover:opacity-100 text-gray-400 dark:text-zinc-500'
               }`}
             >
               <User size={24} strokeWidth={3} className="mb-2" />
-              <span className="font-black text-sm uppercase">Client</span>
-              <span className="text-[10px] font-bold opacity-70">Need a repair</span>
+              <span className="font-black text-sm uppercase">{t('register.client')}</span>
+              <span className="text-[10px] font-bold opacity-70">{t('register.clientDesc')}</span>
             </button>
 
             <button 
@@ -176,39 +190,39 @@ export default function RegisterPage() {
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === 'handyman' 
                 ? 'border-black bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-1 -translate-y-1' 
-                : 'border-gray-100 bg-white opacity-60 hover:opacity-100 text-gray-400'
+                : 'border-gray-100 dark:border-zinc-700 bg-white dark:bg-zinc-800 opacity-60 hover:opacity-100 text-gray-400 dark:text-zinc-500'
               }`}
             >
               <Hammer size={24} strokeWidth={3} className="mb-2" />
-              <span className="font-black text-sm uppercase">Handyman</span>
-              <span className="text-[10px] font-bold opacity-70">Want to work</span>
+              <span className="font-black text-sm uppercase">{t('register.handyman')}</span>
+              <span className="text-[10px] font-bold opacity-70">{t('register.handymanDesc')}</span>
             </button>
           </div>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">First Name</label>
-                <input required type="text" placeholder="John" style={inputRadius} value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">{t('register.firstName')}</label>
+                <input required type="text" placeholder={t('register.placeholders.firstName')} style={inputRadius} value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">Last Name</label>
-                <input required type="text" placeholder="Doe" style={inputRadius} value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">{t('register.lastName')}</label>
+                <input required type="text" placeholder={t('register.placeholders.lastName')} style={inputRadius} value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Mail size={12} /> Email address</label>
-                <input required type="email" placeholder="john@example.com" style={inputRadius} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Mail size={12} /> {t('register.email')}</label>
+                <input required type="email" placeholder={t('register.placeholders.email')} style={inputRadius} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
               </div>
               <div className="group">
                 <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
-                  <Phone size={12} /> Phone Number
+                  <Phone size={12} /> {t('register.phone')}
                 </label>
                 <PhoneInput
                   international
-                  placeholder="61 123 456"
+                  placeholder={t('register.placeholders.phone')}
                   value={formData.phone}
                   onChange={(value) => setFormData({...formData, phone: value || ''})}
                 />
@@ -220,7 +234,7 @@ export default function RegisterPage() {
               <div className="p-6 border-4 border-black bg-gray-50 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]" style={{ borderRadius: '24px' }}>
                 <div className="group relative">
                   <label className="block text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2">
-                    <Briefcase size={14} className="text-black" /> Professional Expertise
+                    <Briefcase size={14} className="text-black" /> {t('register.expertise')}
                   </label>
                   <div className="relative">
                     <select 
@@ -230,33 +244,10 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({...formData, expertise: e.target.value})}
                       className="w-full bg-white border-2 border-black p-5 pr-12 text-sm font-bold normal-case tracking-tight outline-none focus:bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)] focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all appearance-none cursor-pointer"
                     >
-                      <option value="" disabled className="text-gray-400">Select your main service</option>
-                      <option value="mechanic">Auto mechanic</option>
-                      <option value="pools">Pool maintenance & swimming pools</option>
-                      <option value="carpenter">Carpenter & woodwork</option>
-                      <option value="tiler">Ceramics & Tiling</option>
-                      <option value="cleaning">Cleaning services</option>
-                      <option value="electrician">Electrician</option>
-                      <option value="excavation">Excavation & groundwork</option>
-                      <option value="facade">Facade & insulation</option>
-                      <option value="fencing">Fencing & gates</option>
-                      <option value="flooring">Flooring & parquet</option>
-                      <option value="renovation">Full renovation expert</option>
-                      <option value="gardener">Gardening & landscaping</option>
-                      <option value="heating">Heating & plumbing systems</option>
-                      <option value="hvac">HVAC & air conditioning</option>
-                      <option value="it_support">IT support & tech solutions</option>
-                      <option value="masonry">Masonry & brickwork</option>
-                      <option value="painter">Painter & decorator</option>
-                      <option value="plumber">Plumbing specialist</option>
-                      <option value="security">Security & surveillance systems</option>
-                      <option value="solar">Solar panel installation</option>
-                      <option value="transport">Transport & moving services</option>
-                      <option value="upholstery">Upholstery & furniture repair</option>
-                      <option value="windows">Window & door installation</option>
-                      <option value="roofing">Roofing specialist</option>
-                      <option value="appliances">Appliance repair & maintenance</option>
-                      <option value="pest_control">Pest control & extermination</option>
+                      <option value="" disabled className="text-gray-400">{t('register.expertisePlaceholder')}</option>
+                      {serviceOptions.map((service) => (
+                        <option key={service} value={service}>{t(`register.services.${service}`)}</option>
+                      ))}
                     </select>
                     <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none border-l-2 border-black pl-3">
                        <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1L6 6L11 1" stroke="black" strokeWidth="3" strokeLinecap="round"/></svg>
@@ -268,7 +259,7 @@ export default function RegisterPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Globe size={12} /> Country</label>
+                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Globe size={12} /> {t('register.country')}</label>
                 <div className="relative">
                   <select 
                     required 
@@ -277,7 +268,7 @@ export default function RegisterPage() {
                     onChange={(e) => setFormData({...formData, country: e.target.value})} 
                     className="w-full bg-white border-2 border-black p-4 pr-10 text-sm font-bold outline-none appearance-none cursor-pointer"
                   >
-                    <option value="" disabled>Select</option>
+                    <option value="" disabled>{t('register.select')}</option>
                     {countries.map((c) => <option key={c.value} value={c.label}>{c.label}</option>)}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -286,24 +277,24 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><MapPin size={12} /> City</label>
-                <input type="text" placeholder="Mostar" style={inputRadius} value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><MapPin size={12} /> {t('register.city')}</label>
+                <input type="text" placeholder={t('register.placeholders.city')} style={inputRadius} value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Hash size={12} /> Zip Code</label>
-                <input type="text" placeholder="88000" style={inputRadius} value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Hash size={12} /> {t('register.zipCode')}</label>
+                <input type="text" placeholder={t('register.placeholders.zipCode')} style={inputRadius} value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
               </div>
             </div>
 
            {/* PASSWORD WITH VALIDATION */}
             <div className="group">
-              <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Lock size={12} /> Create Password</label>
+              <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Lock size={12} /> {t('register.createPassword')}</label>
               <div className="relative flex flex-col w-full">
                 <div className="relative flex items-center">
                   <input 
                     required 
                     type={showPassword ? "text" : "password"} 
-                    placeholder="Create a password" 
+                    placeholder={t('register.createPasswordPlaceholder')} 
                     style={inputRadius} 
                     value={formData.password} 
                     onChange={(e) => {
@@ -318,20 +309,20 @@ export default function RegisterPage() {
                 </div>
                 {passwordError && (
                   <p className="text-red-600 text-[10px] font-black uppercase mt-2 ml-2 flex items-center gap-1">
-                    <AlertCircle size={12} /> Password must be at least 8 characters long
+                    <AlertCircle size={12} /> {t('register.passwordTooShort')}
                   </p>
                 )}
               </div>
             </div>
 
             <button disabled={loading} type="submit" style={inputRadius} className="w-full mt-6 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50">
-              {loading ? 'Processing...' : 'Create Account'}
+              {loading ? t('register.creatingAccount') : t('register.createAccount')}
             </button>
           </form>
 
           <div className="mt-8 text-center">
              <Link href="/login" className="text-gray-500 text-xs font-bold uppercase tracking-tight">
-               Already have an account? <span className="text-black border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 transition-colors">Login here</span>
+               {t('register.alreadyHaveAccount')} <span className="text-black border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 transition-colors">{t('register.signInHere')}</span>
              </Link>
           </div>
         </div>

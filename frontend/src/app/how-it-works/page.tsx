@@ -1,11 +1,10 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import Link from 'next/link'; 
-import { ArrowRight, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 const steps = [
   { number: "01", title: "Find Your Service", desc: "Browse categories to find exactly what you need fixed." },
@@ -15,7 +14,7 @@ const steps = [
   { number: "05", title: "Confirm & Rate", desc: "Once the job is done, confirm completion and leave a review." }
 ];
 
-const PremiumButton = ({ href, text, icon: Icon, isExternal = false }: { href: string, text: string, icon: any, isExternal?: boolean }) => (
+const PremiumButton = ({ href, text, icon: Icon, isExternal = false }: { href: string, text: string, icon: React.ElementType, isExternal?: boolean }) => (
     <Link
       href={href}
       style={{ borderRadius: "20px" }}
@@ -33,10 +32,9 @@ const PremiumButton = ({ href, text, icon: Icon, isExternal = false }: { href: s
 
 const HowItWorks = () => {
   const brandColor = "#EF9D39";
-  const softGradient = "linear-gradient(135deg, #FFE8D6 0%, #FFD4B3 100%)";
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: softGradient }}>
+    <div className="page-gradient flex flex-col min-h-screen dark:text-white">
       <Header />
       
       <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
