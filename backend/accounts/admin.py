@@ -7,7 +7,7 @@ class CustomUserAdmin(UserAdmin):
     
     # Šta vidiš u tabeli kad otvoriš listu korisnika
     # Dodao sam first_name i last_name jer su bitni za biznis
-    list_display = ['email', 'username', 'first_name', 'last_name', 'role', 'city', 'county', 'is_staff']
+    list_display = ['email', 'username', 'first_name', 'last_name', 'role','service_type', 'city', 'county', 'is_staff']
     
     # Bočni filteri (ovo ti je spas kad budeš imao puno korisnika)
     list_filter = ('role', 'is_staff', 'is_superuser', 'city', 'county')

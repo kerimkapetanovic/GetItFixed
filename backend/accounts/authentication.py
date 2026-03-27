@@ -1,12 +1,18 @@
-# accounts/authentication.py
-from rest_framework.authentication import TokenAuthentication
+from rest_framework.authentication import BaseAuthentication
+from rest_framework import exceptions
+from rest_framework.authtoken.models import Token
 
-class CookieTokenAuthentication(TokenAuthentication):
+class CookieTokenAuthentication(BaseAuthentication):
     def authenticate(self, request):
-        # Gledamo u kuki pod nazivom 'auth_token' koji smo podesili u views.py
-        token = request.COOKIES.get('auth_token')
+        # IMPORTANT: Make sure 'auth_token' is the EXACT name used in your login view
+        token_key = request.COOKIES.get('auth_token')
         
-        if not token:
+        if not token_key:
             return None
 
-        return self.authenticate_credentials(token)
+        try:
+            token = Token.objects.select_related('user').get(key=token_key)
+        except Token.DoesNotExist:
+            raise exceptions.AuthenticationFailed('Invalid token')
+
+        return (token.user, token)

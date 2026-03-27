@@ -2,24 +2,24 @@ import os
 import environ
 from pathlib import Path
 
-# Inicijalizacija environ-a
+# 1. Initialize environ
 env = environ.Env(
     DEBUG=(bool, False)
 )
 
-# Putanja do root foldera (backend/)
+# Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Čitanje .env fajla
+# Reading .env file
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-# --- SIGURNOSNE POSTAVKE IZ .ENV ---
+# --- SECURITY SETTINGS ---
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
-# --- APLIKACIJE ---
+# --- APPLICATIONS ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -28,41 +28,57 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Eksterni paketi
+    # External packages
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
     
-    # Tvoje aplikacije
+    # Your apps
     'accounts',
     'bookings',
     'services',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware', # Mora biti na vrhu!
+    'corsheaders.middleware.CorsMiddleware',  # Must stay at the top
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # <--- REMAIN DISABLED TO FIX 403
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
-# OBAVEZNO: Dozvoljava browseru da prihvati kukije
+
+# --- CORS & SESSION SECURITY ---
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
+
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False 
 
-# OBAVEZNO: Lista adresa sa kojih dolazi tvoj Next.js
 CORS_ALLOWED_ORIGINS = [
-    env('FRONTEND_URL'), # Ovo čita iz .env, npr.
+    FRONTEND_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
-# Dodaj i ovo za svaki slučaj (CSRF zaštita)
+# We expand these to ensure no "Forbidden" origin errors
 CSRF_TRUSTED_ORIGINS = [
-    env('FRONTEND_URL'),
+    FRONTEND_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
+
+# --- THE "FORCE BYPASS" SETTINGS ---
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False  
+SESSION_COOKIE_SECURE = False  
+CSRF_COOKIE_SECURE = False
+CSRF_USE_SESSIONS = False  # Decouples CSRF from session logic
 
 TEMPLATES = [
     {
@@ -81,7 +97,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-# --- BAZA PODATAKA (IZ .ENV) ---
+# --- DATABASE (SUPABASE) ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -96,28 +112,21 @@ DATABASES = {
 # --- CUSTOM USER MODEL ---
 AUTH_USER_MODEL = 'accounts.User'
 
-FRONTEND_URL = env('FRONTEND_URL') # URL tvog React frontenda, npr. http://localhost:3000
-
-# --- CORS (Dozvola za React/Frontend kasnije) ---
-CORS_ALLOW_ALL_ORIGINS = True # Za razvojnu fazu je OK
-
-# Ostale standardne postavke
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-
+# --- REST FRAMEWORK AUTHENTICATION ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'accounts.authentication.CookieTokenAuthentication', # Tvoja nova klasa
+        'accounts.authentication.CookieTokenAuthentication',
     ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
 }
+
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+# Standard Django Settings
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True

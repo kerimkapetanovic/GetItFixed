@@ -1,170 +1,125 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { Clock, CheckCircle, AlertCircle, MapPin, Wrench, Star, User } from "lucide-react";
+import api from "../../../../lib/axios";
 
-export default function RequestsPage() {
-  const brandColor = "#EF9D39";
-  
-  // DUMMY PODACI SA HANDYMAN INFORMACIJAMA
-  const dummyRequests = [
-    {
-      id: 1,
-      title: "Broken Kitchen Sink",
-      category: "Plumbing",
-      status: "pending",
-      date: "Oct 24, 2023",
-      location: "Sarajevo, Centar",
-      price_estimate: "50 - 80 KM",
-      handyman: null // Još niko nije prihvatio
-    },
-    {
-      id: 2,
-      title: "Living Room Painting",
-      category: "Renovation",
-      status: "completed",
-      date: "Oct 20, 2023",
-      location: "Sarajevo, Novo Sarajevo",
-      price_estimate: "200 KM",
-      handyman: {
-        name: "Mujo Mujić",
-        rating: 4.9,
-        avatar_text: "MM"
-      }
-    },
-    {
-      id: 3,
-      title: "Electrical Outlet Replacement",
-      category: "Electrical",
-      status: "in_progress",
-      date: "Oct 22, 2023",
-      location: "Ilidža",
-      price_estimate: "30 KM",
-      handyman: {
-        name: "Kenan K.",
-        rating: 4.7,
-        avatar_text: "KK"
-      }
-    }
-  ];
+// Define the shape of our data
+interface BookingRequest {
+  id: number;
+  service_type: string;
+  description: string;
+  status: string;
+}
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "completed": return "bg-green-400";
-      case "in_progress": return "bg-blue-400";
-      default: return "bg-yellow-400";
-    }
-  };
+export default function MyRequestsPage() {
+  const params = useParams() as { username: string };
+  const username = params.username;
+
+  const [requests, setRequests] = useState<BookingRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMyRequests = async () => {
+      try {
+        // Fetching the live data from our new endpoint!
+        const response = await api.get("/api/bookings/my-requests/");
+        setRequests(response.data);
+      } catch (error) {
+        console.error("Failed to fetch requests:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyRequests();
+  }, []);
+
+  const cardStyle = { borderRadius: "24px" };
 
   return (
-    <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
+    <div className="page-gradient flex flex-col min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950">
       <Header />
-      
-      <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
-        {/* HEADER */}
-        <div 
-          className="text-center mb-12 p-8 border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-          style={{ borderRadius: '30px' }}
+
+      <main className="flex-grow flex flex-col items-center p-6 py-12 w-full max-w-3xl mx-auto">
+        <div
+          className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 mb-10 text-center"
+          style={cardStyle}
         >
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
-            MY <span style={{ color: brandColor }}>REQUESTS</span>
+          <h1 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">
+            My Requests
           </h1>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em]">
-            track your repairs and handymen
+          <p className="text-gray-500 font-bold text-xs mt-2 uppercase tracking-widest">
+            Track your repairs and handymen
           </p>
         </div>
 
-        {/* LISTA */}
-        <div className="space-y-8">
-          {dummyRequests.map((req) => (
-            <div 
-              key={req.id}
-              className="bg-white border-[3px] border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
-              style={{ borderRadius: '24px' }}
-            >
-              {/* GORNJI DIO: Naslov i Status */}
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Wrench size={14} style={{ color: brandColor }} strokeWidth={3} />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                      {req.category}
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-black uppercase tracking-tight leading-none">{req.title}</h3>
-                </div>
-                
-                <div className={`px-4 py-1.5 border-2 border-black rounded-full text-[10px] font-black uppercase flex items-center gap-2 ${getStatusStyle(req.status)}`}>
-                  {req.status === 'completed' ? <CheckCircle size={12} /> : <Clock size={12} />}
-                  {req.status.replace('_', ' ')}
-                </div>
-              </div>
-
-              {/* SREDNJI DIO: Handyman sekcija */}
-              <div className="mb-6 p-4 bg-gray-50 border-2 border-black rounded-[20px] flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {req.handyman ? (
-                    <>
-                      <div className="w-10 h-10 bg-black border-2 border-black rounded-xl flex items-center justify-center text-white font-black text-xs shadow-[3px_3px_0px_0px_rgba(239,157,57,1)]">
-                        {req.handyman.avatar_text}
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase leading-none mb-1">Assigned Handyman</p>
-                        <p className="text-sm font-black uppercase">{req.handyman.name}</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-10 h-10 bg-gray-200 border-2 border-dashed border-gray-400 rounded-xl flex items-center justify-center text-gray-400">
-                        <User size={20} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase leading-none mb-1">Status</p>
-                        <p className="text-sm font-black uppercase text-gray-400">Waiting for offers...</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {req.handyman && (
-                  <div className="flex items-center gap-1 bg-white px-3 py-1 border-2 border-black rounded-lg">
-                    <Star size={12} fill="black" />
-                    <span className="text-xs font-black">{req.handyman.rating}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* DONJI DIO: Detalji i Akcija */}
-              <div className="flex items-end justify-between border-t-2 border-black pt-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-[11px] font-bold">
-                    <MapPin size={14} />
-                    {req.location}
-                  </div>
-                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    Posted on: {req.date}
-                  </div>
-                </div>
-                
-                <div className="flex flex-col items-end gap-3">
-                  <div className="text-right">
-                    <span className="text-[9px] font-bold text-gray-400 uppercase">Est. Price</span>
-                    <p className="text-lg font-black leading-none">{req.price_estimate}</p>
-                  </div>
-                  <button 
-                    style={{ backgroundColor: brandColor }}
-                    className="px-6 py-2.5 border-2 border-black rounded-xl font-black uppercase text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-                  >
-                    View details
-                  </button>
-                </div>
-              </div>
+        <div className="w-full space-y-6">
+          {loading ? (
+            <div className="text-center font-bold animate-pulse uppercase">
+              Loading your requests...
             </div>
-          ))}
+          ) : requests.length === 0 ? (
+            <div className="text-center font-bold text-gray-500 uppercase">
+              You haven't posted any jobs yet.
+            </div>
+          ) : (
+            requests.map((req) => (
+              <div
+                key={req.id}
+                style={cardStyle}
+                className="bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="text-yellow-500 font-black text-xs uppercase tracking-widest flex items-center gap-1 mb-1">
+                      🔧 {req.service_type}
+                    </span>
+                    <h2 className="text-2xl font-black uppercase line-clamp-1">
+                      {req.description}
+                    </h2>
+                  </div>
+
+                  {/* Dynamic Status Badge */}
+                  <span
+                    className={`px-4 py-1 border-2 border-black font-black text-xs uppercase rounded-full ${
+                      req.status === "pending"
+                        ? "bg-yellow-300 text-black"
+                        : req.status === "accepted"
+                          ? "bg-blue-300 text-black"
+                          : "bg-green-400 text-black"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                </div>
+
+                <div className="p-4 border-2 border-gray-200 dark:border-zinc-700 rounded-xl mb-4 bg-gray-50 dark:bg-zinc-800/50">
+                  <p className="text-sm font-bold text-gray-600 dark:text-zinc-300">
+                    {req.status === "pending"
+                      ? "Waiting for handymen to accept..."
+                      : req.status === "accepted"
+                        ? "A handyman has accepted this job!"
+                        : "Job completed."}
+                  </p>
+                </div>
+
+                <div className="flex justify-end mt-4">
+                  {/* Wrap the button in a Next.js Link */}
+                  <Link href={`/${username}/requests/${req.id}`}>
+                    <button className="bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] border-2 border-black font-black text-xs uppercase px-6 py-3 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                      View Details
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </main>
-
       <Footer />
     </div>
   );

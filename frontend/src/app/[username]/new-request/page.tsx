@@ -1,179 +1,130 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { Wrench, Star, MapPin, Search, Check, Info, User } from "lucide-react";
+import api from "../../../../lib/axios";
+import { Star, MapPin, Wrench, Loader2 } from "lucide-react";
+import Link from "next/link"; // IMPORT LINK
+import { useParams } from "next/navigation"; // IMPORT USEPARAMS
+
+interface Handyman {
+  id: number;
+  first_name: string;
+  last_name: string;
+  service_type: string;
+  rating: string;
+  location: string;
+  hourly_rate: string;
+}
 
 export default function NewRequestPage() {
-  const params = useParams();
+  const params = useParams() as { username: string };
   const username = params.username;
 
-  const brandColor = "#EF9D39";
+  const [handymen, setHandymen] = useState<Handyman[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 1. SVI TVOJI SERVISI
-  const services = [
-    { id: "all", name: "All Services" },
-    { id: "mechanic", name: "Auto mechanic" },
-    { id: "pools", name: "Pool maintenance" },
-    { id: "carpenter", name: "Carpenter & woodwork" },
-    { id: "tiler", name: "Ceramics & Tiling" },
-    { id: "cleaning", name: "Cleaning services" },
-    { id: "electrician", name: "Electrician" },
-    { id: "excavation", name: "Excavation" },
-    { id: "facade", name: "Facade & insulation" },
-    { id: "fencing", name: "Fencing & gates" },
-    { id: "flooring", name: "Flooring & parquet" },
-    { id: "renovation", name: "Full renovation" },
-    { id: "gardener", name: "Gardening" },
-    { id: "heating", name: "Heating & plumbing" },
-    { id: "hvac", name: "HVAC & AC" },
-    { id: "it_support", name: "IT support" },
-    { id: "masonry", name: "Masonry & brickwork" },
-    { id: "painter", name: "Painter & decorator" },
-    { id: "plumber", name: "Plumbing specialist" },
-    { id: "security", name: "Security systems" },
-    { id: "solar", name: "Solar panel" },
-    { id: "transport", name: "Transport & moving" },
-    { id: "upholstery", name: "Upholstery" },
-    { id: "windows", name: "Window & door" },
-    { id: "roofing", name: "Roofing specialist" },
-    { id: "appliances", name: "Appliance repair" },
-    { id: "pest_control", name: "Pest control" },
-  ];
+  useEffect(() => {
+    const fetchHandymen = async () => {
+      try {
+        const response = await api.get("/api/accounts/handymen/");
+        setHandymen(response.data);
+      } catch (err) {
+        console.error("Error fetching experts:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHandymen();
+  }, []);
 
-  // 2. DUMMY PODACI ZA MAJSTORE (Povezani sa ID-evima servisa)
-  const allHandymen = [
-    { id: 1, name: "Mujo Mujić", category: "plumber", rating: 4.9, jobs: 124, location: "Centar", price: "30 KM/h", avatar: "MM" },
-    { id: 2, name: "Kenan K.", category: "electrician", rating: 4.7, jobs: 89, location: "Ilidža", price: "25 KM/h", avatar: "KK" },
-    { id: 3, name: "Amar D.", category: "painter", rating: 5.0, jobs: 45, location: "Stari Grad", price: "40 KM/h", avatar: "AD" },
-    { id: 4, name: "Hamo H.", category: "plumber", rating: 4.5, jobs: 210, location: "Vogošća", price: "20 KM/h", avatar: "HH" },
-    { id: 5, name: "Edin E.", category: "mechanic", rating: 4.8, jobs: 156, location: "Novi Grad", price: "35 KM/h", avatar: "EE" },
-  ];
-
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  const filteredHandymen = selectedCategory === "all" 
-    ? allHandymen 
-    : allHandymen.filter(h => h.category === selectedCategory);
+  const cardStyle = { borderRadius: "24px" };
 
   return (
-    <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
+    <div className="page-gradient min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">
       <Header />
-      
-      <main className="flex-grow max-w-4xl mx-auto px-6 py-12 w-full">
-       {/* HEADER BOX (Prilagođen stilu sa slike) */}
-<div 
-          className="text-center mb-12 p-8 border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-          style={{ borderRadius: '30px' }}
+      <main className="flex-grow max-w-6xl mx-auto p-6 py-12 w-full">
+        {/* Banner Section */}
+        <div
+          className="bg-white dark:bg-zinc-900 border-2 border-black p-10 text-center mb-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          style={{ borderRadius: "40px" }}
         >
-  {/* Mali ukrasni detalj u uglu (opcionalno za extra vibe) */}
-  <div className="absolute -top-4 -right-4 w-12 h-12 bg-black rotate-45"></div>
-
- <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
-    FIND YOUR <span style={{ color: brandColor }}>EXPERT</span>
-  </h1>
-  
-  <div className="flex flex-col items-center gap-4">
-    <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.4em] leading-relaxed">
-      hi {username?.toString().split('-')[0]} • pick a service to begin
-    </p>
-    
-    </div>
-</div>
-
-        {/* HORIZONTAL SCROLL FILTER BAR */}
-        <div className="relative mb-12 group">
-          <div className="flex overflow-x-auto gap-3 p-5 bg-white border-[3px] border-black rounded-[28px] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] no-scrollbar scroll-smooth">
-            {services.map((service) => (
-              <button
-                key={service.id}
-                onClick={() => setSelectedCategory(service.id)}
-                className={`whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-[18px] border-2 border-black font-black uppercase text-[10px] transition-all ${
-                  selectedCategory === service.id 
-                  ? "bg-[#EF9D39] text-black shadow-none translate-x-1 translate-y-1" 
-                  : "bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-50 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-                }`}
-              >
-                {selectedCategory === service.id && <Check size={16} className="text-green-700 font-bold" />}
-                {service.name}
-              </button>
-            ))}
-          </div>
-          <div className="flex justify-between mt-3 px-2">
-             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">← Swipe for more</p>
-             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Showing: {selectedCategory.replace('_', ' ')}</p>
-          </div>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black dark:text-white">
+            Find Your <span className="text-[#EF9D39]">Expert</span>
+          </h1>
+          <p className="text-gray-500 font-bold text-xs mt-2 uppercase tracking-widest">
+            Select a professional to get started
+          </p>
         </div>
 
-        {/* MAJSTORI GRID */}
+        {/* Handyman Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {filteredHandymen.length > 0 ? (
-            filteredHandymen.map((handy) => (
-              <div 
-                key={handy.id}
-                className="bg-white border-[3px] border-black p-6 rounded-[24px] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex flex-col"
+          {loading ? (
+            <div className="col-span-full flex flex-col items-center py-20">
+              <Loader2 className="animate-spin text-[#EF9D39] mb-4" size={48} />
+              <p className="font-black uppercase tracking-widest text-sm text-black dark:text-white">
+                Searching for pros...
+              </p>
+            </div>
+          ) : handymen.length === 0 ? (
+            <div className="col-span-full text-center py-20 bg-white dark:bg-zinc-900 border-2 border-dashed border-gray-300 rounded-3xl">
+              <p className="font-bold text-gray-500 uppercase">
+                No handymen available at the moment.
+              </p>
+            </div>
+          ) : (
+            handymen.map((pro) => (
+              <div
+                key={pro.id}
+                style={cardStyle}
+                className="bg-white dark:bg-zinc-900 border-[3px] border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1"
               >
-                <div className="flex items-center gap-5 mb-6">
-                  <div className="w-16 h-16 bg-black border-[3px] border-black rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-[4px_4px_0px_0px_rgba(239,157,57,1)] shrink-0">
-                    {handy.avatar}
+                <div className="flex items-center gap-4 mb-6">
+                  {/* Initials Circle */}
+                  <div className="w-16 h-16 bg-black text-white dark:bg-[#EF9D39] dark:text-black rounded-xl flex items-center justify-center font-black text-2xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
+                    {(pro.first_name?.[0] || "") + (pro.last_name?.[0] || "")}
                   </div>
-                  <div className="flex-grow">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-xl font-black uppercase tracking-tight">{handy.name}</h3>
-                      <div className="flex items-center gap-1 bg-yellow-400 px-2 py-1 border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                        <Star size={12} fill="black" /> {handy.rating}
-                      </div>
-                    </div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em]">
-                      {services.find(s => s.id === handy.category)?.name} • {handy.jobs} Jobs
+                  <div>
+                    <h2 className="text-2xl font-black uppercase text-black dark:text-white">
+                      {pro.first_name} {pro.last_name}
+                    </h2>
+                    <p className="text-[#EF9D39] font-black text-xs uppercase flex items-center gap-1">
+                      <Star size={14} className="fill-current" />{" "}
+                      {pro.rating || "5.0"} • {pro.service_type}
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  <div className="flex items-center gap-2 text-[11px] font-black uppercase bg-gray-50 p-3 rounded-xl border-2 border-black">
-                    <MapPin size={14} style={{ color: brandColor }} />
-                    {handy.location}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="border-2 border-black p-3 rounded-xl flex items-center gap-2 bg-gray-50 dark:bg-zinc-800 text-black dark:text-white">
+                    <MapPin size={18} className="text-[#EF9D39]" />
+                    <span className="font-bold text-xs md:text-sm uppercase truncate">
+                      {pro.location || "Sarajevo"}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 text-[11px] font-black uppercase bg-gray-50 p-3 rounded-xl border-2 border-black">
-                    <Wrench size={14} style={{ color: brandColor }} />
-                    {handy.price}
+                  <div className="border-2 border-black p-3 rounded-xl flex items-center gap-2 bg-gray-50 dark:bg-zinc-800 text-black dark:text-white">
+                    <Wrench size={18} className="text-[#EF9D39]" />
+                    <span className="font-bold text-xs md:text-sm uppercase">
+                      {pro.hourly_rate || "30"} KM/H
+                    </span>
                   </div>
                 </div>
 
-                <button 
-                  style={{ backgroundColor: brandColor }}
-                  className="w-full mt-auto py-4 border-[3px] border-black rounded-2xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all active:scale-[0.98]"
+                {/* WRAPPED BUTTON WITH LINK */}
+                <Link
+                  href={`/${username}/new-request/create?handyman_id=${pro.id}`}
                 >
-                  Book this expert
-                </button>
+                  <button className="w-full bg-[#EF9D39] text-black border-2 border-black py-4 font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all">
+                    Book This Expert
+                  </button>
+                </Link>
               </div>
             ))
-          ) : (
-            <div className="col-span-full py-32 text-center border-[3px] border-dashed border-black/20 rounded-[40px] bg-white/30">
-              <User size={48} className="mx-auto mb-4 text-gray-300" />
-              <p className="font-black uppercase text-gray-400 tracking-[0.2em] text-sm">
-                No handymen available for this category yet.
-              </p>
-            </div>
           )}
         </div>
       </main>
-
       <Footer />
-      
-      {/* CSS ZA SKRIVANJE SCROLLBAR-A */}
-      <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   );
 }

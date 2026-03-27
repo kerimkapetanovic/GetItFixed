@@ -1,4 +1,4 @@
-from rest_framework import generics, status, serializers
+from rest_framework import generics, status, serializers, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -6,11 +6,42 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import update_last_login
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+# NEW: Import your HandymanProfile model
+# Verify the app name: if your profiles are in a different app, adjust the path (e.g., 'services.models')
+from services.models import HandymanProfile 
 from .serializers import RegisterSerializer
 
 User = get_user_model()
 
 # --- SERIALIZERS ---
+
+class HandymanProfileSerializer(serializers.ModelSerializer):
+    # These fields pull data from the linked 'User' account
+    first_name = serializers.ReadOnlyField(source='user.first_name')
+    last_name = serializers.ReadOnlyField(source='user.last_name')
+    email = serializers.ReadOnlyField(source='user.email')
+    service_type = serializers.ReadOnlyField(source='user.service_type')
+    location = serializers.ReadOnlyField(source='user.city')
+
+    class Meta:
+        model = HandymanProfile
+        fields = [
+            'id', 'first_name', 'last_name', 'email', 
+            'service_type', 'location', 'rating', 'hourly_rate'
+        ]
+
+class UserSerializer(serializers.ModelSerializer):
+    location = serializers.CharField(source='city', default="Sarajevo")
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'first_name', 'last_name', 'email', 
+            'role', 'service_type', 'location', 'rating', 'hourly_rate'
+        ]
 
 class EmailAuthSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -25,7 +56,6 @@ class EmailAuthSerializer(serializers.Serializer):
         if not email or not password:
             raise serializers.ValidationError('Email and password are required.')
 
-        # Autentifikacija (Django sada zna da je email primarno polje)
         user = authenticate(
             request=self.context.get('request'),
             username=email,
@@ -35,7 +65,6 @@ class EmailAuthSerializer(serializers.Serializer):
         if not user:
             raise serializers.ValidationError('Incorrect email or password.')
 
-        # Provjera uloge (Admini preskaču provjeru)
         is_privileged = user.is_superuser or user.is_staff or user.role == 'admin'
         if not is_privileged and selected_role:
             if user.role != selected_role:
@@ -50,6 +79,16 @@ class EmailAuthSerializer(serializers.Serializer):
 
 # --- VIEWS ---
 
+class HandymanListView(generics.ListAPIView):
+    permission_classes = [permissions.AllowAny] 
+    # UPDATED: Use the profile serializer to get real pricing/ratings
+    serializer_class = HandymanProfileSerializer
+
+    def get_queryset(self):
+        # Fetch data from the HandymanProfile table directly
+        return HandymanProfile.objects.all()
+
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
 
@@ -61,6 +100,7 @@ class RegisterView(generics.CreateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomLoginView(ObtainAuthToken):
     serializer_class = EmailAuthSerializer
 
@@ -72,41 +112,35 @@ class CustomLoginView(ObtainAuthToken):
         update_last_login(None, user) 
         token, created = Token.objects.get_or_create(user=user)
         
-        # Pripremamo podatke za frontend (bez tokena u body-ju jer ide u cookie)
         response_data = {
+            'token': token.key,
             'user_id': user.pk,
             'email': user.email,
-            'username': user.username,  # <-- Ova linija ti je falila
+            'username': user.username,
             'role': user.role,
             'first_name': user.first_name,
-            'last_name': user.last_name, # Dobro je imati i prezime za header
+            'last_name': user.last_name,
             'is_staff': user.is_staff
         }
         
         response = Response(response_data, status=status.HTTP_200_OK)
 
-        # Postavljanje HttpOnly Cookie-ja
         response.set_cookie(
             key='auth_token',
             value=token.key,
-            httponly=True,   # Onemogućava JS pristup (zaštita od XSS)
-            secure=False,    # Postavi na True samo ako koristiš HTTPS
-            samesite='Lax',  # Štiti od CSRF-a
-            max_age=60 * 60 * 24 * 7 # Trajanje 7 dana
+            httponly=True,   
+            secure=False,    
+            samesite='Lax',  
+            path='/',
+            max_age=60 * 60 * 24 * 7 
         )
         
         return response
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LogoutView(APIView):
     def post(self, request):
         response = Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
-        
-        # Brišemo kuki tako što mu postavimo trajanje na nulu
-        response.delete_cookie('auth_token')
-        
-        # Opcionalno: Obriši token iz baze ako želiš potpunu sigurnost
-        # if request.user.is_authenticated:
-        #    Token.objects.filter(user=request.user).delete()
-            
+        response.delete_cookie('auth_token', path='/')
         return response

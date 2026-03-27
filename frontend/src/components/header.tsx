@@ -8,13 +8,14 @@ import { useLanguage } from "@/components/providers/language-provider";
 export default function Header() {
   const router = useRouter();
   const { t } = useLanguage();
-  
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState("client");
   const [userData, setUserData] = useState({ firstName: "", lastName: "" });
   const [username, setUsername] = useState("");
-  const avatarSeed = username || `${userData.firstName}${userData.lastName}` || userRole;
+  const avatarSeed =
+    username || `${userData.firstName}${userData.lastName}` || userRole;
   const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
 
   const brandColor = "#EF9D39";
@@ -26,7 +27,7 @@ export default function Header() {
     const fName = localStorage.getItem("first_name") || "";
     const lName = localStorage.getItem("last_name") || "";
     const storedUsername = localStorage.getItem("username") || "";
-  setUsername(storedUsername);
+    setUsername(storedUsername);
 
     if (loggedIn && role) {
       setIsLoggedIn(true);
@@ -34,7 +35,6 @@ export default function Header() {
       setUserData({ firstName: fName, lastName: lName });
     }
   }, []);
-
 
   // 2. LOGOUT LOGIKA (ČISTI I KUKI I LOCALSTORAGE)
   const handleLogout = async () => {
@@ -54,37 +54,41 @@ export default function Header() {
   const allBaseLinks = [
     { name: t("header.howItWorks"), href: "/how-it-works", adminHide: true },
     { name: t("header.services"), href: "/services", adminHide: false },
-    { name: t("header.aiAssistant"), href: "/ai-repair-assistant", adminHide: true },
-    { name: t("header.help"), href: "/help", adminHide: false }, 
+    {
+      name: t("header.aiAssistant"),
+      href: "/ai-repair-assistant",
+      adminHide: true,
+    },
+    { name: t("header.help"), href: "/help", adminHide: false },
     { name: t("header.contact"), href: "/contact", adminHide: false },
   ];
 
   const visibleBaseLinks = allBaseLinks.filter(
     (link) => !isLoggedIn || userRole !== "admin" || !link.adminHide,
   );
-const getRoleLinks = (role: string) => {
-  if (!isLoggedIn || !username) return []; // Dodaj provjeru za username
-  
-  switch (role) {
-    case "client":
-      return [
-        { name: t("header.newRequest"), href: `/${username}/new-request` },
-        { name: t("header.myRequests"), href: `/${username}/requests` },
-      ];
-    case "handyman":
-      return [
-        { name: t("header.dashboard"), href: `/${username}/dashboard` },
-        { name: t("header.calendar"), href: `/${username}/calendar` },
-      ];
-    case "admin":
-      return [
-        { name: t("header.users"), href: "/admin/users" },
-        { name: t("header.tracking"), href: "/admin/tracking" },
-      ];
-    default:
-      return [];
-  }
-};
+  const getRoleLinks = (role: string) => {
+    if (!isLoggedIn || !username) return []; // Dodaj provjeru za username
+
+    switch (role) {
+      case "client":
+        return [
+          { name: t("header.newRequest"), href: `/${username}/new-request` },
+          { name: t("header.myRequests"), href: `/${username}/requests` },
+        ];
+      case "handyman":
+        return [
+          { name: t("header.dashboard"), href: "/dashboard" },
+          { name: t("header.calendar"), href: "/calendar" },
+        ];
+      case "admin":
+        return [
+          { name: t("header.users"), href: "/admin/users" },
+          { name: t("header.tracking"), href: "/admin/tracking" },
+        ];
+      default:
+        return [];
+    }
+  };
 
   const translatedRole =
     userRole === "client"
@@ -98,11 +102,17 @@ const getRoleLinks = (role: string) => {
   return (
     <header className="border-b-2 border-black dark:border-zinc-700 w-full bg-white dark:bg-zinc-900 px-6 py-5 font-sans uppercase tracking-tight relative z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        
         {/* LOGO */}
         <div className="flex items-center shrink-0">
-          <Link href="/" className="flex items-center gap-3 text-2xl font-black normal-case tracking-tighter dark:text-white">
-            <img src="/GetItFixed Logo.png" alt="Logo" className="h-10 w-auto object-contain" />
+          <Link
+            href="/"
+            className="flex items-center gap-3 text-2xl font-black normal-case tracking-tighter dark:text-white"
+          >
+            <img
+              src="/GetItFixed Logo.png"
+              alt="Logo"
+              className="h-10 w-auto object-contain"
+            />
             <span>GetItFixed</span>
           </Link>
         </div>
@@ -140,11 +150,11 @@ const getRoleLinks = (role: string) => {
           {!isLoggedIn ? (
             <div className="flex items-center gap-4">
               <Link href="/login">
-                  <button className="text-sm font-black px-5 py-2.5 rounded-[30px] border-2 border-transparent cursor-pointer hover:underline underline-offset-8 decoration-2 transition-all whitespace-nowrap text-black dark:text-white transition-all active:scale-95 normal-case tracking-tight">
-                    {t("header.login")}
-                  </button>
-                </Link>              
-                <Link href="/register">
+                <button className="text-sm font-black px-5 py-2.5 rounded-[30px] border-2 border-transparent cursor-pointer hover:underline underline-offset-8 decoration-2 transition-all whitespace-nowrap text-black dark:text-white transition-all active:scale-95 normal-case tracking-tight">
+                  {t("header.login")}
+                </button>
+              </Link>
+              <Link href="/register">
                 <button className="border-2 border-black px-6 py-2.5 text-sm font-black cursor-pointer rounded-[30px] bg-[#EF9D39] hover:text-white transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
                   {t("header.signUp")}
                 </button>
@@ -152,50 +162,58 @@ const getRoleLinks = (role: string) => {
             </div>
           ) : (
             <div className="relative group">
-  {/* PROFILE BUTTON */}
-  <button
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
-    className={`flex items-center gap-3 border-2 border-black dark:border-zinc-600 p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${
-      isMenuOpen 
-        ? 'rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1' 
-        : 'rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none'
-    }`}
-  >
-    <div className="text-right hidden sm:block">
-      <p className="text-xs font-black leading-none uppercase tracking-tight dark:text-white">
-        {userData.firstName ? `${userData.firstName} ${userData.lastName}` : translatedRole}
-      </p>
-      <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase leading-none">{translatedRole}</p>
-    </div>
-    <img
-      src={avatarUrl}
-      alt="Profile avatar"
-      className="w-10 h-10 rounded-full border-2 border-black object-cover shrink-0"
-    />
-  </button>
+              {/* PROFILE BUTTON */}
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className={`flex items-center gap-3 border-2 border-black dark:border-zinc-600 p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${
+                  isMenuOpen
+                    ? "rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1"
+                    : "rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
+                }`}
+              >
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs font-black leading-none uppercase tracking-tight dark:text-white">
+                    {userData.firstName
+                      ? `${userData.firstName} ${userData.lastName}`
+                      : translatedRole}
+                  </p>
+                  <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase leading-none">
+                    {translatedRole}
+                  </p>
+                </div>
+                <img
+                  src={avatarUrl}
+                  alt="Profile avatar"
+                  className="w-10 h-10 rounded-full border-2 border-black object-cover shrink-0"
+                />
+              </button>
 
-  {/* DROPDOWN MENU */}
-  {isMenuOpen && (
-    <div 
-      className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 z-50  rounded-b-[16px] overflow-hidden"
-    >
-      <ul className="flex flex-col text-[11px] font-black uppercase tracking-widest">
-        <Link href="/profile" className="p-4 border-b-2 border-black dark:border-zinc-700 hover:bg-yellow-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer block dark:text-white">
-          {t("header.profile")}
-        </Link>
-        <Link href="/settings" className="p-4 border-b-2 border-black dark:border-zinc-700 hover:bg-yellow-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer block dark:text-white">
-          {t("header.settings")}
-        </Link>
-        <li 
-          onClick={handleLogout} 
-          className="p-4 bg-black text-white hover:bg-[#EF9D39] hover:text-black cursor-pointer text-center transition-colors"
-        >
-          {t("header.logout")}
-        </li>
-      </ul>
-    </div>
-  )}
-</div>
+              {/* DROPDOWN MENU */}
+              {isMenuOpen && (
+                <div className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 z-50  rounded-b-[16px] overflow-hidden">
+                  <ul className="flex flex-col text-[11px] font-black uppercase tracking-widest">
+                    <Link
+                      href="/profile"
+                      className="p-4 border-b-2 border-black dark:border-zinc-700 hover:bg-yellow-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer block dark:text-white"
+                    >
+                      {t("header.profile")}
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="p-4 border-b-2 border-black dark:border-zinc-700 hover:bg-yellow-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer block dark:text-white"
+                    >
+                      {t("header.settings")}
+                    </Link>
+                    <li
+                      onClick={handleLogout}
+                      className="p-4 bg-black text-white hover:bg-[#EF9D39] hover:text-black cursor-pointer text-center transition-colors"
+                    >
+                      {t("header.logout")}
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
