@@ -23,6 +23,7 @@ class User(AbstractUser):
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=5.0)
     hourly_rate = models.IntegerField(default=30)
     bio = models.TextField(max_length=500, blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
 
     # Email as primary identifier
     email = models.EmailField(unique=True)

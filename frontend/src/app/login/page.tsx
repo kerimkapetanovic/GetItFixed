@@ -53,6 +53,7 @@ export default function LoginPage() {
       localStorage.setItem("first_name", response.data.first_name);
       localStorage.setItem("last_name", response.data.last_name || "");
       localStorage.setItem("username", response.data.username);
+      localStorage.setItem("avatar_url", response.data.avatar_url || "");
 
       // 3. Redirect
       // We use window.location.href to force a full state refresh

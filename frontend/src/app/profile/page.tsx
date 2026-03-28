@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import HandymanDashboard from "@/components/HandymanDashboard"; // Import the new component
+import api from "../../../lib/axios";
 import {
   User,
   Mail,
@@ -15,39 +16,342 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
 
+type ProfileResponse = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+  username: string;
+  avatar_url: string;
+};
+
+type ApiErrorResponse = {
+  detail?: string;
+  non_field_errors?: string[];
+  current_password?: string[];
+  new_password?: string[];
+  confirm_password?: string[];
+  avatar?: string[];
+};
+
 export default function ProfilePage() {
   const brandColor = "#EF9D39";
   const { t } = useLanguage();
   const profileTitleParts = t("profile.title").split(" ");
 
-  // 1. STATE FOR USER DATA
   const [userRole, setUserRole] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    phone: "+387 61 123 456",
-    location: "Sarajevo, Centar",
-    email: "user@example.com",
+    email: "",
+    username: "",
+    avatarUrl: "",
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [savingNames, setSavingNames] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordChangedModalOpen, setPasswordChangedModalOpen] =
+    useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    action: "names" | "password" | "avatar" | null;
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    action: null,
+    title: "",
+    message: "",
   });
 
-  // 2. LOAD DATA FROM LOCALSTORAGE (Mimicking Kerim's Auth)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("role") || "client";
-      setUserRole(role);
+    const fetchProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        setProfileError(null);
+        const response = await api.get<ProfileResponse>("/api/accounts/me/");
+        const data = response.data;
+        setFormData({
+          firstName: data.first_name || "",
+          lastName: data.last_name || "",
+          email: data.email || "",
+          username: data.username || "",
+          avatarUrl: data.avatar_url || "",
+        });
+        setUserRole(data.role || "client");
 
-      setFormData({
-        firstName: localStorage.getItem("first_name") || "Amar",
-        lastName: localStorage.getItem("last_name") || "Dizdarević",
-        phone: localStorage.getItem("phone") || "+387 61 123 456",
-        location: localStorage.getItem("city") || "Sarajevo",
-        email: localStorage.getItem("email") || "amar@gmail.com",
-      });
-    }
+        if (typeof window !== "undefined") {
+          localStorage.setItem("first_name", data.first_name || "");
+          localStorage.setItem("last_name", data.last_name || "");
+          localStorage.setItem("email", data.email || "");
+          localStorage.setItem("username", data.username || "");
+          localStorage.setItem("avatar_url", data.avatar_url || "");
+          localStorage.setItem("user_role", data.role || "client");
+          localStorage.setItem("role", data.role || "client");
+        }
+      } catch (err: unknown) {
+        const apiError = err as { response?: { data?: ApiErrorResponse } };
+        const backendError =
+          apiError.response?.data?.detail ||
+          apiError.response?.data?.non_field_errors?.[0] ||
+          "Failed to load profile.";
+        setProfileError(
+          backendError === "Authentication credentials were not provided."
+            ? "Session expired. Please log in again."
+            : backendError,
+        );
+
+        if (typeof window !== "undefined") {
+          setFormData({
+            firstName: localStorage.getItem("first_name") || "",
+            lastName: localStorage.getItem("last_name") || "",
+            email: localStorage.getItem("email") || "",
+            username: localStorage.getItem("username") || "",
+            avatarUrl: localStorage.getItem("avatar_url") || "",
+          });
+          setUserRole(
+            localStorage.getItem("user_role") ||
+              localStorage.getItem("role") ||
+              "client",
+          );
+        }
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
-  const username = formData.firstName || "User";
-  const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+  const getApiErrorMessage = (errorData?: ApiErrorResponse) => {
+    if (!errorData) return t("profile.genericError");
+    return (
+      errorData.current_password?.[0] ||
+      errorData.new_password?.[0] ||
+      errorData.confirm_password?.[0] ||
+      errorData.avatar?.[0] ||
+      errorData.non_field_errors?.[0] ||
+      errorData.detail ||
+      t("profile.genericError")
+    );
+  };
+
+  const persistNameChanges = async () => {
+    try {
+      setSavingNames(true);
+      setProfileError(null);
+      setProfileMessage(null);
+
+      const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+      });
+
+      const updated = response.data;
+      setFormData((prev) => ({
+        ...prev,
+        firstName: updated.first_name || "",
+        lastName: updated.last_name || "",
+        email: updated.email || prev.email,
+        username: updated.username || prev.username,
+        avatarUrl: updated.avatar_url || prev.avatarUrl,
+      }));
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("first_name", updated.first_name || "");
+        localStorage.setItem("last_name", updated.last_name || "");
+        localStorage.setItem("username", updated.username || "");
+        localStorage.setItem("avatar_url", updated.avatar_url || "");
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+
+      setProfileMessage(t("profile.nameSavedSuccess"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: ApiErrorResponse } };
+      setProfileError(getApiErrorMessage(apiError.response?.data));
+    } finally {
+      setSavingNames(false);
+    }
+  };
+
+  const persistAvatarChange = async () => {
+    if (!pendingAvatarFile) return;
+
+    try {
+      setUploadingAvatar(true);
+      setAvatarError(null);
+      setAvatarMessage(null);
+
+      const data = new FormData();
+      data.append("avatar", pendingAvatarFile);
+
+      const response = await api.patch<ProfileResponse>("/api/accounts/me/", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const updated = response.data;
+
+      setFormData((prev) => ({
+        ...prev,
+        firstName: updated.first_name || prev.firstName,
+        lastName: updated.last_name || prev.lastName,
+        email: updated.email || prev.email,
+        username: updated.username || prev.username,
+        avatarUrl: updated.avatar_url || prev.avatarUrl,
+      }));
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("avatar_url", updated.avatar_url || "");
+        localStorage.setItem("username", updated.username || "");
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+
+      setAvatarMessage(t("profile.avatarUploadSuccess"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: ApiErrorResponse } };
+      setAvatarError(getApiErrorMessage(apiError.response?.data));
+    } finally {
+      setUploadingAvatar(false);
+      setPendingAvatarFile(null);
+    }
+  };
+
+  const persistPasswordChanges = async () => {
+    try {
+      setSavingPassword(true);
+      setPasswordError(null);
+
+      await api.post("/api/accounts/change-password/", {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+        confirm_password: passwordData.confirmPassword,
+      });
+
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setPasswordChangedModalOpen(true);
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: ApiErrorResponse } };
+      setPasswordError(getApiErrorMessage(apiError.response?.data));
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleGoToLoginAfterPasswordChange = async () => {
+    try {
+      await api.post("/api/accounts/logout/");
+    } catch {
+      // Continue with client-side logout even if backend logout fails.
+    } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("is_logged_in");
+        localStorage.removeItem("user_role");
+        localStorage.removeItem("role");
+        localStorage.removeItem("first_name");
+        localStorage.removeItem("last_name");
+        localStorage.removeItem("username");
+        localStorage.removeItem("email");
+        localStorage.removeItem("avatar_url");
+      }
+      window.location.href = "/login";
+    }
+  };
+
+  const handleOpenNamesConfirm = () => {
+    setConfirmModal({
+      open: true,
+      action: "names",
+      title: t("profile.confirmNamesTitle"),
+      message: t("profile.confirmNamesMessage"),
+    });
+  };
+
+  const handleOpenPasswordConfirm = () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError(t("profile.passwordMismatch"));
+      return;
+    }
+
+    setConfirmModal({
+      open: true,
+      action: "password",
+      title: t("profile.confirmPasswordTitle"),
+      message: t("profile.confirmPasswordMessage"),
+    });
+  };
+
+  const handleAvatarFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+
+    if (!selectedFile.type.startsWith("image/")) {
+      setAvatarError(t("profile.avatarInvalidType"));
+      return;
+    }
+
+    setPendingAvatarFile(selectedFile);
+    setAvatarError(null);
+    setConfirmModal({
+      open: true,
+      action: "avatar",
+      title: t("profile.confirmAvatarTitle"),
+      message: t("profile.confirmAvatarMessage"),
+    });
+
+    event.target.value = "";
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmModal.action === "names") {
+      await persistNameChanges();
+    }
+    if (confirmModal.action === "password") {
+      await persistPasswordChanges();
+    }
+    if (confirmModal.action === "avatar") {
+      await persistAvatarChange();
+    }
+
+    setConfirmModal({
+      open: false,
+      action: null,
+      title: "",
+      message: "",
+    });
+  };
+
+  const handleCloseConfirmModal = () => {
+    if (confirmModal.action === "avatar") {
+      setPendingAvatarFile(null);
+    }
+    setConfirmModal({
+      open: false,
+      action: null,
+      title: "",
+      message: "",
+    });
+  };
+
+  const avatarUrl =
+    formData.avatarUrl ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.username || "User")}`;
 
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
@@ -67,9 +371,20 @@ export default function ProfilePage() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <button className="absolute -bottom-2 -right-2 bg-[#EF9D39] border-2 border-black p-2 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="absolute -bottom-2 -right-2 bg-[#EF9D39] border-2 border-black p-2 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all disabled:opacity-70"
+            >
               <Camera size={18} />
             </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarFileSelected}
+              className="hidden"
+            />
           </div>
 
           <div className="text-center md:text-left flex-grow">
@@ -82,6 +397,16 @@ export default function ProfilePage() {
             <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em]">
               {t("profile.subtitle")}
             </p>
+            {avatarError && (
+              <p className="mt-3 text-[10px] font-black uppercase text-red-500">
+                {avatarError}
+              </p>
+            )}
+            {avatarMessage && (
+              <p className="mt-3 text-[10px] font-black uppercase text-green-600 dark:text-green-400">
+                {avatarMessage}
+              </p>
+            )}
           </div>
         </div>
 
@@ -98,33 +423,63 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                    First Name
+                    {t("profile.firstName")}
                   </label>
                   <input
                     type="text"
                     value={formData.firstName}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        firstName: e.target.value,
+                      }))
+                    }
                     className="w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all"
-                    readOnly
+                    disabled={loadingProfile || savingNames}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                    Last Name
+                    {t("profile.lastName")}
                   </label>
                   <input
                     type="text"
                     value={formData.lastName}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        lastName: e.target.value,
+                      }))
+                    }
                     className="w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all"
-                    readOnly
+                    disabled={loadingProfile || savingNames}
                   />
                 </div>
               </div>
 
+              {profileError && (
+                <p className="mt-6 text-xs font-bold uppercase text-red-500">
+                  {profileError}
+                </p>
+              )}
+              {profileMessage && (
+                <p className="mt-6 text-xs font-bold uppercase text-green-600 dark:text-green-400">
+                  {profileMessage}
+                </p>
+              )}
+
               <button
+                onClick={handleOpenNamesConfirm}
+                disabled={loadingProfile || savingNames}
                 style={{ backgroundColor: brandColor }}
-                className="mt-8 w-full md:w-auto px-8 py-3 border-[3px] border-black rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-2"
+                className="mt-8 w-full md:w-auto px-8 py-3 border-[3px] border-black rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:translate-x-0 disabled:hover:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
               >
-                <Save size={16} /> {t("profile.saveChanges")}
+                {savingNames ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
+                )}
+                {t("profile.saveChanges")}
               </button>
             </div>
 
@@ -141,21 +496,95 @@ export default function ProfilePage() {
             <div className="bg-black text-white border-[3px] border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[24px]">
               <h2 className="text-sm font-black uppercase mb-6 flex items-center gap-2">
                 <ShieldCheck size={18} className="text-[#EF9D39]" />
-                Security & Status
+                {t("profile.securityStatus")}
               </h2>
 
               <div className="space-y-4">
-                <button className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-black text-[10px] uppercase hover:bg-[#EF9D39] transition-colors flex items-center justify-between">
-                  Change Email <Mail size={14} />
-                </button>
-                <button className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-black text-[10px] uppercase hover:bg-[#EF9D39] transition-colors flex items-center justify-between">
-                  Reset Password <Lock size={14} />
-                </button>
+                <div className="bg-zinc-900 border-2 border-zinc-700 p-3 rounded-xl">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2">
+                    {t("profile.emailLabel")}
+                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Mail size={14} className="text-[#EF9D39]" />
+                      <p className="text-[10px] font-bold truncate">{formData.email}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-400">
+                      <Lock size={12} />
+                      <span className="text-[9px] font-black uppercase">
+                        {t("profile.readOnly")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">
+                    {t("profile.changePassword")}
+                  </p>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      setPasswordData((prev) => ({
+                        ...prev,
+                        currentPassword: e.target.value,
+                      }))
+                    }
+                    placeholder={t("profile.currentPassword")}
+                    disabled={savingPassword || loadingProfile}
+                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-bold text-[11px] outline-none"
+                  />
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData((prev) => ({
+                        ...prev,
+                        newPassword: e.target.value,
+                      }))
+                    }
+                    placeholder={t("profile.newPassword")}
+                    disabled={savingPassword || loadingProfile}
+                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-bold text-[11px] outline-none"
+                  />
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData((prev) => ({
+                        ...prev,
+                        confirmPassword: e.target.value,
+                      }))
+                    }
+                    placeholder={t("profile.confirmPassword")}
+                    disabled={savingPassword || loadingProfile}
+                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-bold text-[11px] outline-none"
+                  />
+
+                  {passwordError && (
+                    <p className="text-[10px] font-bold uppercase text-red-400">
+                      {passwordError}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleOpenPasswordConfirm}
+                    disabled={savingPassword || loadingProfile}
+                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-black text-[10px] uppercase hover:bg-[#EF9D39] transition-colors flex items-center justify-between disabled:opacity-60"
+                  >
+                    {savingPassword ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Lock size={14} />
+                    )}
+                    {t("profile.savePassword")}
+                  </button>
+                </div>
               </div>
 
               <div className="mt-8 pt-6 border-t border-gray-800">
                 <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-4">
-                  Account Status
+                  {t("profile.accountStatus")}
                 </p>
                 <div className="flex items-center gap-2">
                   <div
@@ -163,8 +592,8 @@ export default function ProfilePage() {
                   ></div>
                   <span className="text-[10px] font-black uppercase">
                     {userRole === "handyman"
-                      ? "Verified Handyman"
-                      : "Verified Client"}
+                      ? t("profile.verifiedHandyman")
+                      : t("profile.verifiedClient")}
                   </span>
                 </div>
               </div>
@@ -183,6 +612,52 @@ export default function ProfilePage() {
       </main>
 
       <Footer />
+
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-6 rounded-[24px] shadow-[8px_8px_0px_0px_rgba(239,157,57,0.35)]">
+            <h3 className="text-xl font-black uppercase text-black dark:text-white mb-3">
+              {confirmModal.title}
+            </h3>
+            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mb-6">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCloseConfirmModal}
+                className="flex-1 bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white border-2 border-black dark:border-zinc-500 rounded-xl py-3 text-xs font-black uppercase"
+              >
+                {t("profile.cancel")}
+              </button>
+              <button
+                onClick={handleConfirmAction}
+                className="flex-1 bg-[#EF9D39] text-black border-2 border-black rounded-xl py-3 text-xs font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              >
+                {t("profile.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {passwordChangedModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-6 rounded-[24px] shadow-[8px_8px_0px_0px_rgba(239,157,57,0.35)]">
+            <h3 className="text-xl font-black uppercase text-black dark:text-white mb-3">
+              {t("profile.passwordChangedTitle")}
+            </h3>
+            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mb-6">
+              {t("profile.passwordChangedDescription")}
+            </p>
+            <button
+              onClick={handleGoToLoginAfterPasswordChange}
+              className="w-full bg-[#EF9D39] text-black border-2 border-black rounded-xl py-3 text-xs font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+            >
+              {t("profile.goToLogin")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,26 +18,50 @@ export default function Header() {
   const [userRole, setUserRole] = useState("client");
   const [userData, setUserData] = useState({ firstName: "", lastName: "" });
   const [username, setUsername] = useState("");
+  const [storedAvatarUrl, setStoredAvatarUrl] = useState("");
   const avatarSeed =
     username || `${userData.firstName}${userData.lastName}` || userRole;
-  const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
+  const avatarUrl =
+    storedAvatarUrl ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
 
   const brandColor = "#EF9D39";
 
-  // 1. UČITAVANJE SESIJE (UI DIO)
-  useEffect(() => {
+  const syncSessionFromStorage = () => {
     const role = localStorage.getItem("user_role");
     const loggedIn = localStorage.getItem("is_logged_in") === "true";
     const fName = localStorage.getItem("first_name") || "";
     const lName = localStorage.getItem("last_name") || "";
     const storedUsername = localStorage.getItem("username") || "";
+    const customAvatarUrl = localStorage.getItem("avatar_url") || "";
     setUsername(storedUsername);
+    setStoredAvatarUrl(customAvatarUrl);
 
     if (loggedIn && role) {
       setIsLoggedIn(true);
       setUserRole(role);
       setUserData({ firstName: fName, lastName: lName });
+    } else {
+      setIsLoggedIn(false);
+      setUserRole("client");
+      setUserData({ firstName: "", lastName: "" });
+      setUsername("");
+      setStoredAvatarUrl("");
     }
+  };
+
+  // 1. UČITAVANJE SESIJE (UI DIO)
+  useEffect(() => {
+    syncSessionFromStorage();
+
+    const handleProfileUpdated = () => {
+      syncSessionFromStorage();
+    };
+
+    window.addEventListener("profile-updated", handleProfileUpdated);
+    return () => {
+      window.removeEventListener("profile-updated", handleProfileUpdated);
+    };
   }, []);
 
   useEffect(() => {

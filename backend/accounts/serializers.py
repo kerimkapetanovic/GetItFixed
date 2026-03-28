@@ -92,3 +92,59 @@ class EmailAuthSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
+    avatar_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "username",
+            "avatar",
+            "avatar_url",
+        )
+        read_only_fields = ("email", "role", "username", "avatar_url")
+
+    def get_avatar_url(self, obj):
+        request = self.context.get("request")
+        if obj.avatar:
+            url = obj.avatar.url
+            return request.build_absolute_uri(url) if request else url
+        return f"https://api.dicebear.com/7.x/avataaars/svg?seed={obj.username}"
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, min_length=8)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        current_password = attrs.get("current_password")
+        new_password = attrs.get("new_password")
+        confirm_password = attrs.get("confirm_password")
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError(
+                {"current_password": "Current password is incorrect."}
+            )
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError(
+                {"confirm_password": "New password and confirmation do not match."}
+            )
+
+        if current_password == new_password:
+            raise serializers.ValidationError(
+                {"new_password": "New password must be different from current password."}
+            )
+
+        return attrs

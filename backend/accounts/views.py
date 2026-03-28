@@ -3,13 +3,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import update_last_login
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, ProfileSerializer, ChangePasswordSerializer
+from .authentication import CookieTokenAuthentication
 
 User = get_user_model()
 
@@ -85,6 +88,11 @@ class RegisterView(generics.CreateAPIView):
 class CustomLoginView(ObtainAuthToken):
     serializer_class = EmailAuthSerializer
 
+    def _build_avatar_url(self, request, user):
+        if user.avatar:
+            return request.build_absolute_uri(user.avatar.url)
+        return f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.username}"
+
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -101,7 +109,8 @@ class CustomLoginView(ObtainAuthToken):
             'role': user.role,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'is_staff': user.is_staff
+            'is_staff': user.is_staff,
+            'avatar_url': self._build_avatar_url(request, user),
         }
         
         response = Response(response_data, status=status.HTTP_200_OK)
@@ -125,3 +134,43 @@ class LogoutView(APIView):
         response = Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
         response.delete_cookie('auth_token', path='/')
         return response
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CurrentUserProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = ProfileSerializer
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_object(self):
+        return self.request.user
+
+    def patch(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ChangePasswordView(APIView):
+    serializer_class = ChangePasswordSerializer
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+
+    def post(self, request):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password"])
+        return Response(
+            {"message": "Password changed successfully."},
+            status=status.HTTP_200_OK,
+        )
