@@ -75,6 +75,8 @@ class HandymanListView(generics.ListAPIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

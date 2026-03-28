@@ -50,6 +50,18 @@ const phoneInputCustomStyles = `
     margin-left: 5px;
     opacity: 0.7;
   }
+  .PhoneInputCountrySelect {
+    background: transparent;
+    color: #111827;
+    border: none;
+    outline: none;
+    font-weight: 700;
+  }
+  .PhoneInputCountrySelect option {
+    background: #ffffff;
+    color: #111827;
+    font-weight: 700;
+  }
   .dark .PhoneInput {
     background: #27272a;
     border-color: #52525b;
@@ -62,6 +74,13 @@ const phoneInputCustomStyles = `
   }
   .dark .PhoneInputCountry {
     border-right-color: #71717a;
+  }
+  .dark .PhoneInputCountrySelect {
+    color: #f4f4f5;
+  }
+  .dark .PhoneInputCountrySelect option {
+    background: #18181b;
+    color: #f4f4f5;
   }
 `;
 
