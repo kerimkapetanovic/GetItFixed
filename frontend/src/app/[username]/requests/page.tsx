@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../lib/axios";
+import { ArrowUpRight } from "lucide-react";
 
 // Define the shape of our data
 interface BookingRequest {
@@ -108,11 +109,18 @@ export default function MyRequestsPage() {
                 </div>
 
                 <div className="flex justify-end mt-4">
-                  {/* Wrap the button in a Next.js Link */}
-                  <Link href={`/${username}/requests/${req.id}`}>
-                    <button className="bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] border-2 border-black font-black text-xs uppercase px-6 py-3 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
-                      View Details
-                    </button>
+                  <Link
+                    href={`/${username}/requests/${req.id}`}
+                    className="group flex items-center gap-4 border-[3px] border-black bg-white px-6 py-3 font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none"
+                    style={{ borderRadius: "20px" }}
+                  >
+                    <span className="text-black">View Details</span>
+                    <span className="flex items-center justify-center rounded-full bg-black p-1.5 transition-colors group-hover:bg-white">
+                      <ArrowUpRight
+                        size={16}
+                        className="text-white transition-transform group-hover:rotate-45 group-hover:text-black"
+                      />
+                    </span>
                   </Link>
                 </div>
               </div>

@@ -247,6 +247,11 @@ export const translations = {
       confirmAvatarMessage: "Are you sure you want to upload this profile photo?",
       avatarUploadSuccess: "Profile photo updated.",
       avatarInvalidType: "Please select a valid image file.",
+      removePhoto: "Remove photo",
+      confirmRemoveAvatarTitle: "Remove profile photo",
+      confirmRemoveAvatarMessage:
+        "Are you sure you want to remove your custom profile photo?",
+      avatarRemoveSuccess: "Custom profile photo removed.",
     },
     chat: {
       open: "Open chat",
@@ -493,6 +498,11 @@ export const translations = {
         "Da li ste sigurni da zelite postaviti ovu profilnu fotografiju?",
       avatarUploadSuccess: "Profilna fotografija je azurirana.",
       avatarInvalidType: "Molimo odaberite ispravnu sliku.",
+      removePhoto: "Ukloni sliku",
+      confirmRemoveAvatarTitle: "Ukloni profilnu fotografiju",
+      confirmRemoveAvatarMessage:
+        "Da li ste sigurni da zelite ukloniti prilagodjenu profilnu fotografiju?",
+      avatarRemoveSuccess: "Prilagodjena profilna fotografija je uklonjena.",
     },
     chat: {
       open: "Otvori chat",

@@ -86,7 +86,7 @@ export default function HandymanDashboard() {
                 </div>
                 <button
                   onClick={() => handleAcceptJob(job.id)}
-                  className="bg-black text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] hover:bg-[#EF9D39] hover:text-black transition-all border-2 border-black"
+                  className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all"
                 >
                   Accept Job
                 </button>

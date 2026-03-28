@@ -132,7 +132,7 @@ export default function ClientDashboard() {
               type="submit"
               disabled={loading}
               style={inputRadius}
-              className="w-full mt-4 bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] text-black py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
+              className="w-full mt-4 bg-white text-black py-5 font-black uppercase tracking-[0.2em] text-xs transition-all border-[3px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] active:scale-95 disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:shadow-[8px_8px_0px_0px_#000] flex justify-center items-center gap-2"
             >
               {loading ? "Posting Job..." : "Post Job Request"}
             </button>

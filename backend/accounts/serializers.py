@@ -99,6 +99,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(read_only=True)
     avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
     avatar_url = serializers.SerializerMethodField()
+    has_custom_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -110,8 +111,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             "username",
             "avatar",
             "avatar_url",
+            "has_custom_avatar",
         )
-        read_only_fields = ("email", "role", "username", "avatar_url")
+        read_only_fields = ("email", "role", "username", "avatar_url", "has_custom_avatar")
 
     def get_avatar_url(self, obj):
         request = self.context.get("request")
@@ -119,6 +121,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             url = obj.avatar.url
             return request.build_absolute_uri(url) if request else url
         return f"https://api.dicebear.com/7.x/avataaars/svg?seed={obj.username}"
+
+    def get_has_custom_avatar(self, obj):
+        return bool(obj.avatar)
 
 
 class ChangePasswordSerializer(serializers.Serializer):

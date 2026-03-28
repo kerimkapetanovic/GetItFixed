@@ -130,7 +130,19 @@ class CustomLoginView(ObtainAuthToken):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LogoutView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
     def post(self, request):
+        token_key = request.COOKIES.get('auth_token')
+
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Token '):
+            token_key = auth_header.split(' ', 1)[1].strip() or token_key
+
+        if token_key:
+            Token.objects.filter(key=token_key).delete()
+
         response = Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
         response.delete_cookie('auth_token', path='/')
         return response

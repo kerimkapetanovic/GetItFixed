@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../lib/axios";
-import { Star, MapPin, Wrench, Loader2 } from "lucide-react";
+import { Star, MapPin, Wrench, Loader2, ArrowUpRight } from "lucide-react";
 import Link from "next/link"; // IMPORT LINK
 import { useParams } from "next/navigation"; // IMPORT USEPARAMS
 
@@ -25,6 +25,7 @@ export default function NewRequestPage() {
   const [handymen, setHandymen] = useState<Handyman[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedService, setSelectedService] = useState("all");
+  const [selectedCity, setSelectedCity] = useState("all");
 
   useEffect(() => {
     const fetchHandymen = async () => {
@@ -41,16 +42,39 @@ export default function NewRequestPage() {
   }, []);
 
   const cardStyle = { borderRadius: "24px" };
+  const formatFilterLabel = (value: string) =>
+    value
+      .replace(/[_-]+/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
   const serviceOptions = [
     "all",
     ...Array.from(
       new Set(handymen.map((pro) => pro.service_type).filter(Boolean)),
     ),
   ];
-  const filteredHandymen =
-    selectedService === "all"
-      ? handymen
-      : handymen.filter((pro) => pro.service_type === selectedService);
+  const cityMap = new Map<string, string>();
+  handymen.forEach((pro) => {
+    const city = (pro.location || "").trim();
+    if (!city) return;
+    const normalizedCity = city.toLowerCase();
+    if (!cityMap.has(normalizedCity)) {
+      cityMap.set(normalizedCity, formatFilterLabel(city));
+    }
+  });
+  const cityOptions = [
+    { value: "all", label: "All Cities" },
+    ...Array.from(cityMap.entries()).map(([value, label]) => ({ value, label })),
+  ];
+  const filteredHandymen = handymen.filter((pro) => {
+    const serviceMatch =
+      selectedService === "all" || pro.service_type === selectedService;
+    const cityMatch =
+      selectedCity === "all" ||
+      (pro.location || "").trim().toLowerCase() === selectedCity;
+    return serviceMatch && cityMatch;
+  });
 
   return (
     <div className="page-gradient min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">
@@ -70,21 +94,49 @@ export default function NewRequestPage() {
         </div>
 
         {!loading && handymen.length > 0 && (
-          <div className="mb-10">
-            <div className="flex gap-3 overflow-x-auto bg-white dark:bg-zinc-900 border-2 border-black rounded-2xl p-4">
-              {serviceOptions.map((service) => (
-                <button
-                  key={service}
-                  onClick={() => setSelectedService(service)}
-                  className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${
-                    selectedService === service
-                      ? "bg-[#EF9D39] text-black"
-                      : "bg-white dark:bg-zinc-800 text-black dark:text-white"
-                  }`}
-                >
-                  {service === "all" ? "All Services" : service}
-                </button>
-              ))}
+          <div className="mb-10 border-2 border-black bg-white dark:bg-zinc-900 rounded-3xl p-4 md:p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+            <div className="mb-4">
+              <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400">
+                Filter by service
+              </p>
+              <div className="flex gap-3 overflow-x-auto">
+                {serviceOptions.map((service) => (
+                  <button
+                    key={service}
+                    onClick={() => setSelectedService(service)}
+                    className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${
+                      selectedService === service
+                        ? "bg-[#EF9D39] text-black"
+                        : "bg-white dark:bg-zinc-800 text-black dark:text-white"
+                    }`}
+                  >
+                    {service === "all"
+                      ? "All Services"
+                      : formatFilterLabel(service)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400">
+                Filter by city
+              </p>
+              <div className="flex gap-3 overflow-x-auto">
+                {cityOptions.map((city) => (
+                  <button
+                    key={city.value}
+                    onClick={() => setSelectedCity(city.value)}
+                    className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${
+                      selectedCity === city.value
+                        ? "bg-[#EF9D39] text-black"
+                        : "bg-white dark:bg-zinc-800 text-black dark:text-white"
+                    }`}
+                  >
+                    {city.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -107,7 +159,7 @@ export default function NewRequestPage() {
           ) : filteredHandymen.length === 0 ? (
             <div className="col-span-full text-center py-20 bg-white dark:bg-zinc-900 border-2 border-dashed border-gray-300 rounded-3xl">
               <p className="font-bold text-gray-500 dark:text-zinc-400 uppercase">
-                No handymen in this service category.
+                No handymen match the selected filters.
               </p>
             </div>
           ) : (
@@ -148,13 +200,18 @@ export default function NewRequestPage() {
                   </div>
                 </div>
 
-                {/* WRAPPED BUTTON WITH LINK */}
                 <Link
                   href={`/${username}/new-request/create?handyman_id=${pro.id}`}
+                  className="group flex w-full items-center justify-between border-[3px] border-black bg-white px-6 py-4 font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none"
+                  style={{ borderRadius: "20px" }}
                 >
-                  <button className="w-full bg-[#EF9D39] text-black border-2 border-black py-4 font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-95 transition-all">
-                    Book This Expert
-                  </button>
+                  <span className="text-black">Book This Expert</span>
+                  <span className="flex items-center justify-center rounded-full bg-black p-1.5 transition-colors group-hover:bg-white">
+                    <ArrowUpRight
+                      size={18}
+                      className="text-white transition-transform group-hover:rotate-45 group-hover:text-black"
+                    />
+                  </span>
                 </Link>
               </div>
             ))

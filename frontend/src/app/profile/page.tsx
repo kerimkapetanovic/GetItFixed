@@ -23,6 +23,7 @@ type ProfileResponse = {
   role: string;
   username: string;
   avatar_url: string;
+  has_custom_avatar: boolean;
 };
 
 type ApiErrorResponse = {
@@ -47,6 +48,7 @@ export default function ProfilePage() {
     username: "",
     avatarUrl: "",
   });
+  const [hasCustomAvatar, setHasCustomAvatar] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -67,7 +69,7 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean;
-    action: "names" | "password" | "avatar" | null;
+    action: "names" | "password" | "avatar" | "removeAvatar" | null;
     title: string;
     message: string;
   }>({
@@ -91,6 +93,7 @@ export default function ProfilePage() {
           username: data.username || "",
           avatarUrl: data.avatar_url || "",
         });
+        setHasCustomAvatar(Boolean(data.has_custom_avatar));
         setUserRole(data.role || "client");
 
         if (typeof window !== "undefined") {
@@ -169,6 +172,7 @@ export default function ProfilePage() {
         username: updated.username || prev.username,
         avatarUrl: updated.avatar_url || prev.avatarUrl,
       }));
+      setHasCustomAvatar(Boolean(updated.has_custom_avatar));
 
       if (typeof window !== "undefined") {
         localStorage.setItem("first_name", updated.first_name || "");
@@ -211,6 +215,7 @@ export default function ProfilePage() {
         username: updated.username || prev.username,
         avatarUrl: updated.avatar_url || prev.avatarUrl,
       }));
+      setHasCustomAvatar(Boolean(updated.has_custom_avatar));
 
       if (typeof window !== "undefined") {
         localStorage.setItem("avatar_url", updated.avatar_url || "");
@@ -219,6 +224,53 @@ export default function ProfilePage() {
       }
 
       setAvatarMessage(t("profile.avatarUploadSuccess"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: ApiErrorResponse } };
+      setAvatarError(getApiErrorMessage(apiError.response?.data));
+    } finally {
+      setUploadingAvatar(false);
+      setPendingAvatarFile(null);
+    }
+  };
+
+  const handleOpenRemoveAvatarConfirm = () => {
+    setAvatarError(null);
+    setConfirmModal({
+      open: true,
+      action: "removeAvatar",
+      title: t("profile.confirmRemoveAvatarTitle"),
+      message: t("profile.confirmRemoveAvatarMessage"),
+    });
+  };
+
+  const removeCustomAvatar = async () => {
+    try {
+      setUploadingAvatar(true);
+      setAvatarError(null);
+      setAvatarMessage(null);
+
+      const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
+        avatar: null,
+      });
+      const updated = response.data;
+
+      setFormData((prev) => ({
+        ...prev,
+        firstName: updated.first_name || prev.firstName,
+        lastName: updated.last_name || prev.lastName,
+        email: updated.email || prev.email,
+        username: updated.username || prev.username,
+        avatarUrl: updated.avatar_url || prev.avatarUrl,
+      }));
+      setHasCustomAvatar(Boolean(updated.has_custom_avatar));
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("avatar_url", updated.avatar_url || "");
+        localStorage.setItem("username", updated.username || "");
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+
+      setAvatarMessage(t("profile.avatarRemoveSuccess"));
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: ApiErrorResponse } };
       setAvatarError(getApiErrorMessage(apiError.response?.data));
@@ -328,6 +380,9 @@ export default function ProfilePage() {
     if (confirmModal.action === "avatar") {
       await persistAvatarChange();
     }
+    if (confirmModal.action === "removeAvatar") {
+      await removeCustomAvatar();
+    }
 
     setConfirmModal({
       open: false,
@@ -385,6 +440,15 @@ export default function ProfilePage() {
               onChange={handleAvatarFileSelected}
               className="hidden"
             />
+            {hasCustomAvatar && (
+              <button
+                onClick={handleOpenRemoveAvatarConfirm}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-2 left-0 bg-red-500 text-white border-2 border-black px-2 py-1 rounded-lg text-[9px] font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-70"
+              >
+                {t("profile.removePhoto")}
+              </button>
+            )}
           </div>
 
           <div className="text-center md:text-left flex-grow">
@@ -471,8 +535,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleOpenNamesConfirm}
                 disabled={loadingProfile || savingNames}
-                style={{ backgroundColor: brandColor }}
-                className="mt-8 w-full md:w-auto px-8 py-3 border-[3px] border-black rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:translate-x-0 disabled:hover:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
+                className="mt-8 w-full md:w-auto px-8 py-3 border-[3px] border-black rounded-[20px] bg-white text-black font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:translate-x-0 disabled:hover:shadow-[8px_8px_0px_0px_#000] disabled:hover:bg-white"
               >
                 {savingNames ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -570,7 +633,7 @@ export default function ProfilePage() {
                   <button
                     onClick={handleOpenPasswordConfirm}
                     disabled={savingPassword || loadingProfile}
-                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-black text-[10px] uppercase hover:bg-[#EF9D39] transition-colors flex items-center justify-between disabled:opacity-60"
+                    className="w-full border-[3px] border-black bg-white text-black p-3 rounded-[20px] font-black text-[10px] uppercase tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all flex items-center justify-between disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[8px_8px_0px_0px_#000] disabled:hover:bg-white"
                   >
                     {savingPassword ? (
                       <Loader2 size={14} className="animate-spin" />
@@ -631,7 +694,7 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={handleConfirmAction}
-                className="flex-1 bg-[#EF9D39] text-black border-2 border-black rounded-xl py-3 text-xs font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                className="flex-1 bg-white text-black border-[3px] border-black rounded-[20px] py-3 text-xs font-black uppercase tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all"
               >
                 {t("profile.confirm")}
               </button>
@@ -651,7 +714,7 @@ export default function ProfilePage() {
             </p>
             <button
               onClick={handleGoToLoginAfterPasswordChange}
-              className="w-full bg-[#EF9D39] text-black border-2 border-black rounded-xl py-3 text-xs font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+              className="w-full bg-white text-black border-[3px] border-black rounded-[20px] py-3 text-xs font-black uppercase tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all"
             >
               {t("profile.goToLogin")}
             </button>

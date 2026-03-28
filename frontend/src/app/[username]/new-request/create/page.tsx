@@ -130,7 +130,7 @@ function BookingFormContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#EF9D39] text-black border-2 border-black py-5 rounded-2xl font-black uppercase tracking-tight shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full border-[3px] border-black bg-white py-5 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all flex items-center justify-center gap-2 hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none active:scale-[0.98] disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:shadow-[8px_8px_0px_0px_#000]"
           >
             {loading ? (
               <Loader2 className="animate-spin" />
