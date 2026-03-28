@@ -24,6 +24,7 @@ export default function NewRequestPage() {
 
   const [handymen, setHandymen] = useState<Handyman[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedService, setSelectedService] = useState("all");
 
   useEffect(() => {
     const fetchHandymen = async () => {
@@ -40,6 +41,16 @@ export default function NewRequestPage() {
   }, []);
 
   const cardStyle = { borderRadius: "24px" };
+  const serviceOptions = [
+    "all",
+    ...Array.from(
+      new Set(handymen.map((pro) => pro.service_type).filter(Boolean)),
+    ),
+  ];
+  const filteredHandymen =
+    selectedService === "all"
+      ? handymen
+      : handymen.filter((pro) => pro.service_type === selectedService);
 
   return (
     <div className="page-gradient min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">
@@ -58,6 +69,26 @@ export default function NewRequestPage() {
           </p>
         </div>
 
+        {!loading && handymen.length > 0 && (
+          <div className="mb-10">
+            <div className="flex gap-3 overflow-x-auto bg-white dark:bg-zinc-900 border-2 border-black rounded-2xl p-4">
+              {serviceOptions.map((service) => (
+                <button
+                  key={service}
+                  onClick={() => setSelectedService(service)}
+                  className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${
+                    selectedService === service
+                      ? "bg-[#EF9D39] text-black"
+                      : "bg-white dark:bg-zinc-800 text-black dark:text-white"
+                  }`}
+                >
+                  {service === "all" ? "All Services" : service}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Handyman Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {loading ? (
@@ -73,8 +104,14 @@ export default function NewRequestPage() {
                 No handymen available at the moment.
               </p>
             </div>
+          ) : filteredHandymen.length === 0 ? (
+            <div className="col-span-full text-center py-20 bg-white dark:bg-zinc-900 border-2 border-dashed border-gray-300 rounded-3xl">
+              <p className="font-bold text-gray-500 dark:text-zinc-400 uppercase">
+                No handymen in this service category.
+              </p>
+            </div>
           ) : (
-            handymen.map((pro) => (
+            filteredHandymen.map((pro) => (
               <div
                 key={pro.id}
                 style={cardStyle}

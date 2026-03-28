@@ -9,29 +9,11 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
-# NEW: Import your HandymanProfile model
-# Verify the app name: if your profiles are in a different app, adjust the path (e.g., 'services.models')
-from services.models import HandymanProfile 
 from .serializers import RegisterSerializer
 
 User = get_user_model()
 
 # --- SERIALIZERS ---
-
-class HandymanProfileSerializer(serializers.ModelSerializer):
-    # These fields pull data from the linked 'User' account
-    first_name = serializers.ReadOnlyField(source='user.first_name')
-    last_name = serializers.ReadOnlyField(source='user.last_name')
-    email = serializers.ReadOnlyField(source='user.email')
-    service_type = serializers.ReadOnlyField(source='user.service_type')
-    location = serializers.ReadOnlyField(source='user.city')
-
-    class Meta:
-        model = HandymanProfile
-        fields = [
-            'id', 'first_name', 'last_name', 'email', 
-            'service_type', 'location', 'rating', 'hourly_rate'
-        ]
 
 class UserSerializer(serializers.ModelSerializer):
     location = serializers.CharField(source='city', default="Sarajevo")
@@ -81,12 +63,11 @@ class EmailAuthSerializer(serializers.Serializer):
 
 class HandymanListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny] 
-    # UPDATED: Use the profile serializer to get real pricing/ratings
-    serializer_class = HandymanProfileSerializer
+    serializer_class = UserSerializer
 
     def get_queryset(self):
-        # Fetch data from the HandymanProfile table directly
-        return HandymanProfile.objects.all()
+        # Return handyman users directly so all DB service types are represented.
+        return User.objects.filter(role='handyman').order_by('id')
 
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
