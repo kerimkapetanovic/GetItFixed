@@ -9,7 +9,6 @@ class BookingSerializer(serializers.ModelSerializer):
     handyman_name = serializers.SerializerMethodField()
     handyman_email = serializers.SerializerMethodField()
     
-    # We add this to allow the ID to be sent during creation
     handyman = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
         required=False, 
@@ -28,9 +27,19 @@ class BookingSerializer(serializers.ModelSerializer):
             'service_type', 
             'description', 
             'scheduled_time', 
-            'status'
+            'client_proposed_time',
+            'client_counter_message',
+            'handyman_proposed_time',
+            'handyman_counter_message',
+            'status',
+            'negotiation_status',
         ]
-        read_only_fields = ['status']
+        read_only_fields = [
+            'status',
+            'negotiation_status',
+            'client_proposed_time',
+            'handyman_proposed_time',
+        ]
 
     def get_client_name(self, obj):
         if obj.client:

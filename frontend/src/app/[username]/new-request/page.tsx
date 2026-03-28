@@ -201,7 +201,7 @@ export default function NewRequestPage() {
                 </div>
 
                 <Link
-                  href={`/${username}/new-request/create?handyman_id=${pro.id}`}
+                  href={`/${username}/new-request/create?handyman_id=${pro.id}&service_type=${encodeURIComponent(pro.service_type || "")}&handyman_name=${encodeURIComponent(`${pro.first_name || ""} ${pro.last_name || ""}`.trim())}`}
                   className="group flex w-full items-center justify-between border-[3px] border-black bg-white px-6 py-4 font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none"
                   style={{ borderRadius: "20px" }}
                 >

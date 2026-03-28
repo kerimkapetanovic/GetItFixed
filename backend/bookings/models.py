@@ -3,9 +3,17 @@ from django.conf import settings
 
 class Booking(models.Model):
     STATUS_CHOICES = (
-        ('pending', 'Pending'),   # Request is live, no handyman yet
-        ('accepted', 'Accepted'), # Handyman has claimed it
+        ('pending', 'Pending'),   
+        ('accepted', 'Accepted'), 
         ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+    NEGOTIATION_STATUS_CHOICES = (
+        ('none', 'None'),
+        ('awaiting_handyman', 'Awaiting Handyman'),
+        ('awaiting_client', 'Awaiting Client'),
+        ('agreed', 'Agreed'),
+        ('declined', 'Declined'),
     )
 
     client = models.ForeignKey(
@@ -25,8 +33,17 @@ class Booking(models.Model):
     
     # UPDATED: Added null=True and blank=True so this field is no longer required
     scheduled_time = models.DateTimeField(null=True, blank=True) 
+    client_proposed_time = models.DateTimeField(null=True, blank=True)
+    client_counter_message = models.TextField(blank=True, null=True)
+    handyman_proposed_time = models.DateTimeField(null=True, blank=True)
+    handyman_counter_message = models.TextField(blank=True, null=True)
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    negotiation_status = models.CharField(
+        max_length=30,
+        choices=NEGOTIATION_STATUS_CHOICES,
+        default='none'
+    )
 
     def __str__(self):
         # Added a fallback for first_name just in case it's empty

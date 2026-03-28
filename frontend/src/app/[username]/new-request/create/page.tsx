@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../../lib/axios";
-import { Wrench, Calendar, FileText, Send, Loader2 } from "lucide-react";
+import { Calendar, FileText, Send, Loader2 } from "lucide-react";
 
 function BookingFormContent() {
   const params = useParams() as { username: string };
@@ -16,21 +16,50 @@ function BookingFormContent() {
   const handymanIdFromUrl = searchParams
     ? searchParams.get("handyman_id")
     : null;
+  const serviceTypeFromUrl = searchParams
+    ? searchParams.get("service_type")
+    : null;
+  const handymanNameFromUrl = searchParams
+    ? searchParams.get("handyman_name")
+    : null;
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    service_type: "Plumbing",
+    service_type: serviceTypeFromUrl || "General",
     description: "",
     scheduled_time: "",
     handyman_id: "", // Start empty
+    handyman_name: handymanNameFromUrl || "",
   });
+  const isDirectBooking = Boolean(formData.handyman_id);
+  const toUtcIso = (localDateTime: string) => {
+    const parsed = new Date(localDateTime);
+    return Number.isNaN(parsed.getTime()) ? localDateTime : parsed.toISOString();
+  };
+  const getErrorMessage = (error: unknown) => {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error &&
+      typeof (error as { response?: unknown }).response === "object"
+    ) {
+      const response = (error as { response?: { data?: unknown } }).response;
+      if (response?.data) {
+        return JSON.stringify(response.data);
+      }
+    }
+    return "Server error";
+  };
 
   // Sync URL parameter to state when the component mounts
   useEffect(() => {
-    if (handymanIdFromUrl) {
-      setFormData((prev) => ({ ...prev, handyman_id: handymanIdFromUrl }));
-    }
-  }, [handymanIdFromUrl]);
+    setFormData((prev) => ({
+      ...prev,
+      handyman_id: handymanIdFromUrl || "",
+      service_type: serviceTypeFromUrl || prev.service_type || "General",
+      handyman_name: handymanNameFromUrl || prev.handyman_name,
+    }));
+  }, [handymanIdFromUrl, serviceTypeFromUrl, handymanNameFromUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,18 +70,16 @@ function BookingFormContent() {
       const response = await api.post("/api/bookings/create/", {
         service_type: formData.service_type,
         description: formData.description,
+        scheduled_time: toUtcIso(formData.scheduled_time),
         handyman_id: formData.handyman_id || null,
       });
 
       console.log("Booking created:", response.data);
       router.push(`/${username}/requests`);
-    } catch (err: any) {
-      console.error("Booking failed details:", err.response?.data);
-      // Alerting the specific error from Django helps debugging a lot!
-      alert(
-        "Booking Error: " +
-          JSON.stringify(err.response?.data || "Server error"),
-      );
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      console.error("Booking failed details:", message);
+      alert("Booking Error: " + message);
     } finally {
       setLoading(false);
     }
@@ -66,30 +93,16 @@ function BookingFormContent() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Service Type */}
-          <div>
-            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
-              Service Needed
-            </label>
-            <div className="relative text-gray-900 dark:text-zinc-100">
-              <Wrench
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                size={20}
-              />
-              <select
-                value={formData.service_type}
-                onChange={(e) =>
-                  setFormData({ ...formData, service_type: e.target.value })
-                }
-                className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-black p-4 pl-12 rounded-xl font-bold appearance-none outline-none focus:ring-2 focus:ring-[#EF9D39] dark:text-white"
-              >
-                <option value="Plumbing">Plumbing</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Mechanic">Mechanic</option>
-                <option value="Cleaning">Cleaning</option>
-                <option value="Carpentry">Carpentry</option>
-              </select>
-            </div>
+          <div className="p-4 bg-[#FFF8EA] dark:bg-zinc-800/60 border-2 border-black rounded-xl">
+            <p className="text-xs font-black uppercase tracking-widest mb-1 text-gray-500 dark:text-zinc-400">
+              Selected expert
+            </p>
+            <p className="text-lg font-black uppercase text-black dark:text-white">
+              {formData.handyman_name || `Expert #${formData.handyman_id || "-"}`}
+            </p>
+            <p className="mt-1 text-sm font-bold uppercase text-[#EF9D39]">
+              Service: {formData.service_type}
+            </p>
           </div>
 
           {/* Description */}
@@ -114,14 +127,36 @@ function BookingFormContent() {
             </div>
           </div>
 
-          {/* Handyman Badge - Shows if we're booking someone specific */}
-          {formData.handyman_id && (
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
-              <div className="bg-yellow-400 p-2 rounded-lg text-black font-black">
-                PRO
-              </div>
+          {/* Preferred arrival time */}
+          <div>
+            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
+              Preferred visit date and time
+            </label>
+            <div className="relative text-gray-900 dark:text-zinc-100">
+              <Calendar
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                size={20}
+              />
+              <input
+                required
+                type="datetime-local"
+                value={formData.scheduled_time}
+                onChange={(e) =>
+                  setFormData({ ...formData, scheduled_time: e.target.value })
+                }
+                className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-black p-4 pl-12 rounded-xl font-bold outline-none focus:ring-2 focus:ring-[#EF9D39] dark:text-white"
+              />
+            </div>
+            <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-zinc-400">
+              This will be sent as your requested appointment time.
+            </p>
+          </div>
+
+          {isDirectBooking && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 rounded-xl flex items-center gap-3">
+              <div className="bg-yellow-400 p-2 rounded-lg text-black font-black">PRO</div>
               <p className="text-sm font-bold text-yellow-800 dark:text-yellow-400 uppercase tracking-tight">
-                Direct booking for Expert ID: #{formData.handyman_id}
+                Direct request sent to this expert. Status will stay waiting until they respond.
               </p>
             </div>
           )}
@@ -130,7 +165,7 @@ function BookingFormContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full border-[3px] border-black bg-white py-5 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all flex items-center justify-center gap-2 hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none active:scale-[0.98] disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:shadow-[8px_8px_0px_0px_#000]"
+            className="w-full border-[3px] border-black bg-white text-black py-5 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all flex items-center justify-center gap-2 hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none active:scale-[0.98] disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:shadow-[8px_8px_0px_0px_#000]"
           >
             {loading ? (
               <Loader2 className="animate-spin" />
