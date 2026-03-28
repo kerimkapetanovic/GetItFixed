@@ -53,7 +53,7 @@ export default function NewRequestPage() {
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-black dark:text-white">
             Find Your <span className="text-[#EF9D39]">Expert</span>
           </h1>
-          <p className="text-gray-500 font-bold text-xs mt-2 uppercase tracking-widest">
+          <p className="text-gray-500 dark:text-zinc-400 font-bold text-xs mt-2 uppercase tracking-widest">
             Select a professional to get started
           </p>
         </div>
@@ -69,7 +69,7 @@ export default function NewRequestPage() {
             </div>
           ) : handymen.length === 0 ? (
             <div className="col-span-full text-center py-20 bg-white dark:bg-zinc-900 border-2 border-dashed border-gray-300 rounded-3xl">
-              <p className="font-bold text-gray-500 uppercase">
+              <p className="font-bold text-gray-500 dark:text-zinc-400 uppercase">
                 No handymen available at the moment.
               </p>
             </div>
@@ -78,7 +78,7 @@ export default function NewRequestPage() {
               <div
                 key={pro.id}
                 style={cardStyle}
-                className="bg-white dark:bg-zinc-900 border-[3px] border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1"
+                className="bg-white dark:bg-zinc-900 border-[3px] border-black p-6 text-gray-900 dark:text-zinc-100 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1"
               >
                 <div className="flex items-center gap-4 mb-6">
                   {/* Initials Circle */}

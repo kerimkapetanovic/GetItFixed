@@ -87,13 +87,13 @@ export default function ChatClient() {
        
 
         <div className={styles.quickArea}>
-          <label className="text-xs font-semibold mr-2">Quick prompts:</label>
+          <label className="text-xs font-semibold mr-2 text-gray-700 dark:text-zinc-300">Quick prompts:</label>
           <div className={styles.quickButtons}>
             {quickPrompts.map((p) => (
               <button
                 key={p}
                 type="button"
-                className="px-3 py-1 text-xs bg-gray-100 rounded-md hover:bg-gray-200"
+                className="px-3 py-1 text-xs bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-zinc-200 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700"
                 onClick={() => handleSend(p)}
               >
                 {p}
@@ -110,7 +110,7 @@ export default function ChatClient() {
           {isThinking && (
             <div className="flex items-start gap-2 mt-2">
               <div className={styles.assistantAvatar} aria-hidden />
-              <div className="bg-gray-100 px-3 py-2 rounded-md text-sm text-gray-700">
+              <div className="bg-gray-100 dark:bg-zinc-800 px-3 py-2 rounded-md text-sm text-gray-700 dark:text-zinc-300">
                 <em>Thinking...</em>
               </div>
             </div>
@@ -119,11 +119,11 @@ export default function ChatClient() {
 
         <div className={styles.footer}>
           <div className="flex items-center gap-3 mb-2">
-            <label className="text-xs font-semibold">Category</label>
+            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">Category</label>
             <select
               value={serviceCategory}
               onChange={(e) => setServiceCategory(e.target.value)}
-              className="text-sm border px-3 py-1 rounded-md"
+              className="text-sm border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 px-3 py-1 rounded-md"
               aria-label="Service category"
             >
               <option value="general">General</option>
@@ -132,7 +132,7 @@ export default function ChatClient() {
               <option value="hvac">HVAC</option>
               <option value="carpentry">Carpentry</option>
             </select>
-            <div className="text-xs text-gray-500 ml-auto">Frontend-only (dummy)</div>
+            <div className="text-xs text-gray-500 dark:text-zinc-400 ml-auto">Frontend-only (dummy)</div>
           </div>
 
           <InputBar

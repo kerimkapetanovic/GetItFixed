@@ -56,7 +56,7 @@ export default function SettingsPage() {
         <section className="border-[3px] border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] dark:shadow-[10px_10px_0px_0px_rgba(239,157,57,0.25)]" style={{ borderRadius: "28px" }}>
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-[#FFF6EC] px-4 py-2 text-[10px] font-black uppercase tracking-[0.25em]">
+              <div className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-[#FFF6EC] px-4 py-2 text-[10px] font-black uppercase tracking-[0.25em] text-black">
                 <Settings2 size={14} />
                 <span>{t("settings.title")}</span>
               </div>

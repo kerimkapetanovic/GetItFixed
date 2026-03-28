@@ -42,14 +42,14 @@ export default function HelpCenter() {
     };
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen font-sans relative dark:text-white">
+        <div className="page-gradient flex flex-col min-h-screen font-sans relative text-black">
             <Header />
 
             <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
                 
                 {/* 1. SEARCH BOX HERO */}
                 <div 
-                    className="text-center mb-10 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                    className="text-center mb-10 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                     style={{ borderRadius: '30px' }}
                 >
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-4 leading-none text-black">
@@ -59,7 +59,7 @@ export default function HelpCenter() {
                         <input 
                             type="text" 
                             placeholder="Search problems..." 
-                            className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400"
+                            className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400"
                         />
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-black text-white px-3 py-1 rounded-lg font-black text-[10px] cursor-pointer hover:bg-[#EF9D39] hover:text-black transition-colors">
                             GO
@@ -76,7 +76,7 @@ export default function HelpCenter() {
                             className="group relative"
                         >
                             <div className="absolute inset-0 bg-black translate-x-1.5 translate-y-1.5 rounded-xl group-hover:bg-[#EF9D39] transition-all" />
-                            <div className="relative bg-white border-[3px] border-black px-6 py-3.5 rounded-xl font-black uppercase text-[12px] tracking-wider flex items-center gap-3 transition-transform group-hover:-translate-y-0.5">
+                            <div className="relative bg-white force-light-surface-text border-[3px] border-black px-6 py-3.5 rounded-xl font-black uppercase text-[12px] tracking-wider flex items-center gap-3 transition-transform group-hover:-translate-y-0.5">
                                 <span className="text-xl">{item.icon}</span>
                                 {item.label}
                             </div>
@@ -86,14 +86,14 @@ export default function HelpCenter() {
 
                 {/* 3. FAQ ACCORDION */}
                 <div className="space-y-5">
-                    <h2 className="text-2xl font-black uppercase mb-6 ml-2 tracking-tight">Common Questions</h2>
+                    <h2 className="text-2xl font-black uppercase mb-6 ml-2 tracking-tight text-black">Common Questions</h2>
                     {faqs.map((faq, idx) => (
                         <details id={faq.id} key={idx} className="group relative scroll-mt-24">
-                            <summary className="list-none cursor-pointer relative z-10 bg-white border-[3px] border-black p-6 rounded-2xl font-black text-base flex justify-between items-center transition-all group-open:mb-2 hover:bg-[#FFF9F4]">
+                            <summary className="list-none cursor-pointer relative z-10 bg-white force-light-surface-text border-[3px] border-black p-6 rounded-2xl font-black text-base flex justify-between items-center transition-all group-open:mb-2 hover:bg-[#FFF9F4]">
                                 {faq.q}
                                 <span className="text-2xl transition-transform group-open:rotate-45 text-[#EF9D39]">+</span>
                             </summary>
-                            <div className="bg-white border-[3px] border-black p-7 rounded-2xl mt-[-10px] pt-12 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="bg-white force-light-surface-text border-[3px] border-black p-7 rounded-2xl mt-[-10px] pt-12 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                                 <p className="text-sm font-bold text-gray-600 leading-relaxed">
                                     {faq.a}
                                 </p>
@@ -124,7 +124,7 @@ export default function HelpCenter() {
             {/* --- TRACKING MODAL --- */}
             {isTrackingModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="relative w-full max-w-sm bg-white border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]" style={{ borderRadius: '28px' }}>
+                    <div className="relative w-full max-w-sm bg-white force-light-surface-text border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]" style={{ borderRadius: '28px' }}>
                         <button onClick={() => setIsTrackingModalOpen(false)} className="absolute top-5 right-5 p-1.5 bg-gray-100 border-2 border-black rounded-full hover:bg-[#EF9D39] transition-colors">
                             <X size={18} />
                         </button>
@@ -136,7 +136,7 @@ export default function HelpCenter() {
                             <p className="font-bold text-gray-400 uppercase text-[9px] tracking-widest mt-1">Enter your 6-digit repair ID</p>
                         </div>
                         <div className="space-y-3">
-                            <input type="text" placeholder="#GFX-0000" className="w-full p-4 border-[3px] border-black rounded-xl font-black text-center text-base uppercase outline-none focus:ring-4 focus:ring-[#EF9D39]/20 transition-all placeholder:text-gray-400" />
+                            <input type="text" placeholder="#GFX-0000" className="w-full p-4 border-[3px] border-black rounded-xl font-black text-center text-base text-gray-900 dark:text-gray-900 uppercase outline-none focus:ring-4 focus:ring-[#EF9D39]/20 transition-all placeholder:text-gray-400" />
                             <button className="w-full bg-black text-white p-4 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-[#EF9D39] hover:text-black border-2 border-black transition-all">Locate Repair</button>
                         </div>
                     </div>
@@ -146,7 +146,7 @@ export default function HelpCenter() {
             {/* --- SUPPORT TICKET FORM MODAL --- */}
             {isTicketModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-                    <div className="relative w-full max-w-lg bg-white border-[3px] border-black p-6 md:p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] my-8" style={{ borderRadius: '28px' }}>
+                    <div className="relative w-full max-w-lg bg-white force-light-surface-text border-[3px] border-black p-6 md:p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] my-8" style={{ borderRadius: '28px' }}>
                         <button onClick={() => setIsTicketModalOpen(false)} className="absolute top-4 right-4 p-1.5 bg-gray-100 border-2 border-black rounded-full hover:bg-[#EF9D39] transition-colors">
                             <X size={18} />
                         </button>
@@ -161,16 +161,16 @@ export default function HelpCenter() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Full Name</label>
-                                    <input required type="text" placeholder="John Doe" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
+                                    <input required type="text" placeholder="John Doe" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
                                 </div>
                                 <div>
                                     <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Email Address</label>
-                                    <input required type="email" placeholder="john@example.com" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
+                                    <input required type="email" placeholder="john@example.com" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
                                 </div>
                             </div>
                             <div>
                                 <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Issue Category</label>
-                                <select className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all bg-white cursor-pointer">
+                                <select className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all bg-white cursor-pointer">
                                     <option>Payment Issue</option>
                                     <option>Report a Provider</option>
                                     <option>Technical Bug</option>
@@ -179,7 +179,7 @@ export default function HelpCenter() {
                             </div>
                             <div>
                                 <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Description</label>
-                                <textarea required rows={3} placeholder="Please describe your problem..." className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400 resize-none"></textarea>
+                                <textarea required rows={3} placeholder="Please describe your problem..." className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400 resize-none"></textarea>
                             </div>
                             <button type="submit" className="w-full flex items-center justify-center gap-3 bg-[#EF9D39] text-black p-4 rounded-xl font-black uppercase tracking-widest hover:bg-black hover:text-white border-[3px] border-black transition-all text-xs mt-2">
                                 Submit Ticket <Send size={18} />

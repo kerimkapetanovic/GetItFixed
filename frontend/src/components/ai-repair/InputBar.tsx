@@ -32,7 +32,7 @@ export default function InputBar({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className="flex-1 px-4 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-yellow-200"
+        className="flex-1 px-4 py-2 border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500 rounded-md text-sm outline-none focus:ring-2 focus:ring-yellow-200 dark:focus:ring-yellow-600"
       />
       <button
         type="button"

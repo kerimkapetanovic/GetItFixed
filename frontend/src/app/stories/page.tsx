@@ -44,14 +44,14 @@ export default function StoriesPage() {
     ];
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen dark:text-white">
+        <div className="page-gradient flex flex-col min-h-screen text-black">
             <Header />
 
             <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
                 
                 {/* NASLOV SEKCIJA SA BIJELIM BOXOM */}
                 <div 
-                    className="text-center mb-10 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                    className="text-center mb-10 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                     style={{ borderRadius: '30px' }}
                 >
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
@@ -64,7 +64,7 @@ export default function StoriesPage() {
 
                 {/* CONTAINER ZA CHAT - Bijeli box */}
                 <div 
-                    className="relative border-[3px] border-black p-6 md:p-10 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                    className="relative border-[3px] border-black p-6 md:p-10 bg-white force-light-surface-text shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
                     style={{ borderRadius: '30px' }}
                 >
                     <div className="space-y-8">
@@ -80,7 +80,7 @@ export default function StoriesPage() {
                                     <div
                                         onMouseEnter={() => setHoveredId(story.id)}
                                         onMouseLeave={() => setHoveredId(null)}
-                                        className={`w-full max-w-md border-[3px] border-black p-5 relative transition-all duration-200 bg-white`}
+                                        className={`w-full max-w-md border-[3px] border-black p-5 relative transition-all duration-200 bg-white force-light-surface-text`}
                                         style={{ 
                                             borderRadius: '24px',
                                             boxShadow: isHovered ? '4px 4px 0px 0px #000' : '6px 6px 0px 0px #000',
@@ -130,7 +130,7 @@ export default function StoriesPage() {
 
                 {/* CTA DUGME - POVEĆANO */}
                 <div className="mt-10 flex flex-col items-center">
-                    <p className="text-xs font-black text-black uppercase tracking-[0.2em] mb-8">
+                    <p className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-8">
                         Ready to share your own story?
                     </p>
                     <Link

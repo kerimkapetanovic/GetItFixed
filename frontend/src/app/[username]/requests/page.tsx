@@ -52,7 +52,7 @@ export default function MyRequestsPage() {
           <h1 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">
             My Requests
           </h1>
-          <p className="text-gray-500 font-bold text-xs mt-2 uppercase tracking-widest">
+          <p className="text-gray-500 dark:text-zinc-400 font-bold text-xs mt-2 uppercase tracking-widest">
             Track your repairs and handymen
           </p>
         </div>
@@ -63,7 +63,7 @@ export default function MyRequestsPage() {
               Loading your requests...
             </div>
           ) : requests.length === 0 ? (
-            <div className="text-center font-bold text-gray-500 uppercase">
+            <div className="text-center font-bold text-gray-500 dark:text-zinc-400 uppercase">
               You haven't posted any jobs yet.
             </div>
           ) : (
@@ -71,7 +71,7 @@ export default function MyRequestsPage() {
               <div
                 key={req.id}
                 style={cardStyle}
-                className="bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6"
+                className="bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 text-gray-900 dark:text-zinc-100 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>

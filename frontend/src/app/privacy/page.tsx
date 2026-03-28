@@ -50,7 +50,7 @@ export default function PrivacyPage() {
     ];
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen font-sans dark:text-white">
+        <div className="page-gradient flex flex-col min-h-screen font-sans text-black">
             <Header />
 
             <main className="flex-grow max-w-5xl mx-auto px-6 py-12 w-full">
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
                 {/* HERO SECTION - Smanjen i kompaktniji */}
                 <div className="relative mb-16 mt-6">
                     <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 rounded-[32px]" />
-                    <div className="relative bg-white border-[3px] border-black p-10 text-center rounded-[32px]">
+                    <div className="relative bg-white force-light-surface-text border-[3px] border-black p-10 text-center rounded-[32px]">
                         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none text-black">
                             PRIVACY <span style={{ color: brandColor }} className="italic">POLICY</span>
                         </h1>
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
                         <div key={idx} className="group relative">
                             <div className="absolute inset-0 bg-black translate-x-1.5 translate-y-1.5 rounded-[24px] transition-all duration-300 group-hover:translate-x-1 group-hover:translate-y-1 group-hover:bg-[#EF9D39]" />
                             
-                            <div className="relative h-full bg-white border-[3px] border-black p-6 rounded-[24px] flex flex-col">
+                            <div className="relative h-full bg-white force-light-surface-text border-[3px] border-black p-6 rounded-[24px] flex flex-col">
                                 <span className="text-2xl font-black opacity-10 absolute right-5 top-4">0{idx + 1}</span>
                                 <h2 className="text-lg font-black uppercase mb-3 pr-8 leading-tight">
                                     {section.title}
@@ -107,7 +107,7 @@ export default function PrivacyPage() {
                 {/* FINAL CONTACT CALLOUT - Ažurirani podaci */}
                 <div className="mt-16 relative">
                     <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 rounded-[32px]" />
-                    <div className="relative bg-white border-[3px] border-black p-8 rounded-[32px] flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="relative bg-white force-light-surface-text border-[3px] border-black p-8 rounded-[32px] flex flex-col md:flex-row justify-between items-center gap-6">
                         <div className="text-center md:text-left">
                             <h2 className="text-3xl font-black uppercase tracking-tight">Need Clarity?</h2>
                             <p className="font-bold text-gray-400 uppercase tracking-widest text-[10px] mt-1">

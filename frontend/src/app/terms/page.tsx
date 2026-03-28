@@ -43,13 +43,13 @@ export default function TermsPage() {
     ];
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen font-sans dark:text-white">
+        <div className="page-gradient flex flex-col min-h-screen font-sans text-black">
             <Header />
 
             <main className="flex-grow max-w-4xl mx-auto px-6 py-12 w-full">
                 
                 {/* 1. HERO SECTION - Compact Style */}
-                <div className="bg-white border-[3px] border-black p-8 md:p-12 rounded-[32px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mb-12 text-center">
+                <div className="bg-white force-light-surface-text border-[3px] border-black p-8 md:p-12 rounded-[32px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mb-12 text-center">
                     {/* Italic uklonjen ovdje */}
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-6 leading-none text-black">
                         TERMS <span style={{ color: brandColor }}>OF SERVICE</span>
@@ -63,7 +63,7 @@ export default function TermsPage() {
                 {/* 2. TERMS CONTENT - Smaller fonts & tighter spacing */}
                 <div className="space-y-5">
                     {sections.map((s, i) => (
-                        <div key={i} className="bg-white border-[3px] border-black p-6 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div key={i} className="bg-white force-light-surface-text border-[3px] border-black p-6 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                             <h3 className="font-black uppercase text-lg mb-3 tracking-tight">{s.title}</h3>
                             
                             {s.content && (

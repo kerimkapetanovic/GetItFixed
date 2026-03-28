@@ -34,14 +34,14 @@ const HowItWorks = () => {
   const brandColor = "#EF9D39";
 
   return (
-    <div className="page-gradient flex flex-col min-h-screen dark:text-white">
+    <div className="page-gradient flex flex-col min-h-screen text-black">
       <Header />
       
       <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
         
         {/* NASLOV SEKCIJA SA BIJELIM BOXOM - NOVO */}
         <div 
-          className="text-center mb-12 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+          className="text-center mb-12 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
           style={{ borderRadius: '30px' }}
         >
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
@@ -68,7 +68,7 @@ const HowItWorks = () => {
               </div>
 
               <div 
-                className="flex-grow border-[3px] border-black p-5 bg-white shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
+                className="flex-grow border-[3px] border-black p-5 bg-white force-light-surface-text shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
                 style={{ borderRadius: '20px' }}
               >
                 <h3 className="text-lg font-black uppercase tracking-tight mb-1">

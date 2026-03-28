@@ -31,12 +31,14 @@ export default function MessageBubble({ message }: { message: Message }) {
 
       <div
         className={`max-w-[78%] px-4 py-2 rounded-lg text-sm ${
-          isUser ? 'bg-black text-white rounded-br-none' : 'bg-gray-100 text-gray-800 rounded-bl-none'
+          isUser
+            ? 'bg-black text-white rounded-br-none'
+            : 'bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-zinc-200 rounded-bl-none'
         }`}
       >
         <div>{message.text}</div>
         {timeLabel && (
-          <div className="text-[10px] text-gray-400 mt-1 text-right">
+          <div className="text-[10px] text-gray-400 dark:text-zinc-500 mt-1 text-right">
             {timeLabel}
           </div>
         )}

@@ -18,13 +18,13 @@ export default function ProviderFaqPage() {
   ];
 
   return (
-    <div className="page-gradient flex flex-col min-h-screen font-sans dark:text-white">
+    <div className="page-gradient flex flex-col min-h-screen font-sans text-black">
       <Header />
 
       <main className="flex-grow max-w-4xl mx-auto px-6 py-12 w-full">
         
         {/* 1. HERO SECTION - Usklađen sa TermsPage */}
-        <div className="bg-white border-[3px] border-black p-8 md:p-12 rounded-[32px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mb-12 text-center">
+        <div className="bg-white force-light-surface-text border-[3px] border-black p-8 md:p-12 rounded-[32px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mb-12 text-center">
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-6 leading-none text-black">
             PROVIDER <span style={{ color: brandColor }}>FAQ</span>
           </h1>
@@ -36,7 +36,7 @@ export default function ProviderFaqPage() {
         {/* 2. FAQ CARDS - Smanjeni boxovi i fontovi */}
         <div className="space-y-5">
           {faqs.map((f, i) => (
-            <div key={i} className="bg-white border-[3px] border-black p-6 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div key={i} className="bg-white force-light-surface-text border-[3px] border-black p-6 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <h3 className="font-black uppercase text-lg mb-3 tracking-tight">{f.q}</h3>
               <div className="text-[13px] font-medium text-gray-600 leading-relaxed">
                 {f.a}

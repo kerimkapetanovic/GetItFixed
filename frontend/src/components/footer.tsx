@@ -46,28 +46,28 @@ export default function Footer() {
           </h4>
           <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 dark:text-zinc-400 uppercase">
             <li>
-              <Link href="/services" className="hover:text-black">
+              <Link href="/services" className="hover:text-black dark:hover:text-zinc-200">
                 {t("footer.ourServices")}
               </Link>
             </li>
 
             <li>
-              <Link href="/how-it-works" className="hover:text-black">
+              <Link href="/how-it-works" className="hover:text-black dark:hover:text-zinc-200">
                 {t("header.howItWorks")}
               </Link>
             </li>
             <li>
-              <Link href="/stories" className="hover:text-black">
+              <Link href="/stories" className="hover:text-black dark:hover:text-zinc-200">
                 {t("footer.successStories")}
               </Link>
             </li>
             <li>
-              <Link href="/help" className="hover:text-black">
+              <Link href="/help" className="hover:text-black dark:hover:text-zinc-200">
                 {t("footer.helpCenter")}
               </Link>
             </li>
             <li>
-              <Link href="/privacy" className="hover:text-black">
+              <Link href="/privacy" className="hover:text-black dark:hover:text-zinc-200">
                 {t("footer.privacyPolicy")}
               </Link>
             </li>
@@ -81,17 +81,17 @@ export default function Footer() {
           </h4>
           <ul className="flex flex-col gap-3 text-sm font-bold text-gray-500 dark:text-zinc-400 uppercase">
             <li>
-              <Link href="/register?role=pro" className="hover:text-black">
+              <Link href="/register?role=pro" className="hover:text-black dark:hover:text-zinc-200">
                 {t("footer.joinAsPro")}
               </Link>
             </li>
             <li>
-              <Link href="/terms" className="hover:text-black">
+              <Link href="/terms" className="hover:text-black dark:hover:text-zinc-200">
                 {t("footer.termsOfService")}
               </Link>
             </li>
             <li>
-              <Link href="/faq-pros" className="hover:text-black">
+              <Link href="/faq-pros" className="hover:text-black dark:hover:text-zinc-200">
                 {t("footer.providerFaq")}
               </Link>
             </li>
@@ -104,12 +104,12 @@ export default function Footer() {
             {t("footer.contact")}
           </h4>
           <ul className="flex flex-col gap-4 text-sm font-bold">
-            <li className="flex items-center gap-3 lowercase hover:text-gray-600 transition-colors">
-              <FaEnvelope className="text-black" />
+            <li className="flex items-center gap-3 lowercase text-gray-700 dark:text-zinc-300 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors">
+              <FaEnvelope className="text-gray-700 dark:text-zinc-300" />
               <a href="mailto:contact@getitfixed.ba">getitfixed@gmail.com</a>
             </li>
-            <li className="flex items-center gap-3 hover:text-gray-600 transition-colors">
-              <FaPhoneAlt className="text-black" />
+            <li className="flex items-center gap-3 text-gray-700 dark:text-zinc-300 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors">
+              <FaPhoneAlt className="text-gray-700 dark:text-zinc-300" />
               <a href="tel:+38761123456">+387 61 123 456</a>
             </li>
           </ul>

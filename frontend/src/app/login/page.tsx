@@ -96,11 +96,11 @@ export default function LoginPage() {
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === "client"
                   ? "border-black bg-[linear-gradient(90deg,#EF9D39_10%,#FFD25A_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-0.5 -translate-y-0.5"
-                  : "border-gray-100 bg-white hover:border-gray-200 opacity-60"
+                  : "border-gray-100 dark:border-zinc-700 bg-white dark:bg-zinc-800 opacity-60 hover:opacity-100 text-gray-400 dark:text-zinc-500"
               }`}
             >
               <div
-                className={`p-3 rounded-xl mb-3 ${role === "client" ? " text-black" : "bg-gray-100 text-gray-400"}`}
+                className={`p-3 rounded-xl mb-3 ${role === "client" ? " text-black" : "bg-gray-100 dark:bg-zinc-700 text-gray-400 dark:text-zinc-300"}`}
               >
                 <User size={24} strokeWidth={3} />
               </div>
@@ -119,11 +119,11 @@ export default function LoginPage() {
               className={`flex flex-col items-center justify-center p-6 border-4 transition-all ${
                 role === "handyman"
                   ? "border-black bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-x-0.5 -translate-y-0.5"
-                  : "border-gray-100 bg-white hover:border-gray-200 opacity-60"
+                  : "border-gray-100 dark:border-zinc-700 bg-white dark:bg-zinc-800 opacity-60 hover:opacity-100 text-gray-400 dark:text-zinc-500"
               }`}
             >
               <div
-                className={`p-3 rounded-xl mb-3 ${role === "handyman" ? " text-black" : "bg-gray-100 text-gray-400"}`}
+                className={`p-3 rounded-xl mb-3 ${role === "handyman" ? " text-black" : "bg-gray-100 dark:bg-zinc-700 text-gray-400 dark:text-zinc-300"}`}
               >
                 <Hammer size={24} strokeWidth={3} />
               </div>
@@ -183,7 +183,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 flex items-center justify-center text-black hover:scale-110 transition-transform z-30 bg-transparent border-none"
+                  className="absolute right-4 flex items-center justify-center text-gray-700 dark:text-zinc-300 hover:scale-110 transition-transform z-30 bg-transparent border-none"
                 >
                   {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                 </button>
@@ -203,7 +203,7 @@ export default function LoginPage() {
           <div className="mt-10 text-center">
             <Link
               href="/register"
-              className="text-gray-500 text-xs font-bold uppercase tracking-tight"
+              className="text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-tight"
             >
               {t("login.registerPrompt")}{" "}
               <span className="text-black dark:text-white border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 dark:hover:bg-yellow-700 transition-colors">

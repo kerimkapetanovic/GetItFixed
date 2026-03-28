@@ -50,6 +50,19 @@ const phoneInputCustomStyles = `
     margin-left: 5px;
     opacity: 0.7;
   }
+  .dark .PhoneInput {
+    background: #27272a;
+    border-color: #52525b;
+  }
+  .dark .PhoneInput:focus-within {
+    background-color: #3f3f46;
+  }
+  .dark .PhoneInputInput {
+    color: #f4f4f5;
+  }
+  .dark .PhoneInputCountry {
+    border-right-color: #71717a;
+  }
 `;
 
 export default function RegisterPage() {
@@ -202,22 +215,22 @@ export default function RegisterPage() {
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">{t('register.firstName')}</label>
-                <input required type="text" placeholder={t('register.placeholders.firstName')} style={inputRadius} value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1">{t('register.firstName')}</label>
+                <input required type="text" placeholder={t('register.placeholders.firstName')} style={inputRadius} value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-4 text-sm font-bold text-gray-900 dark:text-white outline-none focus:bg-yellow-50 dark:focus:bg-zinc-700 transition-all placeholder:text-gray-400 dark:placeholder:text-zinc-500" />
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1">{t('register.lastName')}</label>
-                <input required type="text" placeholder={t('register.placeholders.lastName')} style={inputRadius} value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1">{t('register.lastName')}</label>
+                <input required type="text" placeholder={t('register.placeholders.lastName')} style={inputRadius} value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-4 text-sm font-bold text-gray-900 dark:text-white outline-none focus:bg-yellow-50 dark:focus:bg-zinc-700 transition-all placeholder:text-gray-400 dark:placeholder:text-zinc-500" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Mail size={12} /> {t('register.email')}</label>
-                <input required type="email" placeholder={t('register.placeholders.email')} style={inputRadius} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none focus:bg-yellow-50 transition-all placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Mail size={12} /> {t('register.email')}</label>
+                <input required type="email" placeholder={t('register.placeholders.email')} style={inputRadius} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-4 text-sm font-bold text-gray-900 dark:text-white outline-none focus:bg-yellow-50 dark:focus:bg-zinc-700 transition-all placeholder:text-gray-400 dark:placeholder:text-zinc-500" />
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
+                <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
                   <Phone size={12} /> {t('register.phone')}
                 </label>
                 <PhoneInput
@@ -231,10 +244,10 @@ export default function RegisterPage() {
 
             {/* EXPERTISE SECTION */}
             {role === 'handyman' && (
-              <div className="p-6 border-4 border-black bg-gray-50 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]" style={{ borderRadius: '24px' }}>
+              <div className="p-6 border-4 border-black dark:border-zinc-600 bg-gray-50 dark:bg-zinc-800 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]" style={{ borderRadius: '24px' }}>
                 <div className="group relative">
-                  <label className="block text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2">
-                    <Briefcase size={14} className="text-black" /> {t('register.expertise')}
+                  <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2">
+                    <Briefcase size={14} className="text-gray-900 dark:text-zinc-100" /> {t('register.expertise')}
                   </label>
                   <div className="relative">
                     <select 
@@ -242,7 +255,7 @@ export default function RegisterPage() {
                       style={inputRadius}
                       value={formData.expertise}
                       onChange={(e) => setFormData({...formData, expertise: e.target.value})}
-                      className="w-full bg-white border-2 border-black p-5 pr-12 text-sm font-bold normal-case tracking-tight outline-none focus:bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)] focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all appearance-none cursor-pointer"
+                      className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-600 p-5 pr-12 text-sm font-bold text-gray-900 dark:text-white normal-case tracking-tight outline-none focus:bg-[linear-gradient(90deg,#FFD25A_10%,#EF9D39_90%)] dark:focus:bg-zinc-700 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all appearance-none cursor-pointer"
                     >
                       <option value="" disabled className="text-gray-400">{t('register.expertisePlaceholder')}</option>
                       {serviceOptions.map((service) => (
@@ -259,14 +272,14 @@ export default function RegisterPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Globe size={12} /> {t('register.country')}</label>
+                <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Globe size={12} /> {t('register.country')}</label>
                 <div className="relative">
                   <select 
                     required 
                     style={inputRadius}
                     value={formData.country} 
                     onChange={(e) => setFormData({...formData, country: e.target.value})} 
-                    className="w-full bg-white border-2 border-black p-4 pr-10 text-sm font-bold outline-none appearance-none cursor-pointer"
+                    className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-4 pr-10 text-sm font-bold text-gray-900 dark:text-white outline-none appearance-none cursor-pointer"
                   >
                     <option value="" disabled>{t('register.select')}</option>
                     {countries.map((c) => <option key={c.value} value={c.label}>{c.label}</option>)}
@@ -277,18 +290,18 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><MapPin size={12} /> {t('register.city')}</label>
-                <input type="text" placeholder={t('register.placeholders.city')} style={inputRadius} value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><MapPin size={12} /> {t('register.city')}</label>
+                <input type="text" placeholder={t('register.placeholders.city')} style={inputRadius} value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-4 text-sm font-bold text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:placeholder:text-zinc-500" />
               </div>
               <div className="group">
-                <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Hash size={12} /> {t('register.zipCode')}</label>
-                <input type="text" placeholder={t('register.placeholders.zipCode')} style={inputRadius} value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-white border-2 border-black p-4 text-sm font-bold outline-none placeholder:text-gray-400" />
+                <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Hash size={12} /> {t('register.zipCode')}</label>
+                <input type="text" placeholder={t('register.placeholders.zipCode')} style={inputRadius} value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-4 text-sm font-bold text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:placeholder:text-zinc-500" />
               </div>
             </div>
 
            {/* PASSWORD WITH VALIDATION */}
             <div className="group">
-              <label className="block text-xs font-black text-gray-900 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Lock size={12} /> {t('register.createPassword')}</label>
+              <label className="block text-xs font-black text-gray-900 dark:text-zinc-300 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2"><Lock size={12} /> {t('register.createPassword')}</label>
               <div className="relative flex flex-col w-full">
                 <div className="relative flex items-center">
                   <input 
@@ -301,9 +314,9 @@ export default function RegisterPage() {
                       setFormData({...formData, password: e.target.value});
                       if(e.target.value.length >= 8) setPasswordError(false);
                     }} 
-                    className={`w-full bg-white border-2 p-4 pr-12 text-sm font-bold outline-none transition-all block ${passwordError ? 'border-red-500 bg-red-50' : 'border-black focus:bg-yellow-50'}`} 
+                    className={`w-full bg-white dark:bg-zinc-800 border-2 p-4 pr-12 text-sm font-bold text-gray-900 dark:text-white outline-none transition-all block ${passwordError ? 'border-red-500 bg-red-50 dark:bg-red-900/30' : 'border-black dark:border-zinc-600 focus:bg-yellow-50 dark:focus:bg-zinc-700'} dark:placeholder:text-zinc-500`} 
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 text-black z-30">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 text-gray-700 dark:text-zinc-300 z-30">
                     {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                   </button>
                 </div>
@@ -321,8 +334,8 @@ export default function RegisterPage() {
           </form>
 
           <div className="mt-8 text-center">
-             <Link href="/login" className="text-gray-500 text-xs font-bold uppercase tracking-tight">
-               {t('register.alreadyHaveAccount')} <span className="text-black border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 transition-colors">{t('register.signInHere')}</span>
+             <Link href="/login" className="text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-tight">
+               {t('register.alreadyHaveAccount')} <span className="text-gray-900 dark:text-zinc-100 border-b-2 border-yellow-300 pb-0.5 hover:bg-yellow-300 transition-colors">{t('register.signInHere')}</span>
              </Link>
           </div>
         </div>

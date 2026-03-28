@@ -4,13 +4,17 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "../../lib/axios";
 import { useLanguage } from "@/components/providers/language-provider";
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "@/components/providers/theme-provider";
 
 export default function Header() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { theme, setTheme, isDark } = useTheme();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isThemeMounted, setIsThemeMounted] = useState(false);
   const [userRole, setUserRole] = useState("client");
   const [userData, setUserData] = useState({ firstName: "", lastName: "" });
   const [username, setUsername] = useState("");
@@ -34,6 +38,10 @@ export default function Header() {
       setUserRole(role);
       setUserData({ firstName: fName, lastName: lName });
     }
+  }, []);
+
+  useEffect(() => {
+    setIsThemeMounted(true);
   }, []);
 
   // 2. LOGOUT LOGIKA (ČISTI I KUKI I LOCALSTORAGE)
@@ -99,6 +107,10 @@ export default function Header() {
           ? t("header.admin")
           : userRole;
 
+  const handleThemeToggle = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
   return (
     <header className="border-b-2 border-black dark:border-zinc-700 w-full bg-white dark:bg-zinc-900 px-6 py-5 font-sans uppercase tracking-tight relative z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -147,6 +159,20 @@ export default function Header() {
 
         {/* DESNA STRANA (Login ili Profile) */}
         <div className="flex items-center gap-4 shrink-0">
+          <button
+            type="button"
+            onClick={handleThemeToggle}
+            aria-label={t("header.toggleThemeAria")}
+            title={t("header.toggleThemeAria")}
+            className="flex items-center gap-2 border-2 border-black dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+          >
+            {isThemeMounted && isDark ? <Sun size={14} /> : <Moon size={14} />}
+            <span className="hidden sm:inline">
+              {isThemeMounted && isDark
+                ? t("header.lightMode")
+                : t("header.darkMode")}
+            </span>
+          </button>
           {!isLoggedIn ? (
             <div className="flex items-center gap-4">
               <Link href="/login">
@@ -177,7 +203,7 @@ export default function Header() {
                       ? `${userData.firstName} ${userData.lastName}`
                       : translatedRole}
                   </p>
-                  <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase leading-none">
+                  <p className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 mt-1 uppercase leading-none">
                     {translatedRole}
                   </p>
                 </div>

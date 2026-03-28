@@ -68,10 +68,10 @@ function BookingFormContent() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Service Type */}
           <div>
-            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500">
+            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
               Service Needed
             </label>
-            <div className="relative text-black">
+            <div className="relative text-gray-900 dark:text-zinc-100">
               <Wrench
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
                 size={20}
@@ -94,10 +94,10 @@ function BookingFormContent() {
 
           {/* Description */}
           <div>
-            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500">
+            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
               Problem Description
             </label>
-            <div className="relative text-black">
+            <div className="relative text-gray-900 dark:text-zinc-100">
               <FileText
                 className="absolute left-4 top-4 text-gray-400"
                 size={20}

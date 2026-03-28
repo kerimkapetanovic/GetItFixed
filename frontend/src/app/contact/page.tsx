@@ -28,14 +28,14 @@ export default function ContactPage() {
     const cardRadius = { borderRadius: '24px' };
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
+        <div className="page-gradient flex flex-col min-h-screen text-black selection:bg-black selection:text-white font-sans">
             <Header />
 
             <main className="flex-grow max-w-5xl mx-auto px-6 py-12 w-full">
                 
                 {/* NASLOV SEKCIJA SA BIJELIM BOXOM */}
                 <div 
-                    className="text-center mb-12 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] max-w-3xl mx-auto"
+                    className="text-center mb-12 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] max-w-3xl mx-auto"
                     style={{ borderRadius: '30px' }}
                 >
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
@@ -52,7 +52,7 @@ export default function ContactPage() {
                         {/* EMAIL KARTICA */}
                         <div 
                             style={cardRadius}
-                            className="bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                            className="bg-white force-light-surface-text border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                         >
                             <div className="flex items-center gap-4 mb-6">
                                 <div className="p-3 bg-gray-50 border-2 border-black rounded-xl">
@@ -77,7 +77,7 @@ export default function ContactPage() {
                         {/* PHONE KARTICA */}
                         <div 
                             style={cardRadius}
-                            className="bg-white border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                            className="bg-white force-light-surface-text border-[3px] border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                         >
                             <div className="flex items-center gap-4 mb-6">
                                 <div className="p-3 bg-gray-50 border-2 border-black rounded-xl">

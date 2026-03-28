@@ -9,6 +9,7 @@
   width: 100%;
   max-width: 900px;
   background: white;
+  color: #171717;
   border: 2px solid #000;
   padding: 16px;
   border-radius: 20px;
@@ -40,6 +41,7 @@
   overflow: auto;
   padding: 8px;
   background: #fafafa;
+  color: #171717;
   border-radius: 12px;
   border: 1px solid rgba(0,0,0,0.06);
 }
@@ -59,3 +61,4 @@
   justify-content: center;
   font-weight: 700;
 }
+

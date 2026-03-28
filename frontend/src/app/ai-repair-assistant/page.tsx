@@ -9,14 +9,14 @@ export default function AiRepairPage() {
     const brandColor = "#EF9D39";
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen dark:text-white">
+        <div className="page-gradient flex flex-col min-h-screen text-black">
             <Header />
             
             <main className="flex-grow max-w-4xl mx-auto px-6 py-12 w-full">
                 
                 {/* NASLOV SEKCIJA SA BIJELIM BOXOM */}
                 <div 
-                    className="text-center mb-10 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                    className="text-center mb-10 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                     style={{ borderRadius: '30px' }}
                 >
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
@@ -30,7 +30,7 @@ export default function AiRepairPage() {
                 {/* CHAT CONTAINER - Sada prati isti stil kao Stories i Services */}
                 <section className="relative">
                     <div 
-                        className="bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden" 
+                        className="bg-white force-light-surface-text border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden" 
                         style={{ borderRadius: '32px' }}
                     >
                         {/* 

@@ -36,11 +36,7 @@ body {
   background: #09090b;
 }
 
-/* In dark mode, keep content readable inside intentionally light cards. */
-.dark .bg-white {
-  color: #000;
-}
-
-.dark .bg-gray-50 {
+/* Opt-in utility for cards that stay intentionally light in dark mode. */
+.dark .force-light-surface-text {
   color: #000;
 }

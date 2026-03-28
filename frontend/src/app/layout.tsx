@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Anti-flash: set dark class before React hydrates to prevent white flash */}
         <script dangerouslySetInnerHTML={{ __html: antiFlashScript }} />

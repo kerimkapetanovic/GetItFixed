@@ -71,7 +71,7 @@ export default function HandymanDashboard() {
             pendingJobs.map((job) => (
               <div
                 key={job.id}
-                className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex justify-between items-center"
+                className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl text-gray-900 dark:text-zinc-100 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex justify-between items-center"
               >
                 <div>
                   <span className="text-[10px] font-black uppercase text-[#EF9D39]">
@@ -80,7 +80,7 @@ export default function HandymanDashboard() {
                   <h3 className="font-black text-lg uppercase leading-tight">
                     {job.client_name}
                   </h3>
-                  <p className="text-sm font-bold text-gray-500">
+                  <p className="text-sm font-bold text-gray-500 dark:text-zinc-400">
                     {job.description}
                   </p>
                 </div>
@@ -93,7 +93,7 @@ export default function HandymanDashboard() {
               </div>
             ))
           ) : (
-            <p className="font-bold text-gray-400 italic">
+            <p className="font-bold text-gray-400 dark:text-zinc-500 italic">
               No pending requests in your area.
             </p>
           )}
@@ -110,13 +110,13 @@ export default function HandymanDashboard() {
             acceptedJobs.map((job) => (
               <div
                 key={job.id}
-                className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl shadow-[5px_5px_0px_0px_rgba(59,130,246,0.5)] flex justify-between items-center"
+                className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl text-gray-900 dark:text-zinc-100 shadow-[5px_5px_0px_0px_rgba(59,130,246,0.5)] flex justify-between items-center"
               >
                 <div>
                   <h3 className="font-black text-lg uppercase">
                     {job.client_name}
                   </h3>
-                  <p className="text-sm font-bold text-blue-600">
+                  <p className="text-sm font-bold text-blue-600 dark:text-blue-300">
                     {new Date(job.scheduled_time).toLocaleString()}
                   </p>
                 </div>
@@ -124,7 +124,7 @@ export default function HandymanDashboard() {
               </div>
             ))
           ) : (
-            <p className="font-bold text-gray-400 italic">
+            <p className="font-bold text-gray-400 dark:text-zinc-500 italic">
               You haven't accepted any jobs yet.
             </p>
           )}

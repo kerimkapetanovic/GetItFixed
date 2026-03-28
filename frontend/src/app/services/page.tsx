@@ -43,13 +43,13 @@ export default function Services() {
   ];
 
   return (
-    <div className="page-gradient flex flex-col min-h-screen dark:text-white">
+    <div className="page-gradient flex flex-col min-h-screen text-black">
       <Header />
       <main className="flex-grow max-w-6xl mx-auto px-6 py-12 w-full">
         
         {/* NASLOV SEKCIJA SA BIJELIM BOXOM */}
         <div 
-          className="text-center mb-12 p-8 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] max-w-3xl mx-auto"
+          className="text-center mb-12 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] max-w-3xl mx-auto"
           style={{ borderRadius: '30px' }}
         >
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
@@ -66,7 +66,7 @@ export default function Services() {
             <div
               key={service.id}
               style={{ borderRadius: commonRadius }}
-              className="group border-[3px] border-black p-5 bg-white shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+              className="group border-[3px] border-black p-5 bg-white force-light-surface-text shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
             >
               <div className="flex items-center gap-4 mb-4">
                 <div
