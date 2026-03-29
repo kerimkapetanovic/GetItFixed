@@ -188,7 +188,7 @@ export default function Header() {
             onClick={handleThemeToggle}
             aria-label={t("header.toggleThemeAria")}
             title={t("header.toggleThemeAria")}
-            className="flex items-center gap-2 border-2 border-black dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+            className="cursor-pointer flex items-center gap-2 border-2 border-black dark:border-white bg-white dark:bg-zinc-800 px-3 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] dark:shadow-[3px_3px_0px_0px_rgba(255,255,255,255)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none dark:hover:translate-x-[1px] dark:hover:translate-y-[1px] dark:hover:shadow-none"
           >
             {isThemeMounted && isDark ? <Sun size={14} /> : <Moon size={14} />}
             <span className="hidden sm:inline">

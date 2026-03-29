@@ -73,9 +73,9 @@ export default function HelpCenter() {
                         <button 
                             key={i} 
                             onClick={item.action ? item.action : () => scrollToFaq(item.targetId)} 
-                            className="group relative"
+                            className="group relative cursor-pointer"
                         >
-                            <div className="absolute inset-0 bg-black translate-x-1.5 translate-y-1.5 rounded-xl group-hover:bg-[#EF9D39] transition-all" />
+                            <div className="absolute inset-0 bg-black translate-x-1.5 translate-y-1.5 rounded-xl group-hover:bg-[#EF9D39] transition-all " />
                             <div className="relative bg-white force-light-surface-text border-[3px] border-black px-6 py-3.5 rounded-xl font-black uppercase text-[12px] tracking-wider flex items-center gap-3 transition-transform group-hover:-translate-y-0.5">
                                 <span className="text-xl">{item.icon}</span>
                                 {item.label}
@@ -86,7 +86,7 @@ export default function HelpCenter() {
 
                 {/* 3. FAQ ACCORDION */}
                 <div className="space-y-5">
-                    <h2 className="text-2xl font-black uppercase mb-6 ml-2 tracking-tight text-black">Common Questions</h2>
+                    <h2 className="text-2xl font-black uppercase mb-6 ml-2 tracking-tight text-black dark:text-white">Common Questions</h2>
                     {faqs.map((faq, idx) => (
                         <details id={faq.id} key={idx} className="group relative scroll-mt-24">
                             <summary className="list-none cursor-pointer relative z-10 bg-white force-light-surface-text border-[3px] border-black p-6 rounded-2xl font-black text-base flex justify-between items-center transition-all group-open:mb-2 hover:bg-[#FFF9F4]">
@@ -111,7 +111,7 @@ export default function HelpCenter() {
                         </div>
                         <button 
                             onClick={() => setIsTicketModalOpen(true)}
-                            className="bg-[#EF9D39] text-black px-10 py-4 rounded-2xl font-black uppercase text-[12px] tracking-widest border-2 border-white hover:bg-white hover:scale-105 transition-all"
+                            className="bg-[#EF9D39] text-black px-10 py-4 rounded-2xl font-black uppercase text-[12px] tracking-widest border-2 border-white hover:bg-white hover:scale-105 transition-all cursor-pointer"
                         >
                             Open a Ticket
                         </button>

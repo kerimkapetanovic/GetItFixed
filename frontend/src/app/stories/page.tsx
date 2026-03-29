@@ -130,7 +130,7 @@ export default function StoriesPage() {
 
                 {/* CTA DUGME - POVEĆANO */}
                 <div className="mt-10 flex flex-col items-center">
-                    <p className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-8">
+                    <p className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-8 dark:text-white">
                         Ready to share your own story?
                     </p>
                     <Link

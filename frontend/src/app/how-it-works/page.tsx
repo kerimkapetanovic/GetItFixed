@@ -57,10 +57,10 @@ const HowItWorks = () => {
             <div key={index} className="relative flex items-center gap-8 mb-6 last:mb-0">
               <div className="flex flex-col items-center flex-shrink-0 relative self-stretch">
                 {index !== steps.length - 1 && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-0 h-[calc(100%+1.5rem)] border-l-[3px] border-dotted border-black z-0"></div>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-0 h-[calc(100%+1.5rem)] border-l-[3px] border-dotted border-black dark:border-white z-0"></div>
                 )}
                 <div 
-                  className="w-10 h-10 border-[3px] border-black flex items-center justify-center text-sm font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] z-10 my-auto"
+                  className="w-10 h-10 border-[3px] border-black flex items-center justify-center text-sm font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] dark:border-white  z-10 my-auto"
                   style={{ backgroundColor: brandColor, borderRadius: '50%' }}
                 >
                   {step.number}

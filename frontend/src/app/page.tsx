@@ -88,7 +88,7 @@ export default function Home() {
                   <input 
                     type="text" 
                     placeholder={t('home.searchPlaceholder')} 
-              className="w-full outline-none font-bold uppercase text-xs placeholder:text-gray-300 dark:placeholder:text-zinc-500 bg-transparent dark:text-white" 
+              className="w-full outline-none font-bold uppercase text-xs placeholder:text-gray-400 dark:placeholder:text-zinc-500 bg-transparent dark:text-white" 
                   />
                 </div>
                 <button 
