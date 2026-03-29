@@ -95,7 +95,7 @@ export default function MyRequestsPage() {
           style={cardStyle}
         >
           <h1 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">
-            My Requests
+            My <span className="text-[#EF9D39]">Requests</span>
           </h1>
           <p className="text-gray-500 dark:text-zinc-400 font-bold text-xs mt-2 uppercase tracking-widest">
             Track your repairs and handymen

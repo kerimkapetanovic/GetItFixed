@@ -84,11 +84,16 @@ function BookingFormContent() {
       setLoading(false);
     }
   };
+      const getMinDateTime = () => {
+          const now = new Date();
+          now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+          return now.toISOString().slice(0, 16);
+    };
 
   return (
     <main className="flex-grow max-w-3xl mx-auto p-6 py-12 w-full">
       <div className="bg-white dark:bg-zinc-900 border-2 border-black p-8 md:p-12 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[32px]">
-        <h1 className="text-4xl font-black uppercase tracking-tighter mb-8 text-black dark:text-white">
+        <h1 className="text-4xl font-black uppercase tracking-tighter mb-8 text-black dark:text-white text-center">
           Create New <span className="text-[#EF9D39]">Booking</span>
         </h1>
 
@@ -134,12 +139,13 @@ function BookingFormContent() {
             </label>
             <div className="relative text-gray-900 dark:text-zinc-100">
               <Calendar
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 "
                 size={20}
               />
               <input
                 required
                 type="datetime-local"
+                min={getMinDateTime()}
                 value={formData.scheduled_time}
                 onChange={(e) =>
                   setFormData({ ...formData, scheduled_time: e.target.value })

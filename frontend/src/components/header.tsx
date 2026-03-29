@@ -215,7 +215,7 @@ export default function Header() {
               {/* PROFILE BUTTON */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={`flex items-center gap-3 border-2 border-black dark:border-zinc-600 p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${
+                className={`flex items-center gap-3 border-2 border-black dark:border-white p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${
                   isMenuOpen
                     ? "rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1"
                     : "rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
@@ -227,7 +227,7 @@ export default function Header() {
                       ? `${userData.firstName} ${userData.lastName}`
                       : translatedRole}
                   </p>
-                  <p className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 mt-1 uppercase leading-none">
+                  <p className="text-[9px] font-bold text-gray-400 dark:text-white mt-1 uppercase leading-none ">
                     {translatedRole}
                   </p>
                 </div>
@@ -240,7 +240,7 @@ export default function Header() {
 
               {/* DROPDOWN MENU */}
               {isMenuOpen && (
-                <div className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 z-50  rounded-b-[16px] overflow-hidden">
+                <div className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white dark:bg-zinc-800 border-2 border-black dark:border-white z-50  rounded-b-[16px] overflow-hidden">
                   <ul className="flex flex-col text-[11px] font-black uppercase tracking-widest">
                     <Link
                       href="/profile"
@@ -256,7 +256,7 @@ export default function Header() {
                     </Link>
                     <li
                       onClick={handleLogout}
-                      className="p-4 bg-black text-white hover:bg-[#EF9D39] hover:text-black cursor-pointer text-center transition-colors"
+                      className="p-4 bg-black text-white hover:bg-[#EF9D39] hover:text-black cursor-pointer transition-colors"
                     >
                       {t("header.logout")}
                     </li>

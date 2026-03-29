@@ -136,6 +136,13 @@ export default function HandymanDashboard() {
       </div>
     );
 
+        const getMinDateTime = () => {
+          const now = new Date();
+          now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+          return now.toISOString().slice(0, 16);
+    };
+
+
   return (
     <div className="space-y-8 mt-10">
       {/* AVAILABLE JOBS */}
@@ -224,6 +231,7 @@ export default function HandymanDashboard() {
                       </label>
                       <input
                         type="datetime-local"
+                        min={getMinDateTime()}
                         value={counterValues[job.id]?.proposedTime || ""}
                         onChange={(e) =>
                           setCounterValues((prev) => ({
