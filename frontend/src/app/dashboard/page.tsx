@@ -9,6 +9,8 @@ import { LayoutDashboard } from "lucide-react";
 export default function DashboardPage() {
   const brandColor = "#EF9D39";
 
+  
+
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white font-sans">
       <Header />
