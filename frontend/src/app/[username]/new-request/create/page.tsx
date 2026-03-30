@@ -5,9 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../../lib/axios";
-import { Calendar as CalendarIcon, FileText, Send, Loader2 } from "lucide-react";
-
-// --- DATEPICKER ---
+import { Calendar as CalendarIcon, FileText, Send, Loader2, X } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
@@ -19,51 +17,42 @@ function BookingFormContent() {
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const username = params.username;
   const handymanIdFromUrl = searchParams ? searchParams.get("handyman_id") : null;
   const serviceTypeFromUrl = searchParams ? searchParams.get("service_type") : null;
   const handymanNameFromUrl = searchParams ? searchParams.get("handyman_name") : null;
 
-  // scheduled_time je sada Date objekat umjesto stringa radi DatePickera
   const [formData, setFormData] = useState({
     service_type: serviceTypeFromUrl || "General",
     description: "",
-    scheduled_time: new Date(), 
+    // POSTAVLJENO NA NULL - Da ne bude ništa izabrano po defaultu
+    scheduled_time: null as Date | null, 
     handyman_id: handymanIdFromUrl || "", 
     handyman_name: handymanNameFromUrl || "",
   });
 
-  // Hydration fix
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      handyman_id: handymanIdFromUrl || "",
-      service_type: serviceTypeFromUrl || prev.service_type || "General",
-      handyman_name: handymanNameFromUrl || prev.handyman_name,
-    }));
-  }, [handymanIdFromUrl, serviceTypeFromUrl, handymanNameFromUrl]);
-
-  const isDirectBooking = Boolean(formData.handyman_id);
+  useEffect(() => { setMounted(true); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    
+    // VALIDACIJA: Provjera da li je izabran datum
+    if (!formData.scheduled_time) {
+      alert("Please select a preferred visit time before confirming.");
+      setIsCalendarOpen(true); // Otvori mu kalendar automatski ako je zaboravio
+      return;
+    }
 
+    setLoading(true);
     try {
-      const response = await api.post("/api/bookings/create/", {
+      await api.post("/api/bookings/create/", {
         service_type: formData.service_type,
         description: formData.description,
-        // Šaljemo ISO string u backend
         scheduled_time: formData.scheduled_time.toISOString(),
         handyman_id: formData.handyman_id || null,
       });
-
-      console.log("Booking created:", response.data);
       router.push(`/${username}/requests`);
     } catch (err: unknown) {
       alert("Booking Error: Failed to create request.");
@@ -112,48 +101,73 @@ function BookingFormContent() {
             </div>
           </div>
 
-          {/* PREFERRED ARRIVAL TIME - NOVI DATEPICKER */}
+          {/* DATE PICKER TRIGGER */}
           <div>
-            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
-              Preferred visit date and time
-            </label>
-            <div className="relative brutalist-datepicker">
-              <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={20} />
-              <DatePicker
-                selected={formData.scheduled_time}
-                onChange={(date: any) => setFormData({ ...formData, scheduled_time: date || new Date() })}
-                showTimeSelect
-                timeIntervals={5}
-                // "HH:mm" prebacuje prikaz u inputu na 24h (npr. 15:00)
-                dateFormat="dd.MM.yyyy HH:mm" 
-                // "HH:mm" unutar timeFormat-a prebacuje samu listu vremena na 24h
-                timeFormat="HH:mm"
-                // Naslov iznad vremena
-                timeCaption="Time"
-                minDate={new Date()}
-                popperPlacement="bottom-start"
-                portalId="root-portal"
-                className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-black p-4 pl-12 rounded-xl font-bold outline-none focus:ring-2 focus:ring-[#EF9D39] dark:text-white"
-              />
+            <label className="text-xs font-black uppercase mb-2 block text-gray-500">Preferred visit time</label>
+            <div 
+              onClick={() => setIsCalendarOpen(true)}
+                                      className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
+
+            >
+              <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              {formData.scheduled_time 
+                ? formData.scheduled_time.toLocaleString('de-DE', { hour12: false }) 
+                : "CLICK TO SELECT DATE & TIME"
+              }
             </div>
-            <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-zinc-400">
-              This will be sent as your requested appointment time.
-            </p>
           </div>
 
-          {isDirectBooking && (
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 rounded-xl flex items-center gap-3">
-              <div className="bg-yellow-400 p-2 rounded-lg text-black font-black text-xs">PRO</div>
-              <p className="text-xs font-bold text-yellow-800 dark:text-yellow-400 uppercase tracking-tight">
-                Direct request sent to this expert. Status will stay waiting until they respond.
-              </p>
+          {/* MODAL POPUP */}
+          {isCalendarOpen && (
+            <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">
+              <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
+                
+                <button 
+                  type="button" // Eksplicitno type="button" da ne trigeruje submit
+                  onClick={() => setIsCalendarOpen(false)}
+                  className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
+                >
+                  <X size={24} />
+                </button>
+
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-black uppercase dark:text-white tracking-tighter">Pick a term for {formData.handyman_name}</h2>
+                  <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Choose your termin</p>
+                </div>
+
+                <div className="flex justify-center w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 dark:border-white/10 p-4">
+                  <DatePicker
+                    selected={formData.scheduled_time}
+                    onChange={(date: Date | null) => {
+                      setFormData({ ...formData, scheduled_time: date });
+                    }}
+                    inline
+                    showTimeSelect
+                    timeIntervals={5}
+                    timeFormat="HH:mm"
+                    dateFormat="dd.MM.yyyy HH:mm"
+                    minDate={new Date()}
+                    calendarClassName="popup-brutalist-calendar-final"
+                    nextMonthButtonLabel=">"
+                    previousMonthButtonLabel="<"
+                  />
+                </div>
+
+                <button 
+                  type="button" // Eksplicitno type="button"
+                  onClick={() => setIsCalendarOpen(false)}
+                  className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                >
+                  Confirm Choice
+                </button>
+              </div>
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full border-[3px] border-black bg-white text-black py-5 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all flex items-center justify-center gap-2 hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none active:scale-[0.98] disabled:opacity-60"
+            className="w-full border-[3px] border-black bg-white text-black py-5 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all flex items-center justify-center gap-2 hover:bg-[#EF9D39] hover:shadow-none active:scale-[0.98]"
           >
             {loading ? <Loader2 className="animate-spin" /> : <Send size={20} />}
             Confirm Booking
@@ -168,7 +182,7 @@ export default function NewBookingPage() {
   return (
     <div className="page-gradient min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">
       <Header />
-      <Suspense fallback={<div className="flex-grow flex items-center justify-center font-black uppercase">Loading Form...</div>}>
+      <Suspense fallback={<div>Loading...</div>}>
         <BookingFormContent />
       </Suspense>
       <Footer />

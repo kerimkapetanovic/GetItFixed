@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-// Import the custom api instance instead of raw axios
 import api from "../../lib/axios";
-import { Clock, Briefcase, CheckCircle, Loader2 } from "lucide-react";
+import { Clock, Briefcase, CheckCircle, Loader2, CalendarIcon, X, Send } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "../app/datepicker-custom.css";
 
 interface Booking {
   id: number;
@@ -24,28 +26,32 @@ export default function HandymanDashboard() {
   const [jobs, setJobs] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
-  const [counterOpenFor, setCounterOpenFor] = useState<number | null>(null);
+  const [isCalendarOpenFor, setIsCalendarOpenFor] = useState<number | null>(null);
   const [counterValues, setCounterValues] = useState<
-    Record<number, { proposedTime: string; message: string }>
+    Record<number, { proposedTime: Date | null; message: string }>
   >({});
+  const [counterOpenFor, setCounterOpenFor] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string>("");
-  const toUtcIso = (localDateTime: string) => {
-    const parsed = new Date(localDateTime);
-    return Number.isNaN(parsed.getTime()) ? localDateTime : parsed.toISOString();
-  };
 
-  const formatDateTime = (value: string | null) => {
-    if (!value) return "Not set";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "Invalid date";
-    return date.toLocaleString();
-  };
+  const formatDateTime = (value: string | Date | null) => {
+  if (!value) return "Not set";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "Invalid date";
 
-  // 1. FETCH JOBS
+  // Koristimo Intl.DateTimeFormat za čist dd/mm/yy HH:mm format
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false, // Ovo uklanja AM/PM i postavlja 24h format
+  }).format(date).replace(",", ""); // Uklanja zarez između datuma i vremena ako se pojavi
+};
+
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      // Using the custom 'api' instance automatically handles cookies and the baseURL
       const response = await api.get("/api/bookings/dashboard/");
       setJobs(response.data);
     } catch (error) {
@@ -59,7 +65,16 @@ export default function HandymanDashboard() {
     fetchJobs();
   }, []);
 
-  // 2. ACCEPT JOB LOGIC
+  const handleDateSelect = (jobId: number, date: Date | null) => {
+    setCounterValues((prev) => ({
+      ...prev,
+      [jobId]: {
+        ...prev[jobId],
+        proposedTime: date,
+      },
+    }));
+  };
+
   const handleAcceptJob = async (jobId: number) => {
     try {
       setActionError("");
@@ -68,18 +83,13 @@ export default function HandymanDashboard() {
       if (!job) return;
 
       if (job.handyman) {
-        await api.post(`/api/bookings/${jobId}/handyman-action/`, {
-          action: "accept",
-        });
+        await api.post(`/api/bookings/${jobId}/handyman-action/`, { action: "accept" });
       } else {
-        await api.post(`/api/bookings/accept/${jobId}/`);
+        await api.post(`/api/bookings/accept/${jobId}//`);
       }
-
-      // Refresh the list so the job moves from 'Available' to 'Active'
       await fetchJobs();
     } catch (error) {
-      console.error("Error accepting job:", error);
-      setActionError("Failed to accept job. It may no longer be available.");
+      setActionError("Failed to accept job.");
     } finally {
       setActionLoadingId(null);
     }
@@ -89,13 +99,10 @@ export default function HandymanDashboard() {
     try {
       setActionError("");
       setActionLoadingId(jobId);
-      await api.post(`/api/bookings/${jobId}/handyman-action/`, {
-        action: "decline",
-      });
+      await api.post(`/api/bookings/${jobId}/handyman-action/`, { action: "decline" });
       await fetchJobs();
     } catch (error) {
-      console.error("Error declining job:", error);
-      setActionError("Failed to decline this request.");
+      setActionError("Failed to decline request.");
     } finally {
       setActionLoadingId(null);
     }
@@ -113,13 +120,12 @@ export default function HandymanDashboard() {
       setActionLoadingId(jobId);
       await api.post(`/api/bookings/${jobId}/handyman-action/`, {
         action: "counter",
-        proposed_time: toUtcIso(value.proposedTime),
+        proposed_time: value.proposedTime.toISOString(),
         message: value.message || "",
       });
       setCounterOpenFor(null);
       await fetchJobs();
     } catch (error) {
-      console.error("Error sending counter:", error);
       setActionError("Failed to send counter-offer.");
     } finally {
       setActionLoadingId(null);
@@ -129,89 +135,46 @@ export default function HandymanDashboard() {
   const pendingJobs = jobs.filter((j) => j.status === "pending");
   const acceptedJobs = jobs.filter((j) => j.status === "accepted");
 
-  if (loading)
-    return (
-      <div className="flex justify-center p-10">
-        <Loader2 className="animate-spin" />
-      </div>
-    );
-
-        const getMinDateTime = () => {
-          const now = new Date();
-          now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-          return now.toISOString().slice(0, 16);
-    };
-
+  if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="space-y-8 mt-10">
-      {/* AVAILABLE JOBS */}
       <div>
         <h2 className="text-2xl font-black uppercase mb-4 flex items-center gap-2">
-          <Clock className="text-[#EF9D39]" strokeWidth={3} /> Available
-          Requests
+          <Clock className="text-[#EF9D39]" strokeWidth={3} /> Available Requests
         </h2>
-        {actionError && (
-          <p className="mb-4 text-sm font-black uppercase text-red-500">{actionError}</p>
-        )}
+        {actionError && <p className="mb-4 text-sm font-black uppercase text-red-500">{actionError}</p>}
+        
         <div className="grid gap-4">
           {pendingJobs.length > 0 ? (
             pendingJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl text-gray-900 dark:text-zinc-100 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
-              >
+              <div key={job.id} className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-[#EF9D39]">
-                      {job.service_type}
-                    </span>
-                    <h3 className="font-black text-lg uppercase leading-tight">
-                      {job.client_name}
-                    </h3>
-                    <p className="text-sm font-bold text-gray-500 dark:text-zinc-400">
-                      {job.description}
-                    </p>
+                    <span className="text-[10px] font-black uppercase text-[#EF9D39]">{job.service_type}</span>
+                    <h3 className="font-black text-lg uppercase leading-tight dark:text-white">{job.client_name}</h3>
+                    <p className="text-sm font-bold text-gray-500">{job.description}</p>
                     {job.client_proposed_time && (
-                      <p className="text-xs font-black uppercase tracking-wide text-blue-500">
+                      <p className="text-xs font-black uppercase text-blue-500">
                         Client requested: {formatDateTime(job.client_proposed_time)}
                       </p>
                     )}
-                    {job.client_counter_message && (
-                      <p className="text-xs font-bold text-gray-600 dark:text-zinc-300">
-                        Client note: {job.client_counter_message}
-                      </p>
-                    )}
-                    {job.negotiation_status === "awaiting_client" && (
-                      <p className="text-xs font-black uppercase tracking-wide text-purple-500">
-                        Waiting for client response to your counter.
-                      </p>
-                    )}
                   </div>
-                  <div className="flex flex-wrap gap-2 md:justify-end">
-                    <button
-                      onClick={() => handleAcceptJob(job.id)}
-                      disabled={actionLoadingId === job.id}
-                      className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all disabled:opacity-60"
-                    >
-                      {actionLoadingId === job.id ? "Working..." : "Accept"}
-                    </button>
 
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    <button 
+                      onClick={() => handleAcceptJob(job.id)} 
+                      disabled={actionLoadingId === job.id}
+                      className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-green-400 transition-all"
+                    >
+                      Accept
+                    </button>
                     {job.handyman && (
                       <>
-                        <button
-                          onClick={() => handleDeclineJob(job.id)}
-                          disabled={actionLoadingId === job.id}
-                          className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-red-300 transition-all disabled:opacity-60"
-                        >
-                          Deny
-                        </button>
-                        <button
-                          onClick={() =>
-                            setCounterOpenFor(counterOpenFor === job.id ? null : job.id)
-                          }
-                          disabled={actionLoadingId === job.id}
-                          className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all disabled:opacity-60"
+                        <button onClick={() => handleDeclineJob(job.id)} className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-red-300 transition-all">Deny</button>
+                        <button 
+                          onClick={() => setCounterOpenFor(counterOpenFor === job.id ? null : job.id)}
+                          className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-[#EF9D39] transition-all"
                         >
                           Counter
                         </button>
@@ -220,66 +183,84 @@ export default function HandymanDashboard() {
                   </div>
                 </div>
 
-                {counterOpenFor === job.id && job.handyman && (
-                  <div className="mt-4 border-2 border-black rounded-xl bg-[#FFF8EA] dark:bg-zinc-900 p-4 space-y-3">
-                    <h4 className="font-black uppercase text-sm tracking-wide text-black dark:text-white">
-                      Send Counter Offer
-                    </h4>
+                {counterOpenFor === job.id && (
+                  <div className="mt-4 border-2 border-black rounded-xl bg-[#FFF8EA] dark:bg-zinc-900 p-4 space-y-4">
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 block mb-1">
-                        Proposed date and time
-                      </label>
-                      <input
-                        type="datetime-local"
-                        min={getMinDateTime()}
-                        value={counterValues[job.id]?.proposedTime || ""}
-                        onChange={(e) =>
-                          setCounterValues((prev) => ({
-                            ...prev,
-                            [job.id]: {
-                              proposedTime: e.target.value,
-                              message: prev[job.id]?.message || "",
-                            },
-                          }))
-                        }
-                        className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-3 font-bold"
-                      />
+                      <label className="text-xs font-black uppercase mb-2 block text-gray-500">Pick New Time</label>
+                      <div 
+                        onClick={() => setIsCalendarOpenFor(job.id)}
+                        className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
+                      >
+                        <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        {counterValues[job.id]?.proposedTime ? formatDateTime(counterValues[job.id].proposedTime) : "SELECT DATE & TIME"}
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 block mb-1">
-                        Message to client (optional)
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={counterValues[job.id]?.message || ""}
-                        onChange={(e) =>
-                          setCounterValues((prev) => ({
-                            ...prev,
-                            [job.id]: {
-                              proposedTime: prev[job.id]?.proposedTime || "",
-                              message: e.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="I can come later the same day..."
-                        className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-3 font-bold"
-                      />
-                    </div>
+
+                    {isCalendarOpenFor === job.id && (
+                      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">
+              <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
+ <button 
+                  type="button" // Eksplicitno type="button" da ne trigeruje submit
+                  onClick={() => setIsCalendarOpenFor(null)}
+                  className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
+                >
+                  <X size={24} />
+                </button>
+
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-black uppercase dark:text-white tracking-tighter">Pick a term for {job.client_name}</h2>
+                  <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Choose your termin</p>
+                </div> 
+                 <div className="flex justify-center w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 dark:border-white/10 p-4">
+                                  <DatePicker
+                            selected={counterValues[job.id]?.proposedTime}
+                                                                onChange={(date: Date | null) => handleDateSelect(job.id, date)}
+
+                                    inline
+                                    showTimeSelect
+                                    timeIntervals={5}
+                                    timeFormat="HH:mm"
+                                    dateFormat="dd.MM.yyyy HH:mm"
+                                    minDate={new Date()}
+                                    calendarClassName="popup-brutalist-calendar-final"
+                                    nextMonthButtonLabel=">"
+                                    previousMonthButtonLabel="<"
+                                  />
+                                </div>
+                
+          
+          
+           <button 
+                  type="button" // Eksplicitno type="button"
+                  onClick={() => setIsCalendarOpenFor(null)}
+                  className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                >
+                  Confirm Choice
+                </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <textarea
+                      rows={2}
+                      placeholder="Message to client..."
+                      value={counterValues[job.id]?.message || ""}
+                      onChange={(e) => setCounterValues(prev => ({ ...prev, [job.id]: { ...prev[job.id], message: e.target.value } }))}
+                      className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-3 font-bold"
+                    />
+
                     <button
                       onClick={() => handleCounterJob(job.id)}
-                      disabled={actionLoadingId === job.id}
-                      className="w-full bg-black text-white px-5 py-3 rounded-[16px] font-black uppercase text-[10px] tracking-[0.2em] border-[3px] border-black shadow-[6px_6px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all disabled:opacity-60"
+                      className="cursor-pointer w-full bg-black text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px_#EF9D39]"
                     >
-                      Send Counter To Client
+                      Send Counter Offer
                     </button>
                   </div>
                 )}
               </div>
             ))
           ) : (
-            <p className="font-bold text-gray-400 dark:text-zinc-500 italic">
-              No pending requests in your area.
-            </p>
+            <p className="italic text-gray-400">No pending requests.</p>
           )}
         </div>
       </div>
@@ -290,28 +271,15 @@ export default function HandymanDashboard() {
           <Briefcase className="text-blue-500" strokeWidth={3} /> My Active Jobs
         </h2>
         <div className="grid gap-4">
-          {acceptedJobs.length > 0 ? (
-            acceptedJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl text-gray-900 dark:text-zinc-100 shadow-[5px_5px_0px_0px_rgba(59,130,246,0.5)] flex justify-between items-center"
-              >
-                <div>
-                  <h3 className="font-black text-lg uppercase">
-                    {job.client_name}
-                  </h3>
-                  <p className="text-sm font-bold text-blue-600 dark:text-blue-300">
-                    {formatDateTime(job.scheduled_time)}
-                  </p>
-                </div>
-                <CheckCircle className="text-blue-500" />
+          {acceptedJobs.map((job) => (
+            <div key={job.id} className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl flex justify-between items-center shadow-[4px_4px_0px_0px_rgba(59,130,246,0.5)]">
+              <div>
+                <h3 className="font-black text-lg uppercase dark:text-white">{job.client_name}</h3>
+                <p className="text-sm font-bold text-blue-600">{formatDateTime(job.scheduled_time)}</p>
               </div>
-            ))
-          ) : (
-            <p className="font-bold text-gray-400 dark:text-zinc-500 italic">
-              You have not accepted any jobs yet.
-            </p>
-          )}
+              <CheckCircle className="text-blue-500" />
+            </div>
+          ))}
         </div>
       </div>
     </div>

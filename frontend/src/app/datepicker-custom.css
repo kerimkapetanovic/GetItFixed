@@ -1,131 +1,109 @@
-/* --- FINALNI KOD SA FIXOM ZA NASLOV VREMENA --- */
-
-/* GLAVNI KONTEJNER */
-.react-datepicker {
-  border: 4px solid black !important;
-  border-radius: 24px !important;
-  font-family: inherit !important;
-  background-color: white !important;
-  box-shadow: 10px 10px 0px 0px rgba(0,0,0,1) !important;
-  overflow: hidden;
+/* GLAVNI KONTEJNER - POVEĆAN */
+.popup-brutalist-calendar-final {
+  background-color: transparent !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: row !important;
+  transform: scale(1.1); /* Povećavamo kompletan datum za 10% */
 }
 
-/* HEADER */
-.react-datepicker__header {
-  background-color: white !important;
-  border-bottom: 3px solid black !important;
-  padding-top: 15px !important;
+/* DARK MODE ZA TIME SECTION - OVO TI JE BILO BIJELO */
+.dark .react-datepicker__time-container,
+.dark .react-datepicker__time-box,
+.dark .react-datepicker__time-list {
+  background-color: #18181b !important; /* Crna pozadina za dark mode */
+  color: white !important;
 }
 
-.react-datepicker__current-month {
-  font-weight: 900 !important;
-  text-transform: uppercase;
-  font-size: 1.1rem !important;
+.dark .react-datepicker__time{
+  background-color: transparent !important;
 }
 
-/* POJEDINAČNI DAN - LIGHT MODE HOVER */
-.react-datepicker__day {
-  font-weight: 700 !important;
-  border-radius: 8px !important;
-  transition: all 0.2s ease;
-}
-
-.react-datepicker__day:hover:not(.react-datepicker__day--disabled):not(.react-datepicker__day--selected) {
-  background-color: #f3f4f6 !important;
-  color: black !important;
-  transform: scale(1.1);
-}
-
-/* SELEKTOVANI DAN */
-.react-datepicker__day--selected {
-  background-color: #EF9D39 !important; 
-  color: black !important;
-  border: 2px solid black !important;
-}
-
-/* ISTEKLI DANI / DANI VAN MJESECA */
-.react-datepicker__day--disabled,
-.react-datepicker__day--outside-month {
-  color: #ccc !important;
-  cursor: not-allowed !important;
-  opacity: 0.5;
-}
-
-/* SEKCIJA ZA VRIJEME */
+/* LINIJA RAZDVAJANJA */
 .react-datepicker__time-container {
   border-left: 3px solid black !important;
-  width: 100px !important;
-  background-color: white !important;
+  width: 120px !important;
 }
 
-.react-datepicker-time__header {
-  font-weight: 900 !important;
-  color: black !important;
+.dark .react-datepicker__time-container {
+  border-left-color: #3f3f46 !important;
+}
+.react-datepicker__header{
+  background-color: none !important;
 }
 
+
+/* TEXT BOJE U DARK MODU */
+.dark .react-datepicker__day,
+.dark .react-datepicker__day-name,
+.dark .react-datepicker__current-month,
+.dark .react-datepicker-time__header,
+.dark .react-datepicker__time-list-item {
+  color: white !important;
+}
+
+/* POVEĆANI DANI */
+.react-datepicker__day, 
+.react-datepicker__day-name {
+  width: 2.8rem !important;
+  line-height: 2.8rem !important;
+  font-weight: 800 !important;
+  margin: 0.2rem !important;
+  border-radius: 10px !important;
+}
+
+/* TIME LISTA - SREĐENA */
 .react-datepicker__time-list-item {
-  font-weight: 700 !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 800 !important;
+  transition: all 0.2s;
+    border-radius: 10px !important;
+
+}
+
+.react-datepicker__time-list-item:hover {
+  background-color: #EF9D39 !important;
   color: black !important;
 }
 
+/* SELEKTOVANO (Narandžasto sa tvojih slika) */
+.react-datepicker__day--selected,
 .react-datepicker__time-list-item--selected {
   background-color: #EF9D39 !important;
   color: black !important;
+  border: 2px solid black !important;
+  box-shadow: 3px 3px 0px 0px black !important;
+}
+/* VANJSKI DANI (31.3 u Aprilu) */
+.react-datepicker__day--outside-month {
+  color: #ccc !important;
+  opacity: 0.8 !important;
+  pointer-events: auto !important;
 }
 
-/* --- DARK MODE FIXES --- */
-.dark .react-datepicker {
-  background-color: #18181b !important;
-  border-color: #3f3f46 !important;
-  color: white !important;
+.react-datepicker__day--disabled{
+  color: #ccc !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
 }
 
-.dark .react-datepicker__header,
-.dark .react-datepicker__time-container,
-.dark .react-datepicker__time-box,
-.dark .react-datepicker__time {
-  background-color: #18181b !important;
-  border-color: #3f3f46 !important;
+.react-datepicker__header{
+  background-color: transparent !important;
+
 }
 
-/* FIX ZA NASLOV "VRIJEME" U DARK MODU */
-.dark .react-datepicker-time__header {
-  color: white !important;
-  background-color: #18181b !important;
+/* SCROLLBAR ZA DARK MODE */
+.react-datepicker__time-list::-webkit-scrollbar {
+  width: 5px;
+}
+.react-datepicker__time-list::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 10px;
 }
 
-.dark .react-datepicker__current-month,
-.dark .react-datepicker__day {
-  color: white !important;
-}
-
-/* DARK MODE HOVER FIX */
-.dark .react-datepicker__day:hover:not(.react-datepicker__day--disabled):not(.react-datepicker__day--selected) {
-  background-color: #27272a !important;
-  color: #EF9D39 !important;
-}
-
-.dark .react-datepicker__day--outside-month {
-  color: #4b5563 !important;
-  opacity: 0.6 !important;
-}
-
-/* DARK MODE VRIJEME LISTA */
-.dark .react-datepicker__time-list-item {
-  color: white !important;
-  background-color: #18181b !important;
-}
-
-.dark .react-datepicker__time-list-item:hover {
-  background-color: #EF9D39 !important;
-  color: black !important;
-}
-
-/* NAVIGACIJA */
-.dark .react-datepicker__navigation-icon::before {
-  border-color: white !important;
-}
-
-.dark .react-datepicker__day-name {
-  color: #a1a1aa !important;
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
+  margin-right: 10px !important; /* Dodaj marginu desno */
 }
