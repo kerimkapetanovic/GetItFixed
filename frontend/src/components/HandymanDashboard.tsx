@@ -261,21 +261,21 @@ export default function HandymanDashboard() {
                       <div>
                         <label className="text-xs font-black uppercase mb-2 block text-gray-500">Duration (Minutes)</label>
                         {/* Unutar Counter Drawer-a zamijeni input sa ovim: */}
-<div className="relative flex items-center max-w-[160px]">
-  <input 
-    type="text"
-    inputMode="numeric"
-    placeholder="Min"
-    className="w-full bg-white dark:bg-zinc-800 border-2 p-4 pr-14 rounded-xl font-bold border-black text-black dark:text-white"
-    value={counterValues[job.id]?.duration || ""}
-    onChange={(e) => {
-      const val = e.target.value.replace(/\D/g, '');
-      updateJobValue(job.id, "duration", val);
-    }}
-  />
-  <span className="absolute right-4 font-black text-[10px] text-gray-400 pointer-events-none">MIN</span>
-</div>
-                      </div>
+                    <div className="relative flex items-center max-w-[160px]">
+                      <input 
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Min"
+                        className="w-full bg-white dark:bg-zinc-800 border-2 p-4 pr-14 rounded-xl font-bold border-black text-black dark:text-white"
+                        value={counterValues[job.id]?.duration || ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          updateJobValue(job.id, "duration", val);
+                        }}
+                      />
+                      <span className="absolute right-4 font-black text-[10px] text-gray-400 pointer-events-none">MIN</span>
+                    </div>
+                                          </div>
                     </div>
 
                     <textarea
@@ -297,11 +297,11 @@ export default function HandymanDashboard() {
 
                 {/* Modalni kalendar (DatePicker) */}
                 {isCalendarOpenFor === job.id && (
-                  <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
-                      <button 
+                 <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">
+              <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
+                <button 
                         onClick={() => setIsCalendarOpenFor(null)}
-                        className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
+                  className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
                       >
                         <X size={24} />
                       </button>
@@ -311,7 +311,7 @@ export default function HandymanDashboard() {
                         <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Choose your termin</p>
                       </div>
 
-                      <div className="flex justify-center w-full bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 p-4">
+                      <div className="flex justify-center w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 dark:border-white/10 pt-4">
                         <DatePicker
                           selected={counterValues[job.id]?.proposedTime}
                           onChange={(date: Date | null) => handleDateSelect(job.id, date)}
@@ -326,7 +326,7 @@ export default function HandymanDashboard() {
 
                       <button 
                         onClick={() => setIsCalendarOpenFor(null)}
-                        className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                       className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
                       >
                         Confirm Choice
                       </button>

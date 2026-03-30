@@ -187,7 +187,7 @@ export default function RequestDetailsPage() {
               Job #{booking.id}
             </h1>
             <span
-              className={`px-4 py-2 border-2 border-black font-black text-sm uppercase rounded-full ${statusInfo.badgeClass}`}
+              className={` text-center w-[100%] px-4 py-2 border-2 border-black font-black text-sm uppercase rounded-full ${statusInfo.badgeClass}`}
             >
               {statusInfo.label}
             </span>
