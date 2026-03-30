@@ -23,31 +23,40 @@ interface Booking {
 }
 
 export default function HandymanDashboard() {
+  const [acceptOpenFor, setAcceptOpenFor] = useState<number | null>(null);
   const [jobs, setJobs] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [isCalendarOpenFor, setIsCalendarOpenFor] = useState<number | null>(null);
   const [counterValues, setCounterValues] = useState<
-    Record<number, { proposedTime: Date | null; message: string }>
+    Record<number, { proposedTime: Date | null; message: string; duration: number }>
   >({});
   const [counterOpenFor, setCounterOpenFor] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string>("");
 
-  const formatDateTime = (value: string | Date | null) => {
-  if (!value) return "Not set";
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return "Invalid date";
+  const updateJobValue = (jobId: number, field: string, value: any) => {
+    setCounterValues((prev) => ({
+      ...prev,
+      [jobId]: {
+        ...prev[jobId],
+        [field]: value,
+      },
+    }));
+  };
 
-  // Koristimo Intl.DateTimeFormat za čist dd/mm/yy HH:mm format
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false, // Ovo uklanja AM/PM i postavlja 24h format
-  }).format(date).replace(",", ""); // Uklanja zarez između datuma i vremena ako se pojavi
-};
+  const formatDateTime = (value: string | Date | null) => {
+    if (!value) return "Not set";
+    const date = typeof value === "string" ? new Date(value) : value;
+    if (Number.isNaN(date.getTime())) return "Invalid date";
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date).replace(",", "");
+  };
 
   const fetchJobs = async () => {
     try {
@@ -66,34 +75,42 @@ export default function HandymanDashboard() {
   }, []);
 
   const handleDateSelect = (jobId: number, date: Date | null) => {
-    setCounterValues((prev) => ({
-      ...prev,
-      [jobId]: {
-        ...prev[jobId],
-        proposedTime: date,
-      },
-    }));
+    updateJobValue(jobId, "proposedTime", date);
   };
 
-  const handleAcceptJob = async (jobId: number) => {
-    try {
-      setActionError("");
-      setActionLoadingId(jobId);
-      const job = jobs.find((item) => item.id === jobId);
-      if (!job) return;
+ const handleAcceptJob = async (jobId: number) => {
+  const duration = counterValues[jobId]?.duration;
+  if (!duration || duration <= 0) {
+    setActionError("Please specify duration in minutes before accepting.");
+    return;
+  }
 
-      if (job.handyman) {
-        await api.post(`/api/bookings/${jobId}/handyman-action/`, { action: "accept" });
-      } else {
-        await api.post(`/api/bookings/accept/${jobId}//`);
-      }
-      await fetchJobs();
-    } catch (error) {
-      setActionError("Failed to accept job.");
-    } finally {
-      setActionLoadingId(null);
+  try {
+    setActionError("");
+    setActionLoadingId(jobId);
+    const job = jobs.find((item) => item.id === jobId);
+    if (!job) return;
+
+    // PROMJENA: šaljemo duration_minutes
+    const payload = { action: "accept", duration_minutes: duration };
+
+    if (job.handyman) {
+      await api.post(`/api/bookings/${jobId}/handyman-action/`, payload);
+    } else {
+      await api.post(`/api/bookings/accept/${jobId}/`, { duration_minutes: duration });
     }
-  };
+    
+    setAcceptOpenFor(null);
+    await fetchJobs();
+  } catch (error) {
+    setActionError("Failed to accept job.");
+  } finally {
+    setActionLoadingId(null);
+  }
+};
+
+// Uradi isto i u handleCounterJob:
+// duration_minutes: value.duration || 1,
 
   const handleDeclineJob = async (jobId: number) => {
     try {
@@ -121,6 +138,7 @@ export default function HandymanDashboard() {
       await api.post(`/api/bookings/${jobId}/handyman-action/`, {
         action: "counter",
         proposed_time: value.proposedTime.toISOString(),
+       duration_minutes: value.duration || 30, // PROMIJENJENO SA duration_hours
         message: value.message || "",
       });
       setCounterOpenFor(null);
@@ -138,7 +156,7 @@ export default function HandymanDashboard() {
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="space-y-8 mt-10">
+    <div className="space-y-8 mt-10 p-4 max-w-6xl mx-auto">
       <div>
         <h2 className="text-2xl font-black uppercase mb-4 flex items-center gap-2">
           <Clock className="text-[#EF9D39]" strokeWidth={3} /> Available Requests
@@ -163,8 +181,7 @@ export default function HandymanDashboard() {
 
                   <div className="flex flex-wrap gap-2 md:justify-end">
                     <button 
-                      onClick={() => handleAcceptJob(job.id)} 
-                      disabled={actionLoadingId === job.id}
+                      onClick={() => setAcceptOpenFor(acceptOpenFor === job.id ? null : job.id)} 
                       className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-green-400 transition-all"
                     >
                       Accept
@@ -183,69 +200,89 @@ export default function HandymanDashboard() {
                   </div>
                 </div>
 
+                {/* Accept Drawer */}
+                {/* Accept Drawer - Kompaktan i siguran unos */}
+{acceptOpenFor === job.id && (
+  <div className="mt-4 p-4 border-2 border-black rounded-xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[4px_4px_0px_0px_#000]">
+    <label className="text-[10px] font-black uppercase mb-2 block text-gray-600 dark:text-gray-400">
+      Estimated duration (minutes)
+    </label>
+    <div className="flex items-center gap-3">
+      {/* Container za mali input i text */}
+      <div className="relative flex items-center max-w-[150px]">
+        <input 
+          type="text" // Koristimo text + regex za bolju kontrolu na mobilnim uređajima
+          inputMode="numeric"
+          placeholder="e.g. 30" 
+          className="border-2 border-black p-2 pr-12 rounded-lg w-full font-black bg-white text-black text-sm"
+          value={counterValues[job.id]?.duration || ""}
+          onChange={(e) => {
+            const val = e.target.value.replace(/\D/g, ''); // Brise sve sto nije broj
+            updateJobValue(job.id, "duration", val);
+          }}
+        />
+        <span className="absolute right-3 text-[10px] font-black text-gray-400 uppercase pointer-events-none">
+          MIN
+        </span>
+      </div>
+
+      <button 
+        onClick={() => handleAcceptJob(job.id)} 
+        disabled={actionLoadingId === job.id}
+        className="bg-black text-white px-6 py-2.5 rounded-lg font-black uppercase text-[10px] flex items-center gap-2 hover:bg-zinc-800 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
+      >
+        {actionLoadingId === job.id ? <Loader2 size={14} className="animate-spin" /> : "Confirm & Accept"}
+      </button>
+      
+      <button 
+        onClick={() => setAcceptOpenFor(null)}
+        className="text-[10px] font-black uppercase text-gray-500 hover:text-red-500 transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
+                {/* Counter Drawer */}
                 {counterOpenFor === job.id && (
                   <div className="mt-4 border-2 border-black rounded-xl bg-[#FFF8EA] dark:bg-zinc-900 p-4 space-y-4">
-                    <div>
-                      <label className="text-xs font-black uppercase mb-2 block text-gray-500">Pick New Time</label>
-                      <div 
-                        onClick={() => setIsCalendarOpenFor(job.id)}
-                        className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
-                      >
-                        <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        {counterValues[job.id]?.proposedTime ? formatDateTime(counterValues[job.id].proposedTime) : "SELECT DATE & TIME"}
-                      </div>
-                    </div>
-
-                    {isCalendarOpenFor === job.id && (
-                      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">
-              <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
- <button 
-                  type="button" // Eksplicitno type="button" da ne trigeruje submit
-                  onClick={() => setIsCalendarOpenFor(null)}
-                  className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
-                >
-                  <X size={24} />
-                </button>
-
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl font-black uppercase dark:text-white tracking-tighter">Pick a term for {job.client_name}</h2>
-                  <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Choose your termin</p>
-                </div> 
-                 <div className="flex justify-center w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 dark:border-white/10 p-4">
-                                  <DatePicker
-                            selected={counterValues[job.id]?.proposedTime}
-                                                                onChange={(date: Date | null) => handleDateSelect(job.id, date)}
-
-                                    inline
-                                    showTimeSelect
-                                    timeIntervals={5}
-                                    timeFormat="HH:mm"
-                                    dateFormat="dd.MM.yyyy HH:mm"
-                                    minDate={new Date()}
-                                    calendarClassName="popup-brutalist-calendar-final"
-                                    nextMonthButtonLabel=">"
-                                    previousMonthButtonLabel="<"
-                                  />
-                                </div>
-                
-          
-          
-           <button 
-                  type="button" // Eksplicitno type="button"
-                  onClick={() => setIsCalendarOpenFor(null)}
-                  className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-                >
-                  Confirm Choice
-                </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-black uppercase mb-2 block text-gray-500">Pick New Time</label>
+                        <div 
+                          onClick={() => setIsCalendarOpenFor(job.id)}
+                          className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
+                        >
+                          <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                          {counterValues[job.id]?.proposedTime ? formatDateTime(counterValues[job.id].proposedTime) : "SELECT DATE & TIME"}
                         </div>
                       </div>
-                    )}
+                      <div>
+                        <label className="text-xs font-black uppercase mb-2 block text-gray-500">Duration (Minutes)</label>
+                        {/* Unutar Counter Drawer-a zamijeni input sa ovim: */}
+<div className="relative flex items-center max-w-[160px]">
+  <input 
+    type="text"
+    inputMode="numeric"
+    placeholder="Min"
+    className="w-full bg-white dark:bg-zinc-800 border-2 p-4 pr-14 rounded-xl font-bold border-black text-black dark:text-white"
+    value={counterValues[job.id]?.duration || ""}
+    onChange={(e) => {
+      const val = e.target.value.replace(/\D/g, '');
+      updateJobValue(job.id, "duration", val);
+    }}
+  />
+  <span className="absolute right-4 font-black text-[10px] text-gray-400 pointer-events-none">MIN</span>
+</div>
+                      </div>
+                    </div>
 
                     <textarea
                       rows={2}
                       placeholder="Message to client..."
                       value={counterValues[job.id]?.message || ""}
-                      onChange={(e) => setCounterValues(prev => ({ ...prev, [job.id]: { ...prev[job.id], message: e.target.value } }))}
+                      onChange={(e) => updateJobValue(job.id, "message", e.target.value)}
                       className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-3 font-bold"
                     />
 
@@ -255,6 +292,45 @@ export default function HandymanDashboard() {
                     >
                       Send Counter Offer
                     </button>
+                  </div>
+                )}
+
+                {/* Modalni kalendar (DatePicker) */}
+                {isCalendarOpenFor === job.id && (
+                  <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
+                      <button 
+                        onClick={() => setIsCalendarOpenFor(null)}
+                        className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
+                      >
+                        <X size={24} />
+                      </button>
+
+                      <div className="text-center mb-8">
+                        <h2 className="text-3xl font-black uppercase dark:text-white tracking-tighter">Pick a term</h2>
+                        <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Choose your termin</p>
+                      </div>
+
+                      <div className="flex justify-center w-full bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 p-4">
+                        <DatePicker
+                          selected={counterValues[job.id]?.proposedTime}
+                          onChange={(date: Date | null) => handleDateSelect(job.id, date)}
+                          inline
+                          showTimeSelect
+                          timeIntervals={5}
+                          timeFormat="HH:mm"
+                          dateFormat="dd.MM.yyyy HH:mm"
+                          minDate={new Date()}
+                        />
+                      </div>
+
+                      <button 
+                        onClick={() => setIsCalendarOpenFor(null)}
+                        className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                      >
+                        Confirm Choice
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -271,15 +347,19 @@ export default function HandymanDashboard() {
           <Briefcase className="text-blue-500" strokeWidth={3} /> My Active Jobs
         </h2>
         <div className="grid gap-4">
-          {acceptedJobs.map((job) => (
-            <div key={job.id} className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl flex justify-between items-center shadow-[4px_4px_0px_0px_rgba(59,130,246,0.5)]">
-              <div>
-                <h3 className="font-black text-lg uppercase dark:text-white">{job.client_name}</h3>
-                <p className="text-sm font-bold text-blue-600">{formatDateTime(job.scheduled_time)}</p>
+          {acceptedJobs.length > 0 ? (
+            acceptedJobs.map((job) => (
+              <div key={job.id} className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl flex justify-between items-center shadow-[4px_4px_0px_0px_rgba(59,130,246,0.5)]">
+                <div>
+                  <h3 className="font-black text-lg uppercase dark:text-white">{job.client_name}</h3>
+                  <p className="text-sm font-bold text-blue-600">{formatDateTime(job.scheduled_time)}</p>
+                </div>
+                <CheckCircle className="text-blue-500" />
               </div>
-              <CheckCircle className="text-blue-500" />
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="italic text-gray-400">No active jobs yet.</p>
+          )}
         </div>
       </div>
     </div>

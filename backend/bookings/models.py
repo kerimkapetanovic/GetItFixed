@@ -36,6 +36,7 @@ class Booking(models.Model):
     client_proposed_time = models.DateTimeField(null=True, blank=True)
     client_counter_message = models.TextField(blank=True, null=True)
     handyman_proposed_time = models.DateTimeField(null=True, blank=True)
+    duration_minutes = models.IntegerField(null=True, blank=True) 
     handyman_counter_message = models.TextField(blank=True, null=True)
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
