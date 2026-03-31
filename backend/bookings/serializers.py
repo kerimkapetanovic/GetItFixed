@@ -19,7 +19,8 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         # We must include 'handyman' here so the 'perform_create' can see it!
         fields = [
-            'id', 
+            'id',
+            'ticket_id',
             'handyman', # The ID field for writing
             'client_name', 
             'handyman_name', 
@@ -35,6 +36,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'negotiation_status',
         ]
         read_only_fields = [
+            'ticket_id',
             'status',
             'negotiation_status',
             'client_proposed_time',

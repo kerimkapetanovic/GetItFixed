@@ -18,6 +18,8 @@ function BookingFormContent() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+const [generatedTicket, setGeneratedTicket] = useState("");
 
   const username = params.username;
   const handymanIdFromUrl = searchParams ? searchParams.get("handyman_id") : null;
@@ -45,15 +47,25 @@ function BookingFormContent() {
       return;
     }
 
-    setLoading(true);
+   setLoading(true);
     try {
-      await api.post("/api/bookings/create/", {
+      // IZMJENA: Snimamo odgovor u varijablu 'res'
+      const res = await api.post("/api/bookings/create/", {
         service_type: formData.service_type,
         description: formData.description,
         scheduled_time: formData.scheduled_time.toISOString(),
         handyman_id: formData.handyman_id || null,
       });
-      router.push(`/${username}/requests`);
+
+      // NOVO: Umjesto router.push, provjeravamo ticket_id
+      if (res.data && res.data.ticket_id) {
+        setGeneratedTicket(res.data.ticket_id);
+        setShowSuccess(true);
+      } else {
+        // Fallback ako iz nekog razloga nema ticket_id u response-u
+        router.push(`/${username}/requests`);
+      }
+
     } catch (err: unknown) {
       alert("Booking Error: Failed to create request.");
     } finally {
@@ -173,8 +185,39 @@ function BookingFormContent() {
             Confirm Booking
           </button>
         </form>
+      </div> {/* Ovaj DIV zatvara onaj glavni beli kontejner sa senkom */}
+    {/* SUCCESS MODAL */}
+{showSuccess && (
+  <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="bg-white dark:bg-zinc-900 border-[4px] border-black p-10 rounded-[40px] shadow-[20px_20px_0px_0px_#EF9D39] max-w-sm w-full text-center relative animate-in zoom-in-95">
+      
+      {/* IKONA */}
+      <div className="w-20 h-20 bg-[#EF9D39] border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6 shadow-[5px_5px_0px_0px_#000]">
+        <Send className="text-black ml-1" size={32} />
       </div>
-    </main>
+
+      {/* GLAVNI NASLOV SA BROJEM TIKETA */}
+      <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-4 dark:text-white leading-tight">
+        Booking Sent! <br />
+        <span className="text-[#EF9D39]">#{generatedTicket}</span>
+      </h2>
+
+      {/* PODNASLOV */}
+      <p className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-8">
+        Your request has been received. <br /> Check your dashboard for updates.
+      </p>
+      
+      {/* DUGME */}
+      <button 
+        onClick={() => router.push(`/${username}/requests`)}
+        className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-tighter border-2 border-black hover:bg-zinc-800 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-none transition-all"
+      >
+        Back to My Requests
+      </button>
+    </div>
+  </div>
+)}
+    </main> // <-- Ovo je taj tag iznad kojeg ubacuješ
   );
 }
 

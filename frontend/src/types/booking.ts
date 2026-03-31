@@ -5,10 +5,13 @@ export type NegotiationStatus = 'none' | 'awaiting_handyman' | 'awaiting_client'
 
 export interface BookingDetail {
   id: number;
+  ticket_id: string; // DODAJ OVO OVDJE
   service_type: string;
   description: string;
   status: BookingStatus;
   negotiation_status: NegotiationStatus;
+  client_name: string;
+  client_email: string;
 
   // --- VREMENSKI TERMINI ---
   scheduled_time: string | null;           // Finalni dogovoreni termin

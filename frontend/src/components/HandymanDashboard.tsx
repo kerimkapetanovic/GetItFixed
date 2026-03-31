@@ -6,25 +6,11 @@ import { Clock, Briefcase, CheckCircle, Loader2, CalendarIcon, X, Send } from "l
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../app/datepicker-custom.css";
-
-interface Booking {
-  id: number;
-  handyman: number | null;
-  client_name: string;
-  service_type: string;
-  description: string;
-  scheduled_time: string | null;
-  client_proposed_time: string | null;
-  client_counter_message: string | null;
-  handyman_proposed_time: string | null;
-  handyman_counter_message: string | null;
-  status: string;
-  negotiation_status: string;
-}
+import { BookingDetail } from "@/types/booking";
 
 export default function HandymanDashboard() {
   const [acceptOpenFor, setAcceptOpenFor] = useState<number | null>(null);
-  const [jobs, setJobs] = useState<Booking[]>([]);
+  const [jobs, setJobs] = useState<BookingDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [isCalendarOpenFor, setIsCalendarOpenFor] = useState<number | null>(null);
@@ -169,6 +155,9 @@ export default function HandymanDashboard() {
               <div key={job.id} className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-1">
+                     <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
+                  #{job.ticket_id}
+                </span>
                     <span className="text-[10px] font-black uppercase text-[#EF9D39]">{job.service_type}</span>
                     <h3 className="font-black text-lg uppercase leading-tight dark:text-white">{job.client_name}</h3>
                     <p className="text-sm font-bold text-gray-500">{job.description}</p>
@@ -179,14 +168,14 @@ export default function HandymanDashboard() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-2 md:justify-end">
+                  <div className="flex flex-wrap gap-2 md:justify-end w-[65%]">
                     <button 
                       onClick={() => setAcceptOpenFor(acceptOpenFor === job.id ? null : job.id)} 
                       className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-green-400 transition-all"
                     >
                       Accept
                     </button>
-                    {job.handyman && (
+                    {job.handyman_name && (
                       <>
                         <button onClick={() => handleDeclineJob(job.id)} className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-red-300 transition-all">Deny</button>
                         <button 

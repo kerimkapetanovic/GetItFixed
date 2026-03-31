@@ -8,21 +8,7 @@ import Footer from "@/components/footer";
 // Make sure this path points correctly to your custom axios file!
 import api from "../../../../../lib/axios";
 import { Loader2 } from "lucide-react";
-
-interface BookingDetail {
-  id: number;
-  service_type: string;
-  description: string;
-  status: string;
-  negotiation_status: string;
-  scheduled_time: string | null;
-  client_proposed_time: string | null;
-  client_counter_message: string | null;
-  handyman_proposed_time: string | null;
-  handyman_counter_message: string | null;
-  handyman_name: string | null;
-  handyman_email: string | null;
-}
+import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
 
 function formatDateTime(value: string | null) {
   if (!value) return "Not set";
@@ -183,11 +169,11 @@ export default function RequestDetailsPage() {
             const statusInfo = getStatusInfo(booking);
             return (
           <div className="flex justify-between items-start mb-8">
-            <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">
-              Job #{booking.id}
+            <h1 className="text-3xl md:text-5xl w-[100%] font-black text-gray-900 dark:text-white uppercase tracking-tighter">
+             #{booking.ticket_id}
             </h1>
             <span
-              className={` text-center w-[100%] px-4 py-2 border-2 border-black font-black text-sm uppercase rounded-full ${statusInfo.badgeClass}`}
+              className={` text-center w-[80%] px-4 py-2 border-2 border-black font-black text-sm uppercase rounded-full ${statusInfo.badgeClass}`}
             >
               {statusInfo.label}
             </span>
@@ -197,7 +183,7 @@ export default function RequestDetailsPage() {
 
           <div className="space-y-6">
             <div className="p-4 bg-gray-50 dark:bg-zinc-800 border-2 border-black rounded-xl">
-              <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-1">
+              <p className="text-xs font-black uppercase tracking-widest text-[#EF9D39] dark:text-zinc-400 mb-1">
                 Current state
               </p>
               <p className="font-bold text-black dark:text-white">
@@ -205,8 +191,20 @@ export default function RequestDetailsPage() {
               </p>
             </div>
 
+
+          <div>
+              <label className="text-xs font-black text-[#EF9D39] uppercase tracking-widest block mb-2">
+                Assigned Handyman
+              </label>
+              <div className="text-xl font-bold uppercase">
+                {booking.handyman_name || "No Handyman assigned yet"}
+              </div>
+            </div>
+
+
+
             <div>
-              <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">
+              <label className="text-xs font-black text-[#EF9D39] uppercase tracking-widest block mb-2">
                 Service Type
               </label>
               <div className="text-xl font-bold uppercase">
@@ -215,7 +213,7 @@ export default function RequestDetailsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">
+              <label className="text-xs font-black text-[#EF9D39] uppercase tracking-widest block mb-2">
                 Description
               </label>
               <div className="p-4 bg-gray-50 dark:bg-zinc-800 border-2 border-gray-200 dark:border-zinc-700 rounded-xl font-bold">

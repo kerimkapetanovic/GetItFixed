@@ -15,6 +15,7 @@ class Booking(models.Model):
         ('agreed', 'Agreed'),
         ('declined', 'Declined'),
     )
+    ticket_id = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True)
 
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
@@ -45,6 +46,17 @@ class Booking(models.Model):
         choices=NEGOTIATION_STATUS_CHOICES,
         default='none'
     )
+    def save(self, *args, **kwargs):
+        if not self.ticket_id:
+            last_booking = Booking.objects.all().order_by('id').last()
+            if not last_booking:
+                new_id = 1
+            else:
+                new_id = last_booking.id + 1
+            
+            self.ticket_id = f"GIT-{new_id:05d}"
+            
+        super(Booking, self).save(*args, **kwargs)
 
     def __str__(self):
         # Added a fallback for first_name just in case it's empty
