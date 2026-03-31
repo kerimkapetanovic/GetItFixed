@@ -347,7 +347,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <button disabled={loading} type="submit" style={inputRadius} className="w-full mt-6 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50">
+            <button disabled={loading} type="submit" style={inputRadius} className="cursor-pointer w-full mt-6 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50">
               {loading ? t('register.creatingAccount') : t('register.createAccount')}
             </button>
           </form>

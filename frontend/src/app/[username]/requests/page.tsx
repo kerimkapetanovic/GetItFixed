@@ -21,7 +21,7 @@ function getRequestState(request: BookingDetail) {
   if (request.status === "cancelled" || request.negotiation_status === "declined") {
     return {
       label: "Cancelled",
-      badgeClass: "bg-red-300 text-black",
+      badgeClass: "bg-red-400 text-black",
       message: "This request was closed after a declined negotiation.",
     };
   }
@@ -29,7 +29,7 @@ function getRequestState(request: BookingDetail) {
   if (request.status === "accepted" || request.negotiation_status === "agreed") {
     return {
       label: "Accepted",
-      badgeClass: "bg-blue-300 text-black",
+      badgeClass: "bg-blue-400 text-black",
       message: "Handyman accepted the request. Appointment is confirmed.",
     };
   }
@@ -37,14 +37,30 @@ function getRequestState(request: BookingDetail) {
   if (request.negotiation_status === "awaiting_client") {
     return {
       label: "Handyman Countered",
-      badgeClass: "bg-purple-300 text-black",
+      badgeClass: "bg-purple-400 text-black",
       message: "Handyman proposed a different time and is waiting for your response.",
+    };
+  }
+
+  if (request.status === "in_progress") {
+    return {
+      label: "In Progress",
+      badgeClass: "bg-violet-400 text-black",
+      message: "Handyman is currently working on your request.",
+    };
+  }
+
+  if (request.status === "completed") {
+    return {
+      label: "Completed",
+      badgeClass: "bg-green-400 text-black",
+      message: "Job completed! Thank you for using our service.",
     };
   }
 
   return {
     label: "Waiting for Response",
-    badgeClass: "bg-yellow-300 text-black",
+    badgeClass: "bg-yellow-400 text-black",
     message: "Request sent. Waiting for Handyman to accept or counter.",
   };
 }

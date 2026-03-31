@@ -7,7 +7,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 // Make sure this path points correctly to your custom axios file!
 import api from "../../../../../lib/axios";
-import { Loader2 } from "lucide-react";
+import { Loader2,Check,X, AlertCircle, PlayCircle, Timer, CheckCircle2 } from "lucide-react";
 import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
 
 function formatDateTime(value: string | null) {
@@ -18,31 +18,62 @@ function formatDateTime(value: string | null) {
 }
 
 function getStatusInfo(booking: BookingDetail) {
+  // 1. CANCELLED / DECLINED
   if (booking.status === "cancelled" || booking.negotiation_status === "declined") {
     return {
       label: "Cancelled",
-      badgeClass: "bg-red-300 text-black",
+      badgeClass: "bg-red-400 text-black",
       helperText: "Request closed after decline.",
+      icon: <X className="text-red-400 shrink-0" size={18} strokeWidth={3} />
     };
   }
+
+  // 2. ACCEPTED / AGREED
   if (booking.status === "accepted" || booking.negotiation_status === "agreed") {
     return {
       label: "Accepted",
-      badgeClass: "bg-blue-300 text-black",
-      helperText: "Appointment confirmed with expert.",
+      badgeClass: "bg-blue-400 text-black",
+      helperText: "Appointment confirmed with handyman.",
+      icon: <Check className="text-blue-400 shrink-0" size={18} strokeWidth={3} />
     };
   }
+
+  // 3. EXPERT COUNTERED (Awaiting Client)
   if (booking.negotiation_status === "awaiting_client") {
     return {
       label: "Expert Countered",
-      badgeClass: "bg-purple-300 text-black",
+      badgeClass: "bg-purple-400 text-black",
       helperText: "Expert proposed a new time. Choose your response.",
+      icon: <AlertCircle className="text-purple-400 shrink-0" size={18} strokeWidth={3} />
     };
   }
+
+  // 4. IN PROGRESS (Dodaj ovaj status ako ga imaš u bazi)
+  if (booking.status === "in_progress") {
+    return {
+      label: "In Progress",
+      badgeClass: "bg-violet-400 text-black",
+      helperText: "Expert is currently working on your request.",
+      icon: <PlayCircle className="text-violet-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+
+  // 5. COMPLETED (Dodaj ovaj status)
+  if (booking.status === "completed") {
+    return {
+      label: "Completed",
+      badgeClass: "bg-green-400 text-black",
+      helperText: "Job finished! Thank you for using our service.",
+      icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+
+  // DEFAULT: WAITING FOR RESPONSE
   return {
-    label: "Waiting for Response",
-    badgeClass: "bg-yellow-300 text-black",
+    label: "Waiting",
+    badgeClass: "bg-yellow-400 text-black",
     helperText: "Waiting for expert to accept or counter your request.",
+    icon: <Timer className="text-yellow-400 shrink-0" size={18} strokeWidth={3} />
   };
 }
 
@@ -186,15 +217,20 @@ export default function RequestDetailsPage() {
               <p className="text-xs font-black uppercase tracking-widest text-[#EF9D39] dark:text-zinc-400 mb-1">
                 Current state
               </p>
-              <p className="font-bold text-black dark:text-white">
-                {getStatusInfo(booking).helperText}
-              </p>
+              <div className="flex items-center justify-between gap-4 p-3 border-2 border-black rounded-xl bg-white dark:bg-zinc-800 ">
+  <p className="font-bold text-sm text-black dark:text-white leading-tight">
+    {getStatusInfo(booking).helperText}
+  </p>
+  <div className="shrink-0 p-2 bg-zinc-100 dark:bg-zinc-700 rounded-lg border-2 border-black">
+    {getStatusInfo(booking).icon}
+  </div>
+</div>
             </div>
 
 
           <div>
               <label className="text-xs font-black text-[#EF9D39] uppercase tracking-widest block mb-2">
-                Assigned Handyman
+                Handyman
               </label>
               <div className="text-xl font-bold uppercase">
                 {booking.handyman_name || "No Handyman assigned yet"}

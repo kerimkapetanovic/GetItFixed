@@ -195,7 +195,7 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               style={inputRadius}
-              className="w-full mt-3 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50"
+              className="cursor-pointer w-full mt-3 mb-4 bg-black text-white py-5 font-black uppercase tracking-widest text-sm transition-all border-2 border-black shadow-[6px_6px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:scale-95 disabled:opacity-50"
             >
               {loading ? t("login.signingIn") : t("login.signIn")}
             </button>

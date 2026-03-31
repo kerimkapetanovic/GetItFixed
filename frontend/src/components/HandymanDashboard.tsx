@@ -352,11 +352,27 @@ export default function HandymanDashboard() {
           {acceptedJobs.length > 0 ? (
             acceptedJobs.map((job) => (
               <div key={job.id} className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl flex justify-between items-center shadow-[4px_4px_0px_0px_rgba(59,130,246,0.5)]">
-                <div>
-                  <h3 className="font-black text-lg uppercase dark:text-white">{job.client_name}</h3>
-                  <p className="text-sm font-bold text-blue-600">{formatDateTime(job.scheduled_time)}</p>
+                <div className="flex-grow min-w-0 space-y-1">
+                  {/* RED 1: TICKET ID I SERVIS (Sada su fino u liniji) */}
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
+                      #{job.ticket_id}
+                    </span>
+                    <span className="text-[12px] font-black uppercase text-[#EF9D39] tracking-widest">
+                      🔧 {job.service_type}
+                    </span>
+                  </div>
+
+                  {/* RED 2 & 3: IME I OPIS */}
+                  <h3 className="font-black text-lg uppercase leading-tight dark:text-white ">
+                    {job.client_name}
+                  </h3>
+                  <p className="text-sm font-bold text-gray-500">
+                    {job.description}
+                  </p>
+                  <p className="text-sm font-bold text-blue-600 uppercase">Confirmed Date: {formatDateTime(job.scheduled_time)}</p>
                 </div>
-                <CheckCircle className="text-blue-500" />
+                <CheckCircle className="flex flex-row flex-nowrap items-center gap-2 flex-shrink-0 text-blue-500" />
               </div>
             ))
           ) : (

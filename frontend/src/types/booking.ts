@@ -1,7 +1,7 @@
 // @/types/booking.ts
 
-export type BookingStatus = 'pending' | 'accepted' | 'completed' | 'cancelled';
-export type NegotiationStatus = 'none' | 'awaiting_handyman' | 'awaiting_client' | 'agreed' | 'declined';
+export type BookingStatus = | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' | 'declined';
+  export type NegotiationStatus = 'none' | 'awaiting_handyman' | 'awaiting_client' | 'agreed' | 'declined';
 
 export interface BookingDetail {
   id: number;
