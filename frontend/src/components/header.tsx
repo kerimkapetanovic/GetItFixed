@@ -109,8 +109,8 @@ export default function Header() {
         ];
       case "handyman":
         return [
-          { name: t("header.dashboard"), href: "/dashboard" },
-          { name: t("header.calendar"), href: "/calendar" },
+          { name: t("header.dashboard"), href: `/${username}/dashboard` },
+          { name: t("header.calendar"), href: `/${username}/calendar` },
         ];
       case "admin":
         return [
