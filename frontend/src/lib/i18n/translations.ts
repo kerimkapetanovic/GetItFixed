@@ -46,7 +46,9 @@ export const translations = {
       client: "Client",
       handyman: "Handyman",
       admin: "Admin",
-    },
+      verification: "Verification",
+      finances: "Finances",
+      servicesAdmin: "Services",},
     footer: {
       description:
         "Find the best local experts for any home repair. Secure, professional, and efficient service at your fingertips.",
@@ -296,6 +298,9 @@ export const translations = {
       client: "Klijent",
       handyman: "Majstor",
       admin: "Administrator",
+      verification: "Verifikacija",
+      finances: "Finansije",
+      servicesAdmin: "Usluge",
     },
     footer: {
       description:

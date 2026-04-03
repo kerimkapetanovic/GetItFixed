@@ -56,8 +56,9 @@ export default function LoginPage() {
       localStorage.setItem("avatar_url", response.data.avatar_url || "");
 
       // 3. Redirect
+      const userPath = `/${response.data.username}`;
       // We use window.location.href to force a full state refresh
-      window.location.href = role === "handyman" ? "/dashboard" : "/";
+      window.location.href = userPath;
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: ApiErrorResponse } };
       const backendError =

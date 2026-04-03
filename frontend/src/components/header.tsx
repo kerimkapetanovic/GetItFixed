@@ -112,11 +112,14 @@ export default function Header() {
           { name: t("header.dashboard"), href: `/${username}/dashboard` },
           { name: t("header.calendar"), href: `/${username}/calendar` },
         ];
-      case "admin":
-        return [
-          { name: t("header.users"), href: "/admin/users" },
-          { name: t("header.tracking"), href: "/admin/tracking" },
-        ];
+    case "admin":
+  return [
+    { name: t("header.users"), href: "/admin/users" },
+    { name: t("header.tracking"), href: "/admin/tracking" },
+    { name: t("header.verification"), href: "/admin/verification" },
+    { name: t("header.services"), href: "/admin/services" },
+    { name: t("header.finances"), href: "/admin/finances" },
+  ];
       default:
         return [];
     }
@@ -141,7 +144,7 @@ export default function Header() {
         {/* LOGO */}
         <div className="flex items-center shrink-0">
           <Link
-            href="/"
+            href={isLoggedIn && username ? `/${username}` : "/"}
             className="flex items-center gap-3 text-2xl font-black normal-case tracking-tighter dark:text-white"
           >
             <img
@@ -222,12 +225,12 @@ export default function Header() {
                 }`}
               >
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-black leading-none uppercase tracking-tight dark:text-white">
-                    {userData.firstName
-                      ? `${userData.firstName} ${userData.lastName}`
-                      : translatedRole}
-                  </p>
-                  <p className="text-[9px] font-bold text-gray-400 dark:text-white mt-1 uppercase leading-none ">
+                        <p className="text-xs font-black leading-none uppercase tracking-tight dark:text-white">
+                {userData.firstName && userData.lastName 
+                  ? `${userData.firstName} ${userData.lastName}` 
+                  : (username || translatedRole)} 
+              </p>
+                    <p className="text-[9px] font-bold text-gray-400 dark:text-white mt-1 uppercase leading-none ">
                     {translatedRole}
                   </p>
                 </div>
@@ -243,13 +246,13 @@ export default function Header() {
                 <div className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white dark:bg-zinc-800 border-2 border-black dark:border-white z-50  rounded-b-[16px] overflow-hidden">
                   <ul className="flex flex-col text-[11px] font-black uppercase tracking-widest">
                     <Link
-                      href="/profile"
+                      href={`/${username}/profile`}
                       className="p-4 border-b-2 border-black dark:border-zinc-700 hover:bg-yellow-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer block dark:text-white"
                     >
                       {t("header.profile")}
                     </Link>
                     <Link
-                      href="/settings"
+                      href={`/${username}/settings`}
                       className="p-4 border-b-2 border-black dark:border-zinc-700 hover:bg-yellow-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer block dark:text-white"
                     >
                       {t("header.settings")}

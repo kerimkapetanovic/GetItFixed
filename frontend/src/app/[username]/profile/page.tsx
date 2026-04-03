@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import HandymanDashboard from "@/components/HandymanDashboard"; // Import the new component
-import api from "../../../lib/axios";
+import api from "../../../../lib/axios";
 import {
   User,
   Mail,

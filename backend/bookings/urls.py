@@ -7,6 +7,7 @@ from .views import (
     ClientRequestsView, 
     BookingDetailView,
     ClientNegotiationActionView,
+    TicketTrackingView,
 )
 
 urlpatterns = [
@@ -21,6 +22,9 @@ urlpatterns = [
     path('my-requests/', ClientRequestsView.as_view(), name='my-requests'),
     
     # NEW: The route for a single job's details
-    path('<int:pk>/', BookingDetailView.as_view(), name='booking-detail'),
     path('<int:booking_id>/client-action/', ClientNegotiationActionView.as_view(), name='client-negotiation-action'),
+    # urls.py primjer
+
+    path('tickets/<str:ticket_id>/', TicketTrackingView.as_view(), name='ticket-detail'),
+    path('<int:pk>/', BookingDetailView.as_view(), name='booking-detail'),
 ]

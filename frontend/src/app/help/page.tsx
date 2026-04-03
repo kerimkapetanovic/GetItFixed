@@ -1,16 +1,30 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { Search, X, Ticket, Send } from 'lucide-react';
+import { Search, X, Ticket, Send, Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import api from '../../../lib/axios';
 
 export default function HelpCenter() {
     const brandColor = "#EF9D39";
 
-    // Modal States
+    // --- STATES ---
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    
+    // Tracking Logic States
+    const [ticketId, setTicketId] = useState("");
+    const [trackingResult, setTrackingResult] = useState<any>(null);
+    const [isSearching, setIsSearching] = useState(false);
+
+    // Check Auth on Mount
+    useEffect(() => {
+        const authStatus = localStorage.getItem("is_logged_in") === "true";
+        setIsLoggedIn(authStatus);
+    }, []);
 
     const quickActions = [
         { icon: "🔧", label: "Repairs", targetId: "repairs" },
@@ -35,6 +49,29 @@ export default function HelpCenter() {
         }
     };
 
+    // --- HANDLERS ---
+  const handleTrackRepair = async () => {
+    if (!ticketId) return;
+
+    // 1. Očisti ID (skini razmake ili # ako ih ima)
+    const cleanId = ticketId.toString().trim().replace('#', '');
+    
+    setIsSearching(true);
+    try {
+        // 2. LOGUJ TAČAN URL KOJI ŠALJEŠ (pogledaj ovo u konzoli browsera!)
+        console.log("Šaljem zahtjev na:", `/api/bookings/tickets/${cleanId}/`);
+        
+        const response = await api.get(`/api/bookings/tickets/${cleanId}/`);
+        setTrackingResult(response.data);
+    } catch (error: any) {
+        // 3. Detaljniji error log
+        console.error("Greška detalji:", error.response?.data);
+        alert("Tiket nije pronađen. Provjerite ID.");
+    } finally {
+        setIsSearching(false);
+    }
+};
+
     const handleTicketSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         alert("Ticket submitted successfully! Our team will contact you soon.");
@@ -48,10 +85,7 @@ export default function HelpCenter() {
             <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
                 
                 {/* 1. SEARCH BOX HERO */}
-                <div 
-                    className="text-center mb-10 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
-                    style={{ borderRadius: '30px' }}
-                >
+                <div className="text-center mb-10 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] rounded-[30px]">
                     <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-4 leading-none text-black">
                         How can we <span style={{ color: brandColor }}>Help?</span>
                     </h1>
@@ -59,7 +93,7 @@ export default function HelpCenter() {
                         <input 
                             type="text" 
                             placeholder="Search problems..." 
-                            className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400"
+                            className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400"
                         />
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-black text-white px-3 py-1 rounded-lg font-black text-[10px] cursor-pointer hover:bg-[#EF9D39] hover:text-black transition-colors">
                             GO
@@ -124,10 +158,11 @@ export default function HelpCenter() {
             {/* --- TRACKING MODAL --- */}
             {isTrackingModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="relative w-full max-w-sm bg-white force-light-surface-text border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]" style={{ borderRadius: '28px' }}>
-                        <button onClick={() => setIsTrackingModalOpen(false)} className="absolute top-5 right-5 p-1.5 bg-gray-100 border-2 border-black rounded-full hover:bg-[#EF9D39] transition-colors">
+                    <div className="relative w-full max-w-sm bg-white force-light-surface-text border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[28px]">
+                        <button onClick={() => {setIsTrackingModalOpen(false); setTrackingResult(null);}} className="absolute top-5 right-5 p-1.5 bg-gray-100 border-2 border-black rounded-full hover:bg-[#EF9D39] transition-colors">
                             <X size={18} />
                         </button>
+                        
                         <div className="text-center mb-8">
                             <div className="w-14 h-14 bg-[#EF9D39] border-[3px] border-black rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[3px_3px_0px_0px_#000]">
                                 <Search size={26} />
@@ -135,18 +170,83 @@ export default function HelpCenter() {
                             <h2 className="text-2xl font-black uppercase">Track Job</h2>
                             <p className="font-bold text-gray-400 uppercase text-[9px] tracking-widest mt-1">Enter your 6-digit repair ID</p>
                         </div>
-                        <div className="space-y-3">
-                            <input type="text" placeholder="#GFX-0000" className="w-full p-4 border-[3px] border-black rounded-xl font-black text-center text-base text-gray-900 dark:text-gray-900 uppercase outline-none focus:ring-4 focus:ring-[#EF9D39]/20 transition-all placeholder:text-gray-400" />
-                            <button className="w-full bg-black text-white p-4 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-[#EF9D39] hover:text-black border-2 border-black transition-all">Locate Repair</button>
+
+                        <div className="space-y-4">
+                            <input 
+                                type="text" 
+                                value={ticketId}
+                                onChange={(e) => setTicketId(e.target.value)}
+                                placeholder="#GIT-00000" 
+                                className="w-full p-4 border-[3px] border-black rounded-xl font-black text-center text-base text-gray-900 uppercase outline-none focus:ring-4 focus:ring-[#EF9D39]/20 transition-all placeholder:text-gray-400" 
+                            />
+                            
+                            {isLoggedIn ? (
+                                <button 
+                                    onClick={handleTrackRepair}
+                                    disabled={isSearching || !ticketId}
+                                    className="w-full bg-black text-white p-4 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-[#EF9D39] hover:text-black border-2 border-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isSearching ? <Loader2 className="animate-spin" size={16} /> : "Locate Repair"}
+                                </button>
+                            ) : (
+                                <div className="space-y-3">
+                                    <button 
+                                        disabled
+                                        className="w-full bg-gray-200 text-gray-400 p-4 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] border-2 border-gray-300 cursor-not-allowed"
+                                    >
+                                        Login to Track
+                                    </button>
+                                    <p className="text-[9px] font-black text-center text-red-500 uppercase tracking-tighter">
+                                        Authentication required to access tracking data
+                                    </p>
+                                    <Link href="/login" className="block text-center text-[10px] font-black underline uppercase hover:text-[#EF9D39]">
+                                        Go to Login Page
+                                    </Link>
+                                </div>
+                            )}
+
+                            {/* --- RESULT DISPLAY --- */}
+                           {/* --- RESULT DISPLAY --- */}
+{trackingResult && (
+    <div className="mt-6 p-5 border-[3px] border-black rounded-2xl bg-[#FFF9F4] animate-in fade-in slide-in-from-top-4">
+        <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-green-100 border-2 border-black rounded-lg">
+                <Clock size={18} className="text-black" />
+            </div>
+            <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase leading-none">Status</p>
+                {/* Koristi tačna polja iz tvog Serializer-a */}
+                <p className="text-sm font-black uppercase text-[#EF9D39]">
+                    {trackingResult.status}
+                </p>
+            </div>
+        </div>
+        
+        <div className="space-y-2 border-t-2 border-black/10 pt-3">
+            <div className="flex justify-between text-[10px] font-bold uppercase">
+                <span className="text-gray-400">Device:</span>
+                <span className="text-black">{trackingResult.device_name || trackingResult.device}</span>
+            </div>
+            <div className="flex justify-between text-[10px] font-bold uppercase">
+                <span className="text-gray-400">Technician:</span>
+                <span className="text-black">{trackingResult.assigned_to || "Assigning..."}</span>
+            </div>
+            <div className="flex justify-between text-[10px] font-bold uppercase">
+                <span className="text-gray-400">Ticket ID:</span>
+                <span className="text-black">#{trackingResult.id}</span>
+            </div>
+        </div>
+    </div>
+)}
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* --- SUPPORT TICKET FORM MODAL --- */}
+            {/* --- SUPPORT TICKET FORM MODAL (Nepromijenjeno) --- */}
             {isTicketModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-                    <div className="relative w-full max-w-lg bg-white force-light-surface-text border-[3px] border-black p-6 md:p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] my-8" style={{ borderRadius: '28px' }}>
+                    <div className="relative w-full max-w-lg bg-white force-light-surface-text border-[3px] border-black p-6 md:p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] my-8 rounded-[28px]">
                         <button onClick={() => setIsTicketModalOpen(false)} className="absolute top-4 right-4 p-1.5 bg-gray-100 border-2 border-black rounded-full hover:bg-[#EF9D39] transition-colors">
                             <X size={18} />
                         </button>
@@ -160,17 +260,17 @@ export default function HelpCenter() {
                         <form onSubmit={handleTicketSubmit} className="space-y-4 text-left">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Full Name</label>
-                                    <input required type="text" placeholder="John Doe" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
+                                    <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1 text-black">Full Name</label>
+                                    <input required type="text" placeholder="John Doe" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
                                 </div>
                                 <div>
-                                    <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Email Address</label>
-                                    <input required type="email" placeholder="john@example.com" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
+                                    <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1 text-black">Email Address</label>
+                                    <input required type="email" placeholder="john@example.com" className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400" />
                                 </div>
                             </div>
                             <div>
-                                <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Issue Category</label>
-                                <select className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all bg-white cursor-pointer">
+                                <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1 text-black">Issue Category</label>
+                                <select className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all bg-white cursor-pointer">
                                     <option>Payment Issue</option>
                                     <option>Report a Provider</option>
                                     <option>Technical Bug</option>
@@ -178,8 +278,8 @@ export default function HelpCenter() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1">Description</label>
-                                <textarea required rows={3} placeholder="Please describe your problem..." className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 dark:text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400 resize-none"></textarea>
+                                <label className="block font-black uppercase text-[10px] mb-1.5 tracking-widest ml-1 text-black">Description</label>
+                                <textarea required rows={3} placeholder="Please describe your problem..." className="w-full p-3 border-[3px] border-black rounded-xl font-bold text-sm text-gray-900 outline-none focus:ring-4 focus:ring-[#EF9D39]/30 transition-all placeholder:text-gray-400 resize-none"></textarea>
                             </div>
                             <button type="submit" className="w-full flex items-center justify-center gap-3 bg-[#EF9D39] text-black p-4 rounded-xl font-black uppercase tracking-widest hover:bg-black hover:text-white border-[3px] border-black transition-all text-xs mt-2">
                                 Submit Ticket <Send size={18} />

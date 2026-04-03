@@ -7,6 +7,8 @@ from django.utils.decorators import method_decorator
 from django.utils.dateparse import parse_datetime
 from django.contrib.auth import get_user_model # Required to link the Handyman
 from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated # Dodaj ovo gore ako fali
+
 
 from .models import Booking
 from .serializers import BookingSerializer
@@ -244,3 +246,21 @@ class BookingDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         return Booking.objects.filter(Q(client=user) | Q(handyman=user))
+    
+class TicketTrackingView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, ticket_id):
+        try:
+            # 1. Prvo probaj naći bilo koji booking sa tim ID-em (bez filtera korisnika)
+            booking = Booking.objects.get(id=ticket_id)
+            
+            # 2. Provjeri da li taj booking pripada onome ko ga traži
+            if booking.client != request.user:
+                return Response({"message": "Ovaj tiket ne pripada vama!"}, status=403)
+                
+            serializer = BookingSerializer(booking)
+            return Response(serializer.data)
+        except (Booking.DoesNotExist, ValueError):
+            return Response({"message": "Tiket sa tim ID-em uopšte ne postoji u bazi!"}, status=404)
