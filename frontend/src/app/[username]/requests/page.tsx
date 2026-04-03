@@ -10,12 +10,19 @@ import { ArrowUpRight } from "lucide-react";
 
 import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
 
-function formatDateTime(value: string | null) {
-  if (!value) return "Not set";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Invalid date";
-  return date.toLocaleString();
-}
+const formatDateTime = (value: string | Date | null) => {
+    if (!value) return "Not set";
+    const date = typeof value === "string" ? new Date(value) : value;
+    if (Number.isNaN(date.getTime())) return "Invalid date";
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date).replace(",", "");
+  };
 
 function getRequestState(request: BookingDetail) {
   if (request.status === "cancelled" || request.negotiation_status === "declined") {

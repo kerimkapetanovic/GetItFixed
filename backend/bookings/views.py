@@ -1,3 +1,5 @@
+from urllib import request
+
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -252,15 +254,17 @@ class TicketTrackingView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ticket_id):
+        clean_id = str(ticket_id).replace('GIT-', '').replace('#', '').strip()
+        
         try:
-            # 1. Prvo probaj naći bilo koji booking sa tim ID-em (bez filtera korisnika)
-            booking = Booking.objects.get(id=ticket_id)
+            numeric_id = int(clean_id)
+            booking = Booking.objects.get(id=numeric_id)
             
-            # 2. Provjeri da li taj booking pripada onome ko ga traži
             if booking.client != request.user:
                 return Response({"message": "Ovaj tiket ne pripada vama!"}, status=403)
                 
             serializer = BookingSerializer(booking)
             return Response(serializer.data)
-        except (Booking.DoesNotExist, ValueError):
-            return Response({"message": "Tiket sa tim ID-em uopšte ne postoji u bazi!"}, status=404)
+
+        except (ValueError, Booking.DoesNotExist):
+            return Response({"message": "Tiket nije pronađen."}, status=404)

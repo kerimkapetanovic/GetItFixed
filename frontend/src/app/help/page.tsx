@@ -6,10 +6,14 @@ import Footer from '@/components/footer';
 import { Search, X, Ticket, Send, Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import api from '../../../lib/axios';
+import { getStatusInfo } from '../[username]/requests/[id]/page';
+import { BookingDetail } from '@/types/booking';
+import { formatDateTime } from '../[username]/requests/[id]/page';
 
 export default function HelpCenter() {
     const brandColor = "#EF9D39";
 
+    const [booking, setBooking] = useState<BookingDetail | null>(null);
     // --- STATES ---
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
@@ -19,6 +23,8 @@ export default function HelpCenter() {
     const [ticketId, setTicketId] = useState("");
     const [trackingResult, setTrackingResult] = useState<any>(null);
     const [isSearching, setIsSearching] = useState(false);
+
+
 
     // Check Auth on Mount
     useEffect(() => {
@@ -53,20 +59,22 @@ export default function HelpCenter() {
   const handleTrackRepair = async () => {
     if (!ticketId) return;
 
-    // 1. Očisti ID (skini razmake ili # ako ih ima)
-    const cleanId = ticketId.toString().trim().replace('#', '');
+    // Uzmi samo brojeve iz onoga što je korisnik unio
+    const cleanId = ticketId.replace(/\D/g, ''); 
     
+    if (!cleanId) {
+        alert("Molimo unesite brojčani ID tiketa.");
+        return;
+    }
+
     setIsSearching(true);
     try {
-        // 2. LOGUJ TAČAN URL KOJI ŠALJEŠ (pogledaj ovo u konzoli browsera!)
-        console.log("Šaljem zahtjev na:", `/api/bookings/tickets/${cleanId}/`);
-        
-        const response = await api.get(`/api/bookings/tickets/${cleanId}/`);
+        // PAŽNJA: Provjeri da li ti treba /api/ na početku zavisno od axios konfiguracije
+        const response = await api.get(`/api/bookings/tickets/${cleanId}/`); 
         setTrackingResult(response.data);
     } catch (error: any) {
-        // 3. Detaljniji error log
-        console.error("Greška detalji:", error.response?.data);
-        alert("Tiket nije pronađen. Provjerite ID.");
+        console.error("Greška:", error.response?.data);
+        alert(error.response?.data?.message || "Tiket nije pronađen.");
     } finally {
         setIsSearching(false);
     }
@@ -207,33 +215,38 @@ export default function HelpCenter() {
 
                             {/* --- RESULT DISPLAY --- */}
                            {/* --- RESULT DISPLAY --- */}
+{/* --- RESULT DISPLAY --- */}
 {trackingResult && (
     <div className="mt-6 p-5 border-[3px] border-black rounded-2xl bg-[#FFF9F4] animate-in fade-in slide-in-from-top-4">
         <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-green-100 border-2 border-black rounded-lg">
-                <Clock size={18} className="text-black" />
+                {/* Koristimo ikonu iz getStatusInfo za vizuelni feedback */}
+                {getStatusInfo(trackingResult).icon}
             </div>
             <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase leading-none">Status</p>
-                {/* Koristi tačna polja iz tvog Serializer-a */}
                 <p className="text-sm font-black uppercase text-[#EF9D39]">
-                    {trackingResult.status}
+                    {getStatusInfo(trackingResult).label}
                 </p>
             </div>
         </div>
         
         <div className="space-y-2 border-t-2 border-black/10 pt-3">
             <div className="flex justify-between text-[10px] font-bold uppercase">
-                <span className="text-gray-400">Device:</span>
-                <span className="text-black">{trackingResult.device_name || trackingResult.device}</span>
-            </div>
-            <div className="flex justify-between text-[10px] font-bold uppercase">
                 <span className="text-gray-400">Technician:</span>
-                <span className="text-black">{trackingResult.assigned_to || "Assigning..."}</span>
+                <span className="text-black">
+                    {trackingResult.handyman_name || "Assigning..."}
+                </span>
             </div>
             <div className="flex justify-between text-[10px] font-bold uppercase">
-                <span className="text-gray-400">Ticket ID:</span>
-                <span className="text-black">#{trackingResult.id}</span>
+                <span className="text-gray-400">Service:</span>
+                <span className="text-black">
+                    {trackingResult.service_name || "General Repair"}
+                </span>
+            </div>
+            <div className="flex justify-between text-[10px] font-bold uppercase">
+                <span className="text-gray-400">Confirmed Time:</span>
+                <span className="text-black">{formatDateTime(trackingResult.scheduled_time)}</span>
             </div>
         </div>
     </div>

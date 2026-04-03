@@ -10,14 +10,21 @@ import api from "../../../../../lib/axios";
 import { Loader2,Check,X, AlertCircle, PlayCircle, Timer, CheckCircle2 } from "lucide-react";
 import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
 
-function formatDateTime(value: string | null) {
-  if (!value) return "Not set";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Invalid date";
-  return date.toLocaleString();
-}
+export const formatDateTime = (value: string | Date | null) => {
+    if (!value) return "Not set";
+    const date = typeof value === "string" ? new Date(value) : value;
+    if (Number.isNaN(date.getTime())) return "Invalid date";
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date).replace(",", "");
+  };
 
-function getStatusInfo(booking: BookingDetail) {
+ export function getStatusInfo(booking: BookingDetail) {
   // 1. CANCELLED / DECLINED
   if (booking.status === "cancelled" || booking.negotiation_status === "declined") {
     return {
