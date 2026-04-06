@@ -7,7 +7,11 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 // Make sure this path points correctly to your custom axios file!
 import api from "../../../../../lib/axios";
-import { Loader2,Check,X, AlertCircle, PlayCircle, Timer, CheckCircle2 } from "lucide-react";
+import { Loader2,Check,X, AlertCircle, PlayCircle, Timer, CheckCircle2, Calendar as CalendarIcon, Send } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "../../../datepicker-custom.css";
+import { addMinutes } from "date-fns";
 import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
 
 export const formatDateTime = (value: string | Date | null) => {
@@ -111,9 +115,25 @@ export default function RequestDetailsPage() {
   const [counterMessage, setCounterMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [busySlots, setBusySlots] = useState<{start: Date, end: Date}[]>([]);
   const toUtcIso = (localDateTime: string) => {
     const parsed = new Date(localDateTime);
     return Number.isNaN(parsed.getTime()) ? localDateTime : parsed.toISOString();
+  };
+
+  
+
+  const filterPassedTime = (time: Date) => {
+    const currentDate = new Date();
+    if (time < currentDate) return false;
+
+    return !busySlots.some(slot => {
+      const checkTime = time.getTime();
+      const startTime = new Date(slot.start).getTime();
+      const endTime = new Date(slot.end).getTime();
+      return checkTime >= startTime && checkTime <= endTime;
+    });
   };
 
   useEffect(() => {
@@ -131,6 +151,20 @@ export default function RequestDetailsPage() {
 
     if (bookingId) fetchBookingDetails();
   }, [bookingId]);
+
+  useEffect(() => {
+    if (booking?.handyman_id) {
+      api.get(`/api/bookings/busy-slots/${booking.handyman_id}/`)
+        .then(res => {
+          const slots = res.data.map((slot: any) => ({
+            start: new Date(slot.scheduled_time),
+            end: addMinutes(new Date(slot.scheduled_time), (slot.duration_minutes || 60) + 25),
+          }));
+          setBusySlots(slots);
+        })
+        .catch(err => console.error("Error fetching busy slots", err));
+    }
+  }, [booking?.handyman_id]);
 
   const submitClientAction = async (action: "accept" | "decline" | "counter") => {
     if (!booking) return;
@@ -281,12 +315,20 @@ export default function RequestDetailsPage() {
                     <span className="text-[#EF9D39]">
                       {booking.client_counter_message}
                     </span>
+                    minutes
                   </p>
                 )}
                 <p>
                   Expert counter time:{" "}
                   <span className="text-[#EF9D39]">
                     {formatDateTime(booking.handyman_proposed_time)}
+                  </span>
+                </p>
+                
+                <p>
+                  Estimate time:{" "}
+                  <span className="text-[#EF9D39]">
+                    {(booking.duration_minutes)} minutes
                   </span>
                 </p>
                 {booking.handyman_counter_message && (
@@ -321,15 +363,17 @@ export default function RequestDetailsPage() {
                     request, or send a new time.
                   </p>
                   <div>
-                    <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
-                      Your counter time (optional unless countering)
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={counterTime}
-                      onChange={(e) => setCounterTime(e.target.value)}
-                      className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-3 rounded-xl font-bold"
-                    />
+                    <label className="text-xs font-black uppercase mb-2 block text-gray-500">Your counter time</label>
+                    <div 
+                      onClick={() => setIsCalendarOpen(true)}
+                      className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
+                    >
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                      {counterTime 
+                        ? new Date(counterTime).toLocaleString('de-DE', { hour12: false }) 
+                        : "CLICK TO SELECT DATE & TIME"
+                      }
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
@@ -343,6 +387,55 @@ export default function RequestDetailsPage() {
                       className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-3 rounded-xl font-bold"
                     />
                   </div>
+
+                  {isCalendarOpen && (
+            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">
+              <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
+                
+                <button 
+                  type="button" // Eksplicitno type="button" da ne trigeruje submit
+                  onClick={() => setIsCalendarOpen(false)}
+                  className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
+                >
+                  <X size={24} />
+                </button>
+
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-black uppercase dark:text-white tracking-tighter">Pick a new time</h2>
+                  <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Counter to expert's offer</p>
+                </div>
+
+                <div className="flex justify-center w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 dark:border-white/10 pt-4">
+                  <DatePicker
+                    selected={counterTime ? new Date(counterTime) : null}
+                    onChange={(date: Date | null) => {
+                      setCounterTime(date ? date.toISOString() : "");
+                    }}
+                    inline
+                    showTimeSelect
+                    timeIntervals={5}
+                    timeFormat="HH:mm"
+                    dateFormat="dd.MM.yyyy HH:mm"
+                    minDate={new Date()}
+                    filterTime={filterPassedTime}
+                    calendarClassName="popup-brutalist-calendar-final"
+                    nextMonthButtonLabel=">"
+                    previousMonthButtonLabel="<"
+                  />
+                </div>
+
+                <button 
+                  type="button" // Eksplicitno type="button"
+                  onClick={() => setIsCalendarOpen(false)}
+                  className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                >
+                  Confirm Choice
+                </button>
+              </div>
+            </div>
+          )}
+
+
 
                   {actionError && (
                     <p className="text-sm font-black text-red-600">{actionError}</p>
@@ -387,9 +480,6 @@ export default function RequestDetailsPage() {
                 </h3>
 
                 <div className="bg-white border-2 border-black rounded-xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
-                  <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
-                    Your Expert
-                  </p>
                   <p className="font-black text-black text-2xl uppercase mb-2">
                     {booking.handyman_name || "Professional"}
                   </p>
@@ -400,6 +490,14 @@ export default function RequestDetailsPage() {
                     </div>
                     <span className="font-bold text-gray-800 text-sm">
                       {booking.handyman_email || "Contact info unavailable"}
+                    </span>
+                  </div>
+                   <div className="flex items-center gap-2 mt-4 pt-4 border-t-2 border-gray-100">
+                    <div className="bg-yellow-100 p-2 rounded-lg border-2 border-yellow-300">
+                      📞
+                    </div>
+                    <span className="font-bold text-gray-800 text-sm">
+                      {booking.handyman_phone || "Contact info unavailable"}
                     </span>
                   </div>
                 </div>

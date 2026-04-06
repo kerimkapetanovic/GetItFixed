@@ -23,13 +23,16 @@ export interface BookingDetail {
   handyman_counter_message: string | null;
 
   // --- INFO O MAJSTORU ---
+  handyman_id: number | null;
   handyman_name: string | null;
   handyman_email: string | null;
+  handyman_phone: string | null;
 
   // --- NOVO: LOGIKA "BEZ MANA" ---
   diagnostic_fee: string | null;      // Cijena dolaska (šalje se kao string/decimal sa beka)
   estimated_duration: number | null;  // Procjena u minutama (npr. 60, 90, 120)
   expires_at: string | null;          // ISO string za Countdown tajmer
+  duration_minutes: number | null;    // Trajanje u minutama (ako je posao u toku ili završen)
 }
 
 // Opcionalno: Interface za radno vrijeme majstora ako ga budeš vukao posebno

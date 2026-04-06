@@ -8,6 +8,8 @@ class BookingSerializer(serializers.ModelSerializer):
     client_name = serializers.SerializerMethodField()
     handyman_name = serializers.SerializerMethodField()
     handyman_email = serializers.SerializerMethodField()
+    handyman_phone = serializers.SerializerMethodField()
+    handyman_id = serializers.SerializerMethodField()
     
     handyman = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
@@ -22,9 +24,11 @@ class BookingSerializer(serializers.ModelSerializer):
             'id',
             'ticket_id',
             'handyman', # The ID field for writing
+            'handyman_id', # The ID field for reading
             'client_name', 
             'handyman_name', 
             'handyman_email', 
+            'handyman_phone',
             'service_type', 
             'description', 
             'scheduled_time', 
@@ -34,6 +38,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'handyman_counter_message',
             'status',
             'negotiation_status',
+            'duration_minutes',
         ]
         read_only_fields = [
             'ticket_id',
@@ -41,6 +46,11 @@ class BookingSerializer(serializers.ModelSerializer):
             'negotiation_status',
             'client_proposed_time',
             'handyman_proposed_time',
+            'client_name',
+            'handyman_name',
+            'handyman_email',
+            'handyman_phone',
+            'handyman_id',
         ]
 
     def get_client_name(self, obj):
@@ -57,3 +67,14 @@ class BookingSerializer(serializers.ModelSerializer):
         if obj.handyman:
             return obj.handyman.email
         return None
+
+    def get_handyman_phone(self, obj):
+        if obj.handyman:
+            return obj.handyman.phone
+        return None
+
+    def get_handyman_id(self, obj):
+        if obj.handyman:
+            return obj.handyman.id
+        return None
+    
