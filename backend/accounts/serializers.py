@@ -112,6 +112,10 @@ class ProfileSerializer(serializers.ModelSerializer):
             "avatar",
             "avatar_url",
             "has_custom_avatar",
+            "phone",
+            "county",
+            "city",
+            "zip_code",
         )
         read_only_fields = ("email", "role", "username", "avatar_url", "has_custom_avatar")
 
