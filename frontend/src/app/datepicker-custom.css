@@ -123,6 +123,12 @@
   pointer-events: none !important;
 }
 
+.dark .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--disabled {
+  color: #ccc !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+}
+
 /* 10. SCROLLBAR I OSTALI FIXOVI */
 .react-datepicker__time-list::-webkit-scrollbar {
   width: 5px;

@@ -9,6 +9,7 @@ import { Calendar as CalendarIcon, FileText, Send, Loader2, X } from "lucide-rea
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
+import { addMinutes, isWithinInterval } from "date-fns";
 
 function BookingFormContent() {
   const params = useParams() as { username: string };
@@ -20,6 +21,7 @@ function BookingFormContent() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 const [generatedTicket, setGeneratedTicket] = useState("");
+const [busySlots, setBusySlots] = useState<{start: Date, end: Date}[]>([]);
 
   const username = params.username;
   const handymanIdFromUrl = searchParams ? searchParams.get("handyman_id") : null;
@@ -47,6 +49,7 @@ const [generatedTicket, setGeneratedTicket] = useState("");
       return;
     }
 
+
    setLoading(true);
     try {
       // IZMJENA: Snimamo odgovor u varijablu 'res'
@@ -72,6 +75,34 @@ const [generatedTicket, setGeneratedTicket] = useState("");
       setLoading(false);
     }
   };
+
+   useEffect(() => {
+  if (formData.handyman_id) {
+    api.get(`/api/bookings/busy-slots/${formData.handyman_id}/`)
+      .then(res => {
+        // Pretvaramo stringove iz baze u prave JS Date objekte
+        const slots = res.data.map((slot: any) => ({
+          start: new Date(slot.scheduled_time),
+          // Kraj je start + trajanje + buffer
+          end: addMinutes(new Date(slot.scheduled_time), (slot.duration_minutes || 60) + 25), // 25 min buffer
+        }));
+        setBusySlots(slots);
+      })
+      .catch(err => console.error("Error fetching busy slots", err));
+  }
+}, [formData.handyman_id]);
+
+const filterPassedTime = (time: Date) => {
+  const currentDate = new Date();
+  if (time < currentDate) return false;
+
+  return !busySlots.some(slot => {
+    const checkTime = time.getTime();
+    const startTime = new Date(slot.start).getTime();
+    const endTime = new Date(slot.end).getTime();
+    return checkTime >= startTime && checkTime <= endTime;
+  });
+};
 
   if (!mounted) return null;
 
@@ -159,6 +190,7 @@ const [generatedTicket, setGeneratedTicket] = useState("");
                     timeFormat="HH:mm"
                     dateFormat="dd.MM.yyyy HH:mm"
                     minDate={new Date()}
+                    filterTime={filterPassedTime}
                     calendarClassName="popup-brutalist-calendar-final"
                     nextMonthButtonLabel=">"
                     previousMonthButtonLabel="<"

@@ -10,6 +10,7 @@ from django.utils.dateparse import parse_datetime
 from django.contrib.auth import get_user_model # Required to link the Handyman
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated # Dodaj ovo gore ako fali
+from rest_framework.permissions import AllowAny # Dodaj ovo gore ako fali
 
 
 from .models import Booking
@@ -102,6 +103,10 @@ class HandymanNegotiationActionView(APIView):
             
             # Određujemo finalno vrijeme (ono oko kojeg su se zadnje složili)
             agreed_time = booking.handyman_proposed_time or booking.client_proposed_time or booking.scheduled_time
+            if not Booking.is_timeslot_available(request.user, agreed_time, duration, exclude_booking_id=booking.id):
+                return Response({
+                    "error": "You already have a job at this time or too close to it (30min buffer required)."
+                }, status=status.HTTP_400_BAD_REQUEST)
             
             booking.scheduled_time = agreed_time
             booking.duration_minutes = int(duration) # Spašavamo sate
@@ -268,3 +273,19 @@ class TicketTrackingView(APIView):
 
         except (ValueError, Booking.DoesNotExist):
             return Response({"message": "Tiket nije pronađen."}, status=404)
+        
+
+class HandymanBusySlotsView(APIView):
+    # Dodaj ove dvije linije:
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [AllowAny] # Dozvoli svima da vide zauzete termine kako bi kalendar radio
+
+    def get(self, request, handyman_id):
+        # Uzimamo termine koji su potvrđeni ('accepted')
+        busy_bookings = Booking.objects.filter(
+            handyman_id=handyman_id, 
+            status='accepted',
+            scheduled_time__isnull=False
+        ).values('scheduled_time', 'duration_minutes')
+        
+        return Response(list(busy_bookings))

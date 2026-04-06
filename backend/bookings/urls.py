@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    HandymanBusySlotsView,
     HandymanDashboardView, 
     AcceptJobView, 
     HandymanNegotiationActionView,
@@ -27,4 +28,5 @@ urlpatterns = [
 
     path('tickets/<str:ticket_id>/', TicketTrackingView.as_view(), name='ticket-detail'),
     path('<int:pk>/', BookingDetailView.as_view(), name='booking-detail'),
+    path('busy-slots/<int:handyman_id>/', HandymanBusySlotsView.as_view()),
 ]
