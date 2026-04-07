@@ -102,6 +102,25 @@ function getBackendErrorMessage(error: unknown) {
   }
   return "Failed to submit your response.";
 }
+const calculateTimeLeft = (expiresAt: string | null) => {
+  if (!expiresAt) return 0;
+  const expiryTime = new Date(expiresAt).getTime();
+  const now = new Date().getTime();
+  const difference = expiryTime - now;
+
+  return difference <= 0 ? 0 : difference;
+};
+
+const formatMs = (ms: number) => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+};
+
 
 export default function RequestDetailsPage() {
   const params = useParams() as { id: string; username: string };
@@ -117,6 +136,7 @@ export default function RequestDetailsPage() {
   const [actionSuccess, setActionSuccess] = useState("");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [busySlots, setBusySlots] = useState<{start: Date, end: Date}[]>([]);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
   const toUtcIso = (localDateTime: string) => {
     const parsed = new Date(localDateTime);
     return Number.isNaN(parsed.getTime()) ? localDateTime : parsed.toISOString();
@@ -135,6 +155,28 @@ export default function RequestDetailsPage() {
       return checkTime >= startTime && checkTime <= endTime;
     });
   };
+  useEffect(() => {
+    // Ako nema bookinga ili je posao već prihvaćen/završen, ne treba nam tajmer
+    if (!booking || booking.status === 'accepted' || booking.status === 'completed') {
+       setTimeLeft(0);
+       return;
+    }
+
+    const updateTimer = () => {
+      const remaining = calculateTimeLeft(booking.expires_at);
+      setTimeLeft(remaining);
+      
+      // Ako tajmer upravo istekne, osvježi podatke da se prikaže "Expired" status
+      if (remaining === 0 && booking.expires_at) {
+         // fetchBookingDetails(); // Opcionalno: tvoja funkcija za refresh
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [booking]);
 
   useEffect(() => {
     const fetchBookingDetails = async () => {
@@ -352,6 +394,28 @@ export default function RequestDetailsPage() {
               </div>
             </div>
 
+            {/* Timer sekcija */}
+{timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && (
+  <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-500 rounded-2xl flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <Timer className="text-orange-500 animate-pulse" size={24} />
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">
+          Response Deadline
+        </p>
+        <p className="text-xl font-black text-black dark:text-white tabular-nums">
+          {formatMs(timeLeft)}
+        </p>
+      </div>
+    </div>
+    {timeLeft < 15 * 60 * 1000 && ( // Ako je manje od 15 min
+      <span className="text-[10px] bg-red-500 text-white px-2 py-1 rounded font-black uppercase animate-bounce">
+        Expiring soon!
+      </span>
+    )}
+  </div>
+)}
+
             {booking.negotiation_status === "awaiting_client" &&
               booking.status !== "cancelled" && (
                 <div className="p-6 bg-[#FFF8EA] dark:bg-zinc-800/60 border-2 border-black rounded-xl space-y-4">
@@ -375,6 +439,7 @@ export default function RequestDetailsPage() {
                       }
                     </div>
                   </div>
+                  
                   <div>
                     <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
                       Message to expert (optional)

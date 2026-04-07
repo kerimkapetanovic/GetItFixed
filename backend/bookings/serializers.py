@@ -36,6 +36,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'client_counter_message',
             'handyman_proposed_time',
             'handyman_counter_message',
+            'expires_at', 'updated_at', 'created_at',
             'status',
             'negotiation_status',
             'duration_minutes',

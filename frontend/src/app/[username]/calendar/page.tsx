@@ -225,9 +225,6 @@ export default function CalendarPage() {
 </section>
 
 <Footer />
-
-
-      <Footer />
     </div>
   );
 }

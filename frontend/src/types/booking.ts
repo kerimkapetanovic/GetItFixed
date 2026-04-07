@@ -33,6 +33,9 @@ export interface BookingDetail {
   estimated_duration: number | null;  // Procjena u minutama (npr. 60, 90, 120)
   expires_at: string | null;          // ISO string za Countdown tajmer
   duration_minutes: number | null;    // Trajanje u minutama (ako je posao u toku ili završen)
+
+  updated_at: string; // OBAVEZNO: Da znamo kad je bila zadnja akcija
+  created_at: string; // Dobro je imati za inicijalni request
 }
 
 // Opcionalno: Interface za radno vrijeme majstora ako ga budeš vukao posebno

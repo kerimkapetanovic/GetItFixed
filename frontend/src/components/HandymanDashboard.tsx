@@ -151,49 +151,36 @@ export default function HandymanDashboard() {
         
         <div className="grid gap-4">
           {pendingJobs.length > 0 ? (
-          pendingJobs.map((job) => (
-  <div key={job.id} className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      
-      {/* LIJEVA STRANA: INFO (Zauzima sav preostali prostor) */}
-      <div className="flex-grow min-w-0 space-y-1">
-        {/* RED 1: TICKET ID I SERVIS (Sada su fino u liniji) */}
-        <div className="flex items-center gap-3 mb-1">
-          <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
-            #{job.ticket_id}
-          </span>
-          <span className="text-[12px] font-black uppercase text-[#EF9D39] tracking-widest">
-            🔧 {job.service_type}
-          </span>
-        </div>
+            pendingJobs.map((job) => (
+              <div key={job.id} className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="space-y-1">
+                     <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
+                  #{job.ticket_id}
+                  </span>
+                    <span className="text-[10px] font-black uppercase text-[#EF9D39]">{job.service_type}</span>
+                    <h3 className="font-black text-lg uppercase leading-tight dark:text-white">{job.client_name}</h3>
+                    <p className="text-sm font-bold text-gray-500">{job.description}</p>
+                    {job.client_proposed_time && (
+                      <p className="text-xs font-black uppercase text-blue-500">
+                        Client requested: {formatDateTime(job.client_proposed_time)}
+                      </p>
+                    )}
+                  </div>
 
-        {/* RED 2 & 3: IME I OPIS */}
-        <h3 className="font-black text-lg uppercase leading-tight dark:text-white ">
-          {job.client_name}
-        </h3>
-        <p className="text-sm font-bold text-gray-500">
-          {job.description}
-        </p>
-
-        {job.client_proposed_time && (
-          <p className="text-xs font-black uppercase text-blue-500 pt-1">
-            Client requested: {formatDateTime(job.client_proposed_time)}
-          </p>
-        )}
-      </div>
-
-<div className="flex flex-row flex-nowrap items-center gap-2 flex-shrink-0 ">                    <button 
+                  <div className="flex flex-wrap gap-2 md:justify-end w-[65%]">
+                    <button 
                       onClick={() => setAcceptOpenFor(acceptOpenFor === job.id ? null : job.id)} 
-                      className=" cursor-pointer bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-green-400 transition-all"
+                      className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-green-400 transition-all"
                     >
                       Accept
                     </button>
                     {job.handyman_name && (
                       <>
-                        <button onClick={() => handleDeclineJob(job.id)} className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-red-300 transition-all cursor-pointer">Deny</button>
+                        <button onClick={() => handleDeclineJob(job.id)} className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-red-300 transition-all">Deny</button>
                         <button 
                           onClick={() => setCounterOpenFor(counterOpenFor === job.id ? null : job.id)}
-                          className="cursor-pointer bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-[#EF9D39] transition-all"
+                          className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-[#EF9D39] transition-all"
                         >
                           Counter
                         </button>
@@ -352,27 +339,11 @@ export default function HandymanDashboard() {
           {acceptedJobs.length > 0 ? (
             acceptedJobs.map((job) => (
               <div key={job.id} className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl flex justify-between items-center shadow-[4px_4px_0px_0px_rgba(59,130,246,0.5)]">
-                <div className="flex-grow min-w-0 space-y-1">
-                  {/* RED 1: TICKET ID I SERVIS (Sada su fino u liniji) */}
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
-                      #{job.ticket_id}
-                    </span>
-                    <span className="text-[12px] font-black uppercase text-[#EF9D39] tracking-widest">
-                      🔧 {job.service_type}
-                    </span>
-                  </div>
-
-                  {/* RED 2 & 3: IME I OPIS */}
-                  <h3 className="font-black text-lg uppercase leading-tight dark:text-white ">
-                    {job.client_name}
-                  </h3>
-                  <p className="text-sm font-bold text-gray-500">
-                    {job.description}
-                  </p>
-                  <p className="text-sm font-bold text-blue-600 uppercase">Confirmed Date: {formatDateTime(job.scheduled_time)}</p>
+                <div>
+                  <h3 className="font-black text-lg uppercase dark:text-white">{job.client_name}</h3>
+                  <p className="text-sm font-bold text-blue-600">{formatDateTime(job.scheduled_time)}</p>
                 </div>
-                <CheckCircle className="flex flex-row flex-nowrap items-center gap-2 flex-shrink-0 text-blue-500" />
+                <CheckCircle className="text-blue-500" />
               </div>
             ))
           ) : (
