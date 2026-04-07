@@ -11,6 +11,8 @@ from django.contrib.auth import get_user_model # Required to link the Handyman
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated # Dodaj ovo gore ako fali
 from rest_framework.permissions import AllowAny # Dodaj ovo gore ako fali
+from datetime import timedelta # Dodaj ovo
+from django.utils import timezone # Već bi trebalo da imaš od ranije
 
 
 from .models import Booking
@@ -143,6 +145,7 @@ class HandymanNegotiationActionView(APIView):
             booking.handyman_counter_message = message or None
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_client' # Sada klijent mora odgovoriti
+            booking.expires_at = timezone.now() + timedelta(hours=1)
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
@@ -241,6 +244,7 @@ class ClientNegotiationActionView(APIView):
             # BITNO: Ne diraj scheduled_time dok majstor ne prihvati!
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_handyman'
+            booking.expires_at = timezone.now() + timedelta(hours=1)
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
