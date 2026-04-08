@@ -357,7 +357,6 @@ export default function RequestDetailsPage() {
                     <span className="text-[#EF9D39]">
                       {booking.client_counter_message}
                     </span>
-                    minutes
                   </p>
                 )}
                 <p>

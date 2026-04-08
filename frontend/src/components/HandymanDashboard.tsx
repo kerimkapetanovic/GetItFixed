@@ -7,38 +7,10 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../app/datepicker-custom.css";
 import { BookingDetail } from "@/types/booking";
+import { JobTimer } from "@/components/JobTimer";
 
 // --- POMOĆNA KOMPONENTA ZA TAJMER ---
-const JobTimer = ({ expiresAt }: { expiresAt: string | null }) => {
-  const [timeLeft, setTimeLeft] = useState<number>(0);
 
-  useEffect(() => {
-    if (!expiresAt) return;
-
-    const calculate = () => {
-      const diff = new Date(expiresAt).getTime() - new Date().getTime();
-      setTimeLeft(Math.max(0, diff));
-    };
-
-    calculate();
-    const interval = setInterval(calculate, 1000);
-    return () => clearInterval(interval);
-  }, [expiresAt]);
-
-  if (!expiresAt || timeLeft <= 0) return null;
-
-  const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
-  const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-
-  return (
-    <div className="flex items-center gap-1.5 bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full border border-orange-200 dark:border-orange-800">
-      <Timer size={14} className="text-orange-600 animate-pulse" />
-      <span className="text-[11px] font-black text-orange-600 tabular-nums uppercase">
-        Expires: {hours > 0 ? `${hours}h ` : ""}{minutes}m
-      </span>
-    </div>
-  );
-};
 
 export default function HandymanDashboard() {
   const [acceptOpenFor, setAcceptOpenFor] = useState<number | null>(null);

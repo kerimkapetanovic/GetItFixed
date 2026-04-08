@@ -6,9 +6,10 @@ import React, { useState, useEffect } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../lib/axios";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Timer } from "lucide-react";
 
 import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
+import { JobTimer } from "@/components/JobTimer";
 
 const formatDateTime = (value: string | Date | null) => {
     if (!value) return "Not set";
@@ -78,6 +79,22 @@ export default function MyRequestsPage() {
 
   const [requests, setRequests] = useState<BookingDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
+
+useEffect(() => {
+  const interval = setInterval(() => setNow(new Date()), 1000);
+  return () => clearInterval(interval);
+}, []);
+
+const getTimeLeft = (expiresAt: string | null) => {
+  if (!expiresAt) return null;
+  const diff = new Date(expiresAt).getTime() - now.getTime();
+  if (diff <= 0) return null;
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+};
 
   useEffect(() => {
     const fetchMyRequests = async () => {
@@ -148,6 +165,12 @@ export default function MyRequestsPage() {
                 <span className="text-yellow-500 font-black text-[14px] uppercase tracking-widest flex items-center gap-1">
                   🔧 {req.service_type}
                 </span>
+                <span>
+                {req.status !== 'accepted' && req.status !== 'completed' && (
+                  <JobTimer expiresAt={req.expires_at} />
+                )}
+              </span>
+              
               </div>
 
               {/* IME MAJSTORA */}
