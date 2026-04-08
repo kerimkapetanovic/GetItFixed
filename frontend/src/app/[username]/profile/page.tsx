@@ -253,6 +253,10 @@ if (typeof window !== "undefined") {
     });
 
     const updated = response.data;
+    console.log('After upload, API returned:', {
+      avatar_url: updated.avatar_url,
+      has_custom_avatar: updated.has_custom_avatar,
+    });
     
     // AŽURIRAJ SVA POLJA OVDJE:
     setFormData({
@@ -353,46 +357,46 @@ if (typeof window !== "undefined") {
   };
 
   const removeCustomAvatar = async () => {
-    try {
-      setUploadingAvatar(true);
-      setAvatarError(null);
-      setAvatarMessage(null);
+  try {
+    setUploadingAvatar(true);
+    setAvatarError(null);
+    setAvatarMessage(null);
 
-      const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
-        avatar: null,
-      });
-      const updated = response.data;
+    const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
+      avatar: null,
+    });
+    const updated = response.data;
 
-      setFormData((prev) => ({
-        ...prev,
-        firstName: updated.first_name || prev.firstName,
-        lastName: updated.last_name || prev.lastName,
-        email: updated.email || prev.email,
-        username: updated.username || prev.username,
-        avatarUrl: updated.avatar_url || prev.avatarUrl,
-        phone: updated.phone || prev.phone,
-        county: updated.county || prev.county,
-        city: updated.city || prev.city,
-        zipCode: updated.zip_code || prev.zipCode,
+    setFormData((prev) => ({
+      ...prev,
+      avatarUrl: updated.avatar_url || "",  // ✅ NE koristi prev.avatarUrl kao fallback!
+      firstName: updated.first_name || prev.firstName,
+      lastName: updated.last_name || prev.lastName,
+      email: updated.email || prev.email,
+      username: updated.username || prev.username,
+      phone: updated.phone || prev.phone,
+      county: updated.county || prev.county,
+      city: updated.city || prev.city,
+      zipCode: updated.zip_code || prev.zipCode,
+    }));
+    
+    setHasCustomAvatar(false);  // ✅ Eksplicitno postavi na false
 
-      }));
-      setHasCustomAvatar(Boolean(updated.has_custom_avatar));
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("avatar_url", updated.avatar_url || "");
-        localStorage.setItem("username", updated.username || "");
-        window.dispatchEvent(new Event("profile-updated"));
-      }
-
-      setAvatarMessage(t("profile.avatarRemoveSuccess"));
-    } catch (err: unknown) {
-      const apiError = err as { response?: { data?: ApiErrorResponse } };
-      setAvatarError(getApiErrorMessage(apiError.response?.data));
-    } finally {
-      setUploadingAvatar(false);
-      setPendingAvatarFile(null);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("avatar_url", "");  // ✅ Obriši iz localStorage
+      localStorage.setItem("username", updated.username || "");
+      window.dispatchEvent(new Event("profile-updated"));
     }
-  };
+
+    setAvatarMessage(t("profile.avatarRemoveSuccess"));
+  } catch (err: unknown) {
+    const apiError = err as { response?: { data?: ApiErrorResponse } };
+    setAvatarError(getApiErrorMessage(apiError.response?.data));
+  } finally {
+    setUploadingAvatar(false);
+    setPendingAvatarFile(null);
+  }
+};
 
   const persistPasswordChanges = async () => {
     try {
@@ -518,10 +522,29 @@ if (typeof window !== "undefined") {
     });
   };
 
-  const avatarUrl =
-    formData.avatarUrl ||
-    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.username || "User")}`;
+const SUPABASE_STORAGE_URL = 'https://itqhsfuxuhrnbfrcwbbt.supabase.co/storage/v1/object/public';
 
+const avatarUrl = useMemo(() => {
+    console.log('avatarUrl raw value:', formData.avatarUrl);
+
+  if (formData.avatarUrl) {
+    if (formData.avatarUrl.startsWith('http')) return formData.avatarUrl;
+
+    // Strip leading slashes from the stored path
+    const filePath = formData.avatarUrl.replace(/^\/+/, '');
+
+    // If the path already includes 'avatars/', don't add it again
+    if (filePath.startsWith('avatars/')) {
+      return `${SUPABASE_STORAGE_URL}/${filePath}`;
+    }
+
+    // Otherwise, assume it's just the filename
+    return `${SUPABASE_STORAGE_URL}/avatars/${filePath}`;
+  }
+
+
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.username || "User")}`;
+}, [formData.avatarUrl, formData.username]);
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
       <Header />

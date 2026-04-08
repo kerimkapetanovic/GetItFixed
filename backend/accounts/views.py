@@ -1,3 +1,5 @@
+from urllib import request
+
 from rest_framework import generics, status, serializers, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -160,6 +162,14 @@ class CurrentUserProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
     def patch(self, request, *args, **kwargs):
+        
+        if 'avatar' in request.data and request.data.get('avatar') is None:
+            instance = request.user
+            instance.avatar = None
+            instance.save()
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
         serializer = self.get_serializer(
             request.user,
             data=request.data,

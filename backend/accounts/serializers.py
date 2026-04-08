@@ -1,8 +1,33 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
+import boto3
+import uuid
+import os
 
 User = get_user_model()
+
+def upload_avatar_to_supabase(file_obj):
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+        endpoint_url=os.getenv('AWS_S3_ENDPOINT_URL'),
+        region_name=os.getenv('AWS_S3_REGION_NAME'),
+    )
+    
+    ext = os.path.splitext(file_obj.name)[1].lower()  # .jpg, .png...
+    filename = f"profile_{uuid.uuid4().hex[:8]}{ext}"
+    
+    s3.upload_fileobj(
+        file_obj,
+        os.getenv('AWS_STORAGE_BUCKET_NAME'),  # 'avatars'
+        filename,
+        ExtraArgs={'ContentType': file_obj.content_type}
+    )
+    
+    base_url = os.getenv('NEXT_PUBLIC_SUPABASE_STORAGE_URL')
+    return f"{base_url}/avatars/{filename}"
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -16,7 +41,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        # Provjera za majstore (handyman)
         if attrs.get('role') == 'handyman' and not attrs.get('service_type'):
             raise serializers.ValidationError(
                 {"service_type": "Handyman must select a service type."}
@@ -24,7 +48,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        # create_user se brine za hashiranje lozinke
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -40,6 +63,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+
 class EmailAuthSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
@@ -54,10 +78,7 @@ class EmailAuthSerializer(serializers.Serializer):
             raise serializers.ValidationError('You must provide an email and password.', code='authorization')
 
         try:
-            # 1. Pronalaženje korisnika po emailu
             user_obj = User.objects.get(email=email)
-            
-            # 2. Provjera uloge (Admin ima "free pass")
             is_privileged = user_obj.is_superuser or user_obj.is_staff or user_obj.role == 'admin'
             
             if not is_privileged:
@@ -67,15 +88,12 @@ class EmailAuthSerializer(serializers.Serializer):
                         code='authorization'
                     )
 
-            # 3. Autentifikacija
-            # Prvo pokušavamo sa sistemskim username-om (najsigurnije za admina)
             user = authenticate(
                 request=self.context.get('request'),
                 username=user_obj.username,
                 password=password
             )
             
-            # Ako ne uspije, pokušavamo sa emailom (ako je USERNAME_FIELD = 'email')
             if not user:
                 user = authenticate(
                     request=self.context.get('request'),
@@ -84,7 +102,6 @@ class EmailAuthSerializer(serializers.Serializer):
                 )
 
         except User.DoesNotExist:
-            # Ne otkrivamo da li email postoji radi sigurnosti, samo bacamo opšti error
             user = None
 
         if not user:
@@ -94,40 +111,50 @@ class EmailAuthSerializer(serializers.Serializer):
         return attrs
 
 
+# ✅ SAMO JEDAN ProfileSerializer
 class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(read_only=True)
     username = serializers.CharField(read_only=True)
-    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
+    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)    
     avatar_url = serializers.SerializerMethodField()
     has_custom_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
-            "first_name",
-            "last_name",
-            "email",
-            "role",
-            "username",
-            "avatar",
-            "avatar_url",
-            "has_custom_avatar",
-            "phone",
-            "county",
-            "city",
-            "zip_code",
+            "first_name", "last_name", "email", "role", "username",
+            "avatar", "avatar_url", "has_custom_avatar",
+            "phone", "county", "city", "zip_code",
         )
         read_only_fields = ("email", "role", "username", "avatar_url", "has_custom_avatar")
 
     def get_avatar_url(self, obj):
-        request = self.context.get("request")
         if obj.avatar:
-            url = obj.avatar.url
-            return request.build_absolute_uri(url) if request else url
+            return obj.avatar  # već je puni URL string
         return f"https://api.dicebear.com/7.x/avataaars/svg?seed={obj.username}"
+
+
 
     def get_has_custom_avatar(self, obj):
         return bool(obj.avatar)
+
+    def update(self, instance, validated_data):
+        avatar_file = validated_data.pop('avatar', None)
+
+        if avatar_file is not None:
+            if avatar_file:
+                try:
+                    instance.avatar = upload_avatar_to_supabase(avatar_file)  # ✅ ispravno
+                except Exception as e:
+                    raise serializers.ValidationError({"avatar": f"Upload failed: {str(e)}"})
+            else:
+                instance.avatar = None
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 
 class ChangePasswordSerializer(serializers.Serializer):
