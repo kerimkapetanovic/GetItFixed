@@ -95,6 +95,24 @@ const getTimeLeft = (expiresAt: string | null) => {
   const s = Math.floor((diff % 60000) / 1000);
   return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
 };
+const handleExpire = async (bookingId: number) => {
+  try {
+    // 1. Opcionalno: Pozovi backend da klijent automatski "decline-uje" jer je isteklo
+    // Ako backend to već radi sam (cron job), onda samo osvježi lokalno stanje
+    setRequests((prev) =>
+      prev.map((req) =>
+        req.id === bookingId 
+          ? { ...req, status: "cancelled" as any, negotiation_status: "declined" as any } 
+          : req
+      )
+    );
+    
+    // Ako želiš i bazu da ažuriraš odmah s frontenda:
+    // await api.post(`/api/bookings/${bookingId}/negotiate/`, { action: 'decline' });
+  } catch (err) {
+    console.error("Error expiring booking:", err);
+  }
+};
 
   useEffect(() => {
     const fetchMyRequests = async () => {
@@ -176,10 +194,13 @@ const getTimeLeft = (expiresAt: string | null) => {
                   </span>
                 )}
                 <span>
-                {req.status !== 'accepted' && req.status !== 'completed' && (
-                  <JobTimer expiresAt={req.expires_at} />
-                )}
-              </span>
+  {req.status !== 'accepted' && req.status !== 'completed' && req.status !== 'cancelled' && (
+    <JobTimer 
+      expiresAt={req.expires_at} 
+      onExpire={() => handleExpire(req.id)} 
+    />
+  )}
+</span>
               
               </div>
 

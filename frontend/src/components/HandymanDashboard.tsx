@@ -111,6 +111,15 @@ export default function HandymanDashboard() {
     }
   };
 
+  const handleExpire = (jobId: number) => {
+  setJobs((prevJobs) =>
+    prevJobs.map((job) =>
+      job.id === jobId
+        ? { ...job, status: "cancelled" } // Ovo ga automatski izbacuje iz pending i šalje u rejected filter
+        : job
+    )
+  );
+};
   const handleCounterJob = async (jobId: number) => {
     const value = counterValues[jobId];
    if (!value?.proposedTime) {
@@ -385,6 +394,10 @@ const cancelledJobs = jobs.filter((j) => j.status === "cancelled" || j.status ==
                     <span className="bg-blue-500 text-white px-2 py-0.5 rounded-md font-black text-[10px] uppercase">
                       #{job.ticket_id}
                     </span>
+                    <JobTimer 
+    expiresAt={job.expires_at} 
+    onExpire={() => handleExpire(job.id)} 
+  />
                     <span className="text-[10px] font-black uppercase text-blue-500">
                       🔧 {job.service_type}
                     </span>
@@ -432,8 +445,7 @@ const cancelledJobs = jobs.filter((j) => j.status === "cancelled" || j.status ==
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-black uppercase bg-red-100 text-red-600 px-2 py-1 rounded-md border border-red-200">
-                    Declined
-                  </span>
+                {job.status === "cancelled" ? "Expired" : "Declined"}                  </span>
                 </div>
               </div>
             ))
