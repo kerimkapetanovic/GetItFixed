@@ -94,9 +94,9 @@ class CustomLoginView(ObtainAuthToken):
 
     def _build_avatar_url(self, request, user):
         if user.avatar:
-            return request.build_absolute_uri(user.avatar.url)
+            return user.avatar
+        
         return f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.username}"
-
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)

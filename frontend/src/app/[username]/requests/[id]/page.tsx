@@ -278,22 +278,40 @@ export default function RequestDetailsPage() {
           </Link>
         </div>
 
-        <div className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 rounded-[32px]">
-          {(() => {
-            const statusInfo = getStatusInfo(booking);
-            return (
-          <div className="flex justify-between items-start mb-8">
-            <h1 className="text-3xl md:text-5xl w-[100%] font-black text-gray-900 dark:text-white uppercase tracking-tighter">
-             #{booking.ticket_id}
-            </h1>
-            <span
-              className={` text-center w-[80%] px-4 py-2 border-2 border-black font-black text-sm uppercase rounded-full ${statusInfo.badgeClass}`}
-            >
-              {statusInfo.label}
-            </span>
+        <div 
+  className={`w-full bg-white dark:bg-zinc-900 border-2 p-8 md:p-12 rounded-[32px] transition-all 
+    ${booking.is_urgent 
+      ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]" 
+      : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+    }`}
+>
+          
+         {(() => {
+  const statusInfo = getStatusInfo(booking);
+  return (
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      {/* Levi deo: ID i Urgent Bedž */}
+      <div className="flex items-center gap-3">
+        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none">
+          #{booking.ticket_id}
+        </h1>
+        
+        {booking.is_urgent && (
+          <div className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px] md:text-xs uppercase animate-pulse border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            🚨 Urgent Priority
           </div>
-            );
-          })()}
+        )}
+      </div>
+
+      {/* Desni deo: Status Bedž */}
+      <span
+        className={`text-center px-6 py-2 border-2 border-black font-black text-sm uppercase rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap ${statusInfo.badgeClass}`}
+      >
+        {statusInfo.label}
+      </span>
+    </div>
+  );
+})()}
 
           <div className="space-y-6">
             <div className="p-4 bg-gray-50 dark:bg-zinc-800 border-2 border-black rounded-xl">

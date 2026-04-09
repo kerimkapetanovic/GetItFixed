@@ -35,46 +35,42 @@ const [busySlots, setBusySlots] = useState<{start: Date, end: Date}[]>([]);
     scheduled_time: null as Date | null, 
     handyman_id: handymanIdFromUrl || "", 
     handyman_name: handymanNameFromUrl || "",
+    is_urgent: false, // <-- DODAJ OVO
   });
 
   useEffect(() => { setMounted(true); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // VALIDACIJA: Provjera da li je izabran datum
-    if (!formData.scheduled_time) {
-      alert("Please select a preferred visit time before confirming.");
-      setIsCalendarOpen(true); // Otvori mu kalendar automatski ako je zaboravio
-      return;
+  e.preventDefault();
+  
+  if (!formData.scheduled_time) {
+    alert("Please select a preferred visit time before confirming.");
+    setIsCalendarOpen(true);
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const res = await api.post("/api/bookings/create/", {
+      service_type: formData.service_type,
+      description: formData.description,
+      scheduled_time: formData.scheduled_time.toISOString(),
+      handyman_id: formData.handyman_id || null,
+      is_urgent: formData.is_urgent, // <-- OBAVEZNO POSLATI OVO
+    });
+
+    if (res.data && res.data.ticket_id) {
+      setGeneratedTicket(res.data.ticket_id);
+      setShowSuccess(true);
+    } else {
+      router.push(`/${username}/requests`);
     }
-
-
-   setLoading(true);
-    try {
-      // IZMJENA: Snimamo odgovor u varijablu 'res'
-      const res = await api.post("/api/bookings/create/", {
-        service_type: formData.service_type,
-        description: formData.description,
-        scheduled_time: formData.scheduled_time.toISOString(),
-        handyman_id: formData.handyman_id || null,
-      });
-
-      // NOVO: Umjesto router.push, provjeravamo ticket_id
-      if (res.data && res.data.ticket_id) {
-        setGeneratedTicket(res.data.ticket_id);
-        setShowSuccess(true);
-      } else {
-        // Fallback ako iz nekog razloga nema ticket_id u response-u
-        router.push(`/${username}/requests`);
-      }
-
-    } catch (err: unknown) {
-      alert("Booking Error: Failed to create request.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err: unknown) {
+    alert("Booking Error: Failed to create request.");
+  } finally {
+    setLoading(false);
+  }
+};
 
    useEffect(() => {
   if (formData.handyman_id) {
@@ -158,8 +154,32 @@ const filterPassedTime = (time: Date) => {
                 : "CLICK TO SELECT DATE & TIME"
               }
             </div>
+           
           </div>
-
+ {/* URGENT TOGGLE SECTION */}
+<div 
+  onClick={() => setFormData({ ...formData, is_urgent: !formData.is_urgent })}
+  className={`p-4 border-2 border-black rounded-xl cursor-pointer transition-all flex items-center justify-between ${
+    formData.is_urgent 
+    ? "bg-red-50 dark:bg-red-900/20 border-red-600 shadow-[4px_4px_0px_0px_#dc2626]" 
+    : "bg-gray-50 dark:bg-zinc-800"
+  }`}
+>
+  <div className="flex items-center gap-3">
+    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-black ${formData.is_urgent ? 'bg-red-600 text-white' : 'bg-white text-gray-400'}`}>
+      <span className="font-black">!</span>
+    </div>
+    <div>
+      <p className="text-sm font-black uppercase tracking-tight text-black dark:text-white">Is this urgent?</p>
+      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Surcharge applies for immediate response</p>
+    </div>
+  </div>
+  
+  {/* Custom Slide Toggle */}
+  <div className={`w-12 h-6 rounded-full border-2 border-black relative transition-colors ${formData.is_urgent ? 'bg-red-500' : 'bg-gray-200'}`}>
+    <div className={`absolute top-0.5 w-4 h-4 bg-white border-2 border-black rounded-full transition-all ${formData.is_urgent ? 'left-6' : 'left-0.5'}`} />
+  </div>
+</div>
           {/* MODAL POPUP */}
           {isCalendarOpen && (
             <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">

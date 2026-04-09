@@ -17,6 +17,7 @@ export interface BookingDetail {
   scheduled_time: string | null;           // Finalni dogovoreni termin
   client_proposed_time: string | null;     // Prvi termin koji klijent klikne u kalendaru
   handyman_proposed_time: string | null;   // Ako majstor lupi Counter-offer za vrijeme
+  is_urgent: boolean;                      // Da li je hitno (ako klijent označi kao hitno prilikom kreiranja requesta)
 
   // --- PORUKE ---
   client_counter_message: string | null;

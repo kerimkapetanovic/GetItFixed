@@ -149,10 +149,23 @@ export default function HandymanDashboard() {
         </h2>
         {actionError && <p className="mb-4 text-sm font-black uppercase text-red-500">{actionError}</p>}
         
-        <div className="grid gap-4">
-          {pendingJobs.length > 0 ? (
-            pendingJobs.map((job) => (
-              <div key={job.id} className="bg-white dark:bg-zinc-800 border-[3px] border-black p-5 rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
+       <div className="grid gap-4">
+  {pendingJobs.length > 0 ? (
+    pendingJobs.map((job) => (
+      <div 
+        key={job.id} 
+        className={`relative bg-white dark:bg-zinc-800 border-[3px] p-5 rounded-2xl transition-all ${
+          job.is_urgent 
+            ? "border-red-600 shadow-[8px_8px_0px_0px_#dc2626] bg-red-50/30" 
+            : "border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
+        }`}
+      >
+        {/* HITNI BEDŽ */}
+        {job.is_urgent && (
+          <div className="absolute -top-3 -right-3 bg-red-600 text-white px-3 py-1 rounded-lg font-black uppercase text-[10px] border-2 border-black animate-bounce shadow-[3px_3px_0px_0px_#000]">
+            Urgent +50% BAM
+          </div>
+        )}
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">

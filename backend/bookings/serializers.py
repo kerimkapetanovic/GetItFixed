@@ -10,6 +10,7 @@ class BookingSerializer(serializers.ModelSerializer):
     handyman_email = serializers.SerializerMethodField()
     handyman_phone = serializers.SerializerMethodField()
     handyman_id = serializers.SerializerMethodField()
+    estimated_price = serializers.ReadOnlyField(source='get_estimated_price')
     
     handyman = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
@@ -23,6 +24,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'ticket_id',
+            'is_urgent', # OBAVEZNO DODAJ OVO POLJE
             'handyman', # The ID field for writing
             'handyman_id', # The ID field for reading
             'client_name', 
@@ -40,6 +42,8 @@ class BookingSerializer(serializers.ModelSerializer):
             'status',
             'negotiation_status',
             'duration_minutes',
+            'estimated_price',
+            
         ]
         read_only_fields = [
             'ticket_id',

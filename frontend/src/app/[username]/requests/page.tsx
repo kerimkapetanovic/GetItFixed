@@ -145,9 +145,12 @@ const getTimeLeft = (expiresAt: string | null) => {
   <div
     key={req.id}
     style={cardStyle}
-    className="bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 text-gray-900 dark:text-zinc-100 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6"
-  >
-    {(() => {
+  className={`bg-white dark:bg-zinc-900 border-2 p-6 transition-all text-gray-900 dark:text-zinc-100 
+    ${req.is_urgent 
+      ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]" 
+      : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+    }`}
+>    {(() => {
       const requestState = getRequestState(req);
       const latestProposal =
         req.handyman_proposed_time ||
@@ -162,6 +165,14 @@ const getTimeLeft = (expiresAt: string | null) => {
                 <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
                   #{req.ticket_id}
                 </span>
+
+                {/* NOVI URGENT BADGE */}
+                {req.is_urgent && (
+                  <span className="bg-red-600 text-white px-2 py-0.5 rounded-md font-black text-[10px] tracking-tighter uppercase animate-bounce">
+                    🚨 URGENT
+                  </span>
+                )}
+
                 <span className="text-yellow-500 font-black text-[14px] uppercase tracking-widest flex items-center gap-1">
                   🔧 {req.service_type}
                 </span>
@@ -191,6 +202,7 @@ const getTimeLeft = (expiresAt: string | null) => {
           <h2 className="text-2xl font-black uppercase italic mb-4 line-clamp-1 dark:text-white">
             {req.description}
           </h2>
+       
 
           {/* SIVA INFO KUTIJA */}
           <div className="p-4 border-2 border-gray-200 dark:border-zinc-700 rounded-xl mb-4 bg-gray-50 dark:bg-zinc-800/50 space-y-2">
