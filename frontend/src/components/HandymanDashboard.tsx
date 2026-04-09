@@ -124,6 +124,11 @@ export default function HandymanDashboard() {
       return;
     }
 
+    if(!value?.message || value.message.trim() === "") {
+      setActionError("Please include a message for the client with your counter offer.");
+      return;
+    }
+
     try {
       setActionError("");
       setActionLoadingId(jobId);
@@ -143,7 +148,8 @@ export default function HandymanDashboard() {
   };
 
   const pendingJobs = jobs.filter((j) => j.status === "pending");
-  const acceptedJobs = jobs.filter((j) => j.status === "accepted");
+const acceptedJobs = jobs.filter((j) => j.status === "accepted");
+const cancelledJobs = jobs.filter((j) => j.status === "cancelled" || j.status === "declined");
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
@@ -185,7 +191,7 @@ export default function HandymanDashboard() {
 
       <div className="flex flex-col">
         <span className="text-[10px] font-black uppercase text-[#EF9D39]">
-          {job.service_type}
+         🔧 {job.service_type}
         </span>
         <h3 className="font-black text-lg uppercase leading-tight dark:text-white">
           {job.client_name}
@@ -200,12 +206,18 @@ export default function HandymanDashboard() {
       )}
     </div>
 
-   {/* DESNA STRANA: AKCIJE ILI STATUS */}
+{/* DESNA STRANA: AKCIJE ILI STATUS */}
 <div className="flex flex-wrap gap-2 md:justify-end md:w-[40%]">
-  {/* 1. ČEKAMO KLIJENTA: Ako je status pending, postoji tvoj prijedlog, A klijent nije taj koji je zadnji napravio promjenu */}
-  {job.status === "pending" && 
-   job.handyman_proposed_time && 
-   (!job.client_proposed_time || new Date(job.handyman_proposed_time) > new Date(job.client_proposed_time)) ? (
+  {/* 1. STATUS: ACCEPTED - Plavi bedž */}
+  {job.status === "accepted" ? (
+    <div className="bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-500 px-4 py-2 rounded-xl flex items-center gap-2 shadow-[4px_4px_0px_0px_#3b82f6]">
+      <CheckCircle size={14} className="text-blue-500" />
+      <span className="font-black uppercase text-[10px] text-blue-600 dark:text-blue-400">
+        Accepted
+      </span>
+    </div>
+  ) : job.status === "pending" && job.last_action_by === "handyman" ? (
+    /* 2. ČEKAMO KLIJENTA: Zaključaj UI */
     <div className="bg-zinc-100 dark:bg-zinc-700 border-2 border-dashed border-black px-4 py-2 rounded-xl flex items-center gap-2">
       <Loader2 size={14} className="animate-spin text-[#EF9D39]" />
       <span className="font-black uppercase text-[10px] dark:text-white">
@@ -213,7 +225,7 @@ export default function HandymanDashboard() {
       </span>
     </div>
   ) : (
-    /* 2. LOPTICA JE KOD TEBE: Klijent je tek poslao zahtjev ILI je on uradio counter-offer */
+    /* 3. LOPTICA JE KOD TEBE: Dugmad za akciju */
     <>
       <button
         onClick={() => setAcceptOpenFor(acceptOpenFor === job.id ? null : job.id)}
@@ -222,7 +234,6 @@ export default function HandymanDashboard() {
         Accept
       </button>
       
-      {/* Dugmad za Denial i Counter se pojavljuju samo ako je handyman već dodijeljen (handyman_name postoji) */}
       {job.handyman_name && (
         <>
           <button
@@ -360,7 +371,7 @@ export default function HandymanDashboard() {
         </div>
       </div>
 
-      {/* ACTIVE JOBS */}
+      {/* --- MY ACTIVE JOBS --- */}
       <div>
         <h2 className="text-2xl font-black uppercase mb-4 flex items-center gap-2 text-black dark:text-white">
           <Briefcase className="text-blue-500" strokeWidth={3} /> My Active Jobs
@@ -368,16 +379,66 @@ export default function HandymanDashboard() {
         <div className="grid gap-4">
           {acceptedJobs.length > 0 ? (
             acceptedJobs.map((job) => (
-              <div key={job.id} className="bg-blue-50 dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl flex justify-between items-center shadow-[4px_4px_0px_0px_rgba(59,130,246,0.5)]">
-                <div>
-                  <h3 className="font-black text-lg uppercase dark:text-white">{job.client_name}</h3>
-                  <p className="text-sm font-bold text-blue-600">{formatDateTime(job.scheduled_time)}</p>
+              <div key={job.id} className="bg-white dark:bg-zinc-800 border-[3px] border-blue-500 p-5 rounded-2xl flex justify-between items-center shadow-[5px_5px_0px_0px_#3b82f6]">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-500 text-white px-2 py-0.5 rounded-md font-black text-[10px] uppercase">
+                      #{job.ticket_id}
+                    </span>
+                    <span className="text-[10px] font-black uppercase text-blue-500">
+                      🔧 {job.service_type}
+                    </span>
+                  </div>
+                  <h3 className="font-black text-lg uppercase dark:text-white leading-tight">
+                    {job.client_name}
+                  </h3>
+                  <p className="text-sm font-bold text-gray-500 line-clamp-1">{job.description}</p>
+                  <p className="text-xs font-black uppercase text-blue-600 flex items-center gap-1">
+                    <Timer size={12} /> {formatDateTime(job.scheduled_time)}
+                  </p>
                 </div>
-                <CheckCircle className="text-blue-500" />
+                <div className="flex flex-col items-center gap-1">
+                  <CheckCircle className="text-blue-500" size={28} strokeWidth={3} />
+                  <span className="text-[10px] font-black uppercase text-blue-500">Confirmed</span>
+                </div>
               </div>
             ))
           ) : (
-            <p className="italic text-gray-400">No active jobs yet.</p>
+            <p className="italic text-gray-400 font-bold uppercase text-xs">No active jobs yet.</p>
+          )}
+        </div>
+      </div>
+
+      {/* --- REJECTED / DENIED JOBS --- */}
+      <div className="opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
+        <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <X className="text-red-500" strokeWidth={3} /> Rejected Requests
+        </h2>
+        <div className="grid gap-3">
+          {cancelledJobs.length > 0 ? (
+            cancelledJobs.map((job) => (
+              <div key={job.id} className="bg-gray-50 dark:bg-zinc-900 border-[3px] border-gray-300 p-4 rounded-2xl flex justify-between items-center border-dashed">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 font-black text-[10px] uppercase">
+                      #{job.ticket_id}
+                    </span>
+                  </div>
+                  <h3 className="font-black text-md uppercase text-gray-500">
+                    {job.client_name}
+                  </h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">
+                    🔧 {job.service_type}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-black uppercase bg-red-100 text-red-600 px-2 py-1 rounded-md border border-red-200">
+                    Declined
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="italic text-gray-400 font-bold uppercase text-xs">No rejected history.</p>
           )}
         </div>
       </div>

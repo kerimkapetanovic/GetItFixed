@@ -146,6 +146,7 @@ class HandymanNegotiationActionView(APIView):
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_client' # Sada klijent mora odgovoriti
             booking.expires_at = timezone.now() + timedelta(hours=1)
+            booking.last_action_by = 'handyman'
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
@@ -190,6 +191,7 @@ class CreateBookingView(generics.CreateAPIView):
             status=final_status,
             negotiation_status=negotiation_status,
             client_proposed_time=client_proposed_time,
+            expires_at=timezone.now() + timedelta(hours=3) # Inicijalni rok od 3h
         )
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -245,6 +247,7 @@ class ClientNegotiationActionView(APIView):
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_handyman'
             booking.expires_at = timezone.now() + timedelta(hours=1)
+            booking.last_action_by = 'client'
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 

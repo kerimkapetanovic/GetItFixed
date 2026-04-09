@@ -44,6 +44,11 @@ class Booking(models.Model):
     handyman_proposed_time = models.DateTimeField(null=True, blank=True)
     duration_minutes = models.IntegerField(null=True, blank=True) 
     handyman_counter_message = models.TextField(blank=True, null=True)
+    last_action_by = models.CharField(
+        max_length=10, 
+        choices=[('client', 'Client'), ('handyman', 'Handyman')], 
+        default='client'
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
