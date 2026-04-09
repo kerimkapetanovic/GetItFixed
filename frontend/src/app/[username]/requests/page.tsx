@@ -166,16 +166,15 @@ const getTimeLeft = (expiresAt: string | null) => {
                   #{req.ticket_id}
                 </span>
 
+                <span className="text-yellow-500 font-black text-[14px] uppercase tracking-widest flex items-center gap-1">
+                  🔧 {req.service_type}
+                </span>
                 {/* NOVI URGENT BADGE */}
                 {req.is_urgent && (
                   <span className="bg-red-600 text-white px-2 py-0.5 rounded-md font-black text-[10px] tracking-tighter uppercase animate-bounce">
                     🚨 URGENT
                   </span>
                 )}
-
-                <span className="text-yellow-500 font-black text-[14px] uppercase tracking-widest flex items-center gap-1">
-                  🔧 {req.service_type}
-                </span>
                 <span>
                 {req.status !== 'accepted' && req.status !== 'completed' && (
                   <JobTimer expiresAt={req.expires_at} />

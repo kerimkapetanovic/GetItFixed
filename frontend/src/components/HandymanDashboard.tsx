@@ -113,8 +113,14 @@ export default function HandymanDashboard() {
 
   const handleCounterJob = async (jobId: number) => {
     const value = counterValues[jobId];
-    if (!value?.proposedTime) {
+   if (!value?.proposedTime) {
       setActionError("Please select a counter date and time first.");
+      return;
+    }
+
+    // NOVA PROVJERA: Trajanje mora postojati i biti veće od 0
+    if (!value?.duration || value.duration <= 0) {
+      setActionError("Please specify the estimated duration for the counter offer.");
       return;
     }
 
@@ -124,7 +130,7 @@ export default function HandymanDashboard() {
       await api.post(`/api/bookings/${jobId}/handyman-action/`, {
         action: "counter",
         proposed_time: value.proposedTime.toISOString(),
-        duration_minutes: value.duration || 30,
+        duration_minutes: value.duration,
         message: value.message || "",
       });
       setCounterOpenFor(null);
@@ -160,142 +166,156 @@ export default function HandymanDashboard() {
             : "border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
         }`}
       >
-        {/* HITNI BEDŽ */}
-        {job.is_urgent && (
-          <div className="absolute -top-3 -right-3 bg-red-600 text-white px-3 py-1 rounded-lg font-black uppercase text-[10px] border-2 border-black animate-bounce shadow-[3px_3px_0px_0px_#000]">
-            Urgent +50% BAM
+       {/* HITNI BEDŽ */}
+  {job.is_urgent && (
+    <div className="absolute -top-3 -right-3 bg-red-600 text-white px-3 py-1 rounded-lg font-black uppercase text-[10px] border-2 border-black animate-bounce shadow-[3px_3px_0px_0px_#000]">
+      Urgent +50% BAM
+    </div>
+  )}
+
+  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    {/* LIJEVA STRANA: INFO O POSLU */}
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase">
+          #{job.ticket_id}
+        </span>
+        <JobTimer expiresAt={job.expires_at} />
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-[10px] font-black uppercase text-[#EF9D39]">
+          {job.service_type}
+        </span>
+        <h3 className="font-black text-lg uppercase leading-tight dark:text-white">
+          {job.client_name}
+        </h3>
+        <p className="text-sm font-bold text-gray-500">{job.description}</p>
+      </div>
+
+      {job.client_proposed_time && (
+        <p className="text-xs font-black uppercase text-blue-500">
+          Client requested: {formatDateTime(job.client_proposed_time)}
+        </p>
+      )}
+    </div>
+
+   {/* DESNA STRANA: AKCIJE ILI STATUS */}
+<div className="flex flex-wrap gap-2 md:justify-end md:w-[40%]">
+  {/* 1. ČEKAMO KLIJENTA: Ako je status pending, postoji tvoj prijedlog, A klijent nije taj koji je zadnji napravio promjenu */}
+  {job.status === "pending" && 
+   job.handyman_proposed_time && 
+   (!job.client_proposed_time || new Date(job.handyman_proposed_time) > new Date(job.client_proposed_time)) ? (
+    <div className="bg-zinc-100 dark:bg-zinc-700 border-2 border-dashed border-black px-4 py-2 rounded-xl flex items-center gap-2">
+      <Loader2 size={14} className="animate-spin text-[#EF9D39]" />
+      <span className="font-black uppercase text-[10px] dark:text-white">
+        Waiting for client confirmation
+      </span>
+    </div>
+  ) : (
+    /* 2. LOPTICA JE KOD TEBE: Klijent je tek poslao zahtjev ILI je on uradio counter-offer */
+    <>
+      <button
+        onClick={() => setAcceptOpenFor(acceptOpenFor === job.id ? null : job.id)}
+        className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-green-400 transition-all"
+      >
+        Accept
+      </button>
+      
+      {/* Dugmad za Denial i Counter se pojavljuju samo ako je handyman već dodijeljen (handyman_name postoji) */}
+      {job.handyman_name && (
+        <>
+          <button
+            onClick={() => handleDeclineJob(job.id)}
+            className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-red-300 transition-all"
+          >
+            Deny
+          </button>
+          <button
+            onClick={() => setCounterOpenFor(counterOpenFor === job.id ? null : job.id)}
+            className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-[#EF9D39] transition-all"
+          >
+            Counter
+          </button>
+        </>
+      )}
+    </>
+  )}
+</div>
+  </div>
+
+  {/* DRAWERS (Accept & Counter forms) */}
+  {acceptOpenFor === job.id && (
+    <div className="mt-4 p-4 border-2 border-black rounded-xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[4px_4px_0px_0px_#000]">
+      <label className="text-[10px] font-black uppercase mb-2 block text-gray-600 dark:text-gray-400">
+        Estimated duration (minutes) *Required
+      </label>
+      <div className="flex items-center gap-3">
+        <div className="relative flex items-center max-w-[150px]">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 30"
+            className="border-2 border-black p-2 pr-12 rounded-lg w-full font-black bg-white text-black text-sm"
+            value={counterValues[job.id]?.duration || ""}
+            onChange={(e) => updateJobValue(job.id, "duration", e.target.value.replace(/\D/g, ""))}
+          />
+          <span className="absolute right-3 text-[10px] font-black text-gray-400 uppercase">MIN</span>
+        </div>
+        <button
+          onClick={() => handleAcceptJob(job.id)}
+          disabled={actionLoadingId === job.id}
+          className="bg-black text-white px-6 py-2.5 rounded-lg font-black uppercase text-[10px] flex items-center gap-2 hover:bg-zinc-800 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+        >
+          {actionLoadingId === job.id ? <Loader2 size={14} className="animate-spin" /> : "Confirm & Accept"}
+        </button>
+      </div>
+    </div>
+  )}
+
+  {counterOpenFor === job.id && (
+    <div className="mt-4 border-2 border-black rounded-xl bg-[#FFF8EA] dark:bg-zinc-900 p-4 space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs font-black uppercase mb-2 block text-gray-500">Pick New Time *Required</label>
+          <div
+            onClick={() => setIsCalendarOpenFor(job.id)}
+            className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
+          >
+            <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            {counterValues[job.id]?.proposedTime ? formatDateTime(counterValues[job.id].proposedTime) : "SELECT DATE & TIME"}
           </div>
-        )}
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase">
-                        #{job.ticket_id}
-                      </span>
-                      <JobTimer expiresAt={job.expires_at} />
-                    </div>
-                    
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-[#EF9D39]">{job.service_type}</span>
-                      <h3 className="font-black text-lg uppercase leading-tight dark:text-white">{job.client_name}</h3>
-                      <p className="text-sm font-bold text-gray-500">{job.description}</p>
-                    </div>
-
-                    {job.client_proposed_time && (
-                      <p className="text-xs font-black uppercase text-blue-500">
-                        Client requested: {formatDateTime(job.client_proposed_time)}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 md:justify-end md:w-[40%]">
-                    <button 
-                      onClick={() => setAcceptOpenFor(acceptOpenFor === job.id ? null : job.id)} 
-                      className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-green-400 transition-all"
-                    >
-                      Accept
-                    </button>
-                    {job.handyman_name && (
-                      <>
-                        <button onClick={() => handleDeclineJob(job.id)} className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-red-300 transition-all">Deny</button>
-                        <button 
-                          onClick={() => setCounterOpenFor(counterOpenFor === job.id ? null : job.id)}
-                          className="bg-white text-black px-5 py-2.5 rounded-[20px] font-black uppercase text-[10px] border-[3px] border-black shadow-[4px_4px_0px_0px_#000] hover:bg-[#EF9D39] transition-all"
-                        >
-                          Counter
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Accept Drawer */}
-                {acceptOpenFor === job.id && (
-                  <div className="mt-4 p-4 border-2 border-black rounded-xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[4px_4px_0px_0px_#000]">
-                    <label className="text-[10px] font-black uppercase mb-2 block text-gray-600 dark:text-gray-400">
-                      Estimated duration (minutes)
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex items-center max-w-[150px]">
-                        <input 
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="e.g. 30" 
-                          className="border-2 border-black p-2 pr-12 rounded-lg w-full font-black bg-white text-black text-sm"
-                          value={counterValues[job.id]?.duration || ""}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, '');
-                            updateJobValue(job.id, "duration", val);
-                          }}
-                        />
-                        <span className="absolute right-3 text-[10px] font-black text-gray-400 uppercase pointer-events-none">
-                          MIN
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => handleAcceptJob(job.id)} 
-                        disabled={actionLoadingId === job.id}
-                        className="bg-black text-white px-6 py-2.5 rounded-lg font-black uppercase text-[10px] flex items-center gap-2 hover:bg-zinc-800 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
-                      >
-                        {actionLoadingId === job.id ? <Loader2 size={14} className="animate-spin" /> : "Confirm & Accept"}
-                      </button>
-                      <button 
-                        onClick={() => setAcceptOpenFor(null)}
-                        className="text-[10px] font-black uppercase text-gray-500 hover:text-red-500 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Counter Drawer */}
-                {counterOpenFor === job.id && (
-                  <div className="mt-4 border-2 border-black rounded-xl bg-[#FFF8EA] dark:bg-zinc-900 p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-black uppercase mb-2 block text-gray-500">Pick New Time</label>
-                        <div 
-                          onClick={() => setIsCalendarOpenFor(job.id)}
-                          className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
-                        >
-                          <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                          {counterValues[job.id]?.proposedTime ? formatDateTime(counterValues[job.id].proposedTime) : "SELECT DATE & TIME"}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-black uppercase mb-2 block text-gray-500">Duration (Minutes)</label>
-                        <div className="relative flex items-center max-w-[160px]">
-                          <input 
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="Min"
-                            className="w-full bg-white dark:bg-zinc-800 border-2 p-4 pr-14 rounded-xl font-bold border-black text-black dark:text-white"
-                            value={counterValues[job.id]?.duration || ""}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/\D/g, '');
-                              updateJobValue(job.id, "duration", val);
-                            }}
-                          />
-                          <span className="absolute right-4 font-black text-[10px] text-gray-400 pointer-events-none">MIN</span>
-                        </div>
-                      </div>
-                    </div>
-                    <textarea
-                      rows={2}
-                      placeholder="Message to client..."
-                      value={counterValues[job.id]?.message || ""}
-                      onChange={(e) => updateJobValue(job.id, "message", e.target.value)}
-                      className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-3 font-bold"
-                    />
-                    <button
-                      onClick={() => handleCounterJob(job.id)}
-                      className="cursor-pointer w-full bg-black text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px_#EF9D39]"
-                    >
-                      Send Counter Offer
-                    </button>
-                  </div>
-                )}
+        </div>
+        <div>
+          <label className="text-xs font-black uppercase mb-2 block text-gray-500">Duration (Minutes) *Required</label>
+          <div className="relative flex items-center max-w-[160px]">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Min"
+              className="w-full bg-white dark:bg-zinc-800 border-2 p-4 pr-14 rounded-xl font-bold border-black"
+              value={counterValues[job.id]?.duration || ""}
+              onChange={(e) => updateJobValue(job.id, "duration", e.target.value.replace(/\D/g, ""))}
+            />
+            <span className="absolute right-4 font-black text-[10px] text-gray-400">MIN</span>
+          </div>
+        </div>
+      </div>
+      <textarea
+        rows={2}
+        placeholder="Message to client..."
+        value={counterValues[job.id]?.message || ""}
+        onChange={(e) => updateJobValue(job.id, "message", e.target.value)}
+        className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-3 font-bold"
+      />
+      <button
+        onClick={() => handleCounterJob(job.id)}
+        className="w-full bg-black text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px_#EF9D39]"
+      >
+        Send Counter Offer
+      </button>
+    </div>
+  )}
 
                 {/* Modalni kalendar */}
                 {isCalendarOpenFor === job.id && (
