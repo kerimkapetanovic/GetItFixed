@@ -163,6 +163,7 @@ class CreateBookingView(generics.CreateAPIView):
     def perform_create(self, serializer):
         # 1. Check if a specific handyman was targeted via the 'Book This Expert' button
         handyman_id = self.request.data.get('handyman_id')
+        is_urgent = serializer.validated_data.get('is_urgent', False)
         handyman = None
         final_status = 'pending'
         negotiation_status = 'none'
@@ -180,6 +181,7 @@ class CreateBookingView(generics.CreateAPIView):
 
         # 3. Save the booking with the client and current status
         print(f"--- NEW JOB CREATED BY: {self.request.user.email} ---")
+        hours_to_expire = 1 if is_urgent else 3
         serializer.save(
             client=self.request.user, 
             handyman=handyman,
@@ -191,7 +193,7 @@ class CreateBookingView(generics.CreateAPIView):
             status=final_status,
             negotiation_status=negotiation_status,
             client_proposed_time=client_proposed_time,
-            expires_at=timezone.now() + timedelta(hours=3) # Inicijalni rok od 3h
+            expires_at=timezone.now() + timedelta(hours=hours_to_expire)
         )
 
 @method_decorator(csrf_exempt, name='dispatch')
