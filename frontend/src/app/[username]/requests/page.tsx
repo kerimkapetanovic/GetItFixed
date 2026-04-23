@@ -12,18 +12,18 @@ import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
 import { JobTimer } from "@/components/JobTimer";
 
 const formatDateTime = (value: string | Date | null) => {
-    if (!value) return "Not set";
-    const date = typeof value === "string" ? new Date(value) : value;
-    if (Number.isNaN(date.getTime())) return "Invalid date";
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(date).replace(",", "");
-  };
+  if (!value) return "Not set";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "Invalid date";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date).replace(",", "");
+};
 
 function getRequestState(request: BookingDetail) {
   if (request.status === "cancelled" || request.negotiation_status === "declined") {
@@ -81,38 +81,38 @@ export default function MyRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
-useEffect(() => {
-  const interval = setInterval(() => setNow(new Date()), 1000);
-  return () => clearInterval(interval);
-}, []);
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-const getTimeLeft = (expiresAt: string | null) => {
-  if (!expiresAt) return null;
-  const diff = new Date(expiresAt).getTime() - now.getTime();
-  if (diff <= 0) return null;
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-  return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
-};
-const handleExpire = async (bookingId: number) => {
-  try {
-    // 1. Opcionalno: Pozovi backend da klijent automatski "decline-uje" jer je isteklo
-    // Ako backend to već radi sam (cron job), onda samo osvježi lokalno stanje
-    setRequests((prev) =>
-      prev.map((req) =>
-        req.id === bookingId 
-          ? { ...req, status: "cancelled" as any, negotiation_status: "declined" as any } 
-          : req
-      )
-    );
-    
-    // Ako želiš i bazu da ažuriraš odmah s frontenda:
-    // await api.post(`/api/bookings/${bookingId}/negotiate/`, { action: 'decline' });
-  } catch (err) {
-    console.error("Error expiring booking:", err);
-  }
-};
+  const getTimeLeft = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const diff = new Date(expiresAt).getTime() - now.getTime();
+    if (diff <= 0) return null;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+  };
+  const handleExpire = async (bookingId: number) => {
+    try {
+      // 1. Opcionalno: Pozovi backend da klijent automatski "decline-uje" jer je isteklo
+      // Ako backend to već radi sam (cron job), onda samo osvježi lokalno stanje
+      setRequests((prev) =>
+        prev.map((req) =>
+          req.id === bookingId
+            ? { ...req, status: "cancelled" as any, negotiation_status: "declined" as any }
+            : req
+        )
+      );
+
+      // Ako želiš i bazu da ažuriraš odmah s frontenda:
+      // await api.post(`/api/bookings/${bookingId}/negotiate/`, { action: 'decline' });
+    } catch (err) {
+      console.error("Error expiring booking:", err);
+    }
+  };
 
   useEffect(() => {
     const fetchMyRequests = async () => {
@@ -160,88 +160,88 @@ const handleExpire = async (bookingId: number) => {
             </div>
           ) : (
             requests.map((req) => (
-  <div
-    key={req.id}
-    style={cardStyle}
-  className={`bg-white dark:bg-zinc-900 border-2 p-6 transition-all text-gray-900 dark:text-zinc-100 
-    ${req.is_urgent 
-      ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]" 
-      : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-    }`}
->    {(() => {
-      const requestState = getRequestState(req);
-      const latestProposal =
-        req.handyman_proposed_time ||
-        req.client_proposed_time ||
-        req.scheduled_time;
-      return (
-        <>
-          {/* GORNJI RED: ID, SERVICE I STATUS BADGE */}
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
-                  #{req.ticket_id}
-                </span>
+              <div
+                key={req.id}
+                style={cardStyle}
+                className={`bg-white dark:bg-zinc-900 border-2 p-6 transition-all text-gray-900 dark:text-zinc-100 
+    ${req.is_urgent
+                    ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]"
+                    : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                  }`}
+              >    {(() => {
+                const requestState = getRequestState(req);
+                const latestProposal =
+                  req.handyman_proposed_time ||
+                  req.client_proposed_time ||
+                  req.scheduled_time;
+                return (
+                  <>
+                    {/* GORNJI RED: ID, SERVICE I STATUS BADGE */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ">
+                            #{req.ticket_id}
+                          </span>
 
-                <span className="text-yellow-500 font-black text-[14px] uppercase tracking-widest flex items-center gap-1">
-                  🔧 {req.service_type}
-                </span>
-                {/* NOVI URGENT BADGE */}
-                {req.is_urgent && (
-                  <span className="bg-red-600 text-white px-2 py-0.5 rounded-md font-black text-[10px] tracking-tighter uppercase animate-bounce">
-                    🚨 URGENT
-                  </span>
-                )}
-                <span>
-  {req.status !== 'accepted' && req.status !== 'completed' && req.status !== 'cancelled' && (
-    <JobTimer 
-      expiresAt={req.expires_at} 
-      onExpire={() => handleExpire(req.id)} 
-    />
-  )}
-</span>
-              
-              </div>
+                          <span className="text-yellow-500 font-black text-[14px] uppercase tracking-widest flex items-center gap-1">
+                            🔧 {req.service_type}
+                          </span>
+                          {/* NOVI URGENT BADGE */}
+                          {req.is_urgent && (
+                            <span className="bg-red-600 text-white px-2 py-0.5 rounded-md font-black text-[10px] tracking-tighter uppercase animate-bounce">
+                              🚨 URGENT
+                            </span>
+                          )}
+                          <span>
+                            {req.status !== 'accepted' && req.status !== 'completed' && req.status !== 'cancelled' && (
+                              <JobTimer
+                                expiresAt={req.expires_at}
+                                onExpire={() => handleExpire(req.id)}
+                              />
+                            )}
+                          </span>
 
-              {/* IME MAJSTORA */}
-              <h3 className="text-md font-black uppercase tracking-tight text-zinc-400">
-                Handyman : <span className="text-black dark:text-white ">
-                  {req.handyman_name ? req.handyman_name : "No Handymanassigned yet"}
-                </span>
-              </h3>
-            </div>
+                        </div>
 
-            {/* STATUS BADGE */}
-            <span className={`px-4 py-1 border-2 border-black font-black text-[10px] uppercase rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${requestState.badgeClass}`}>
-              {requestState.label}
-            </span>
-          </div>
+                        {/* IME MAJSTORA */}
+                        <h3 className="text-md font-black uppercase tracking-tight text-zinc-400">
+                          Handyman : <span className="text-black dark:text-white ">
+                            {req.handyman_name ? req.handyman_name : "No Handymanassigned yet"}
+                          </span>
+                        </h3>
+                      </div>
 
-          {/* OPIS KVARA (NASLOV) */}
-          <h2 className="text-2xl font-black uppercase italic mb-4 line-clamp-1 dark:text-white">
-            {req.description}
-          </h2>
-       
+                      {/* STATUS BADGE */}
+                      <span className={`px-4 py-1 border-2 border-black font-black text-[10px] uppercase rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${requestState.badgeClass}`}>
+                        {requestState.label}
+                      </span>
+                    </div>
 
-          {/* SIVA INFO KUTIJA */}
-          <div className="p-4 border-2 border-gray-200 dark:border-zinc-700 rounded-xl mb-4 bg-gray-50 dark:bg-zinc-800/50 space-y-2">
-            <p className="text-sm font-bold text-gray-600 dark:text-zinc-300">
-              {requestState.message}
-            </p>
-            <p className="text-xs font-black uppercase tracking-wide text-gray-500 dark:text-zinc-400">
-              Latest proposed time: {formatDateTime(latestProposal)}
-            </p>
-            {req.handyman_counter_message &&
-              req.negotiation_status === "awaiting_client" && (
-                <p className="text-xs font-bold text-gray-700 dark:text-zinc-300 border-t border-gray-200 dark:border-zinc-700 pt-2">
-                  Handyman note: {req.handyman_counter_message}
-                </p>
-              )}
-          </div>
-        </>
-      );
-    })()}
+                    {/* OPIS KVARA (NASLOV) */}
+                    <h2 className="text-2xl font-black uppercase italic mb-4 line-clamp-1 dark:text-white">
+                      {req.description}
+                    </h2>
+
+
+                    {/* SIVA INFO KUTIJA */}
+                    <div className="p-4 border-2 border-gray-200 dark:border-zinc-700 rounded-xl mb-4 bg-gray-50 dark:bg-zinc-800/50 space-y-2">
+                      <p className="text-sm font-bold text-gray-600 dark:text-zinc-300">
+                        {requestState.message}
+                      </p>
+                      <p className="text-xs font-black uppercase tracking-wide text-gray-500 dark:text-zinc-400">
+                        Latest proposed time: {formatDateTime(latestProposal)}
+                      </p>
+                      {req.handyman_counter_message &&
+                        req.negotiation_status === "awaiting_client" && (
+                          <p className="text-xs font-bold text-gray-700 dark:text-zinc-300 border-t border-gray-200 dark:border-zinc-700 pt-2">
+                            Handyman note: {req.handyman_counter_message}
+                          </p>
+                        )}
+                    </div>
+                  </>
+                );
+              })()}
 
 
                 <div className="flex justify-end mt-4">

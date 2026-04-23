@@ -298,3 +298,25 @@ class HandymanBusySlotsView(APIView):
         ).values('scheduled_time', 'duration_minutes')
         
         return Response(list(busy_bookings))
+    
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ExpireBookingView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, booking_id):
+        try:
+            # Tražimo booking koji je još uvijek pending
+            booking = Booking.objects.get(id=booking_id, status='pending')
+            
+            # Provjeravamo da li je stvarno vrijeme isteklo (dodatna sigurnost)
+            if booking.expires_at and timezone.now() >= booking.expires_at:
+                booking.status = 'cancelled'
+                booking.save()
+                return Response({"message": "Job expired successfully."}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Job has not expired yet."}, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Booking.DoesNotExist:
+            return Response({"error": "Job not found or already processed."}, status=status.HTTP_404_NOT_FOUND)

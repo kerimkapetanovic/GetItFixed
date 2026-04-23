@@ -132,9 +132,9 @@ export default function ProfilePage() {
     username: "",
     avatarUrl: "",
     phone: "",
-      county: "",
-      city: "",
-      zipCode: "",
+    county: "",
+    city: "",
+    zipCode: "",
   });
   const [hasCustomAvatar, setHasCustomAvatar] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -170,59 +170,59 @@ export default function ProfilePage() {
 
   const countries = useMemo(() => countryList().getData(), []);
 
-useEffect(() => {
-  const fetchProfile = async () => {
-    try {
-      setLoadingProfile(true);
-      setProfileError(null);
-      const response = await api.get<ProfileResponse>("/api/accounts/me/");
-      const data = response.data;
-      
-      const newProfile = {
-        firstName: data.first_name || "",
-        lastName: data.last_name || "",
-        email: data.email || "",
-        username: data.username || "",
-        avatarUrl: data.avatar_url || "",
-        phone: data.phone || "",
-        county: data.county || "",
-        city: data.city || "",
-        zipCode: data.zip_code || "",
-      };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        setProfileError(null);
+        const response = await api.get<ProfileResponse>("/api/accounts/me/");
+        const data = response.data;
 
-      setFormData(newProfile);
-      setHasCustomAvatar(Boolean(data.has_custom_avatar));
-      setUserRole(data.role || "client");
+        const newProfile = {
+          firstName: data.first_name || "",
+          lastName: data.last_name || "",
+          email: data.email || "",
+          username: data.username || "",
+          avatarUrl: data.avatar_url || "",
+          phone: data.phone || "",
+          county: data.county || "",
+          city: data.city || "",
+          zipCode: data.zip_code || "",
+        };
 
-      if (typeof window !== "undefined") {
-        Object.entries(data).forEach(([key, value]) => {
-          if (value) localStorage.setItem(key, value.toString());
-        });
+        setFormData(newProfile);
+        setHasCustomAvatar(Boolean(data.has_custom_avatar));
+        setUserRole(data.role || "client");
+
+        if (typeof window !== "undefined") {
+          Object.entries(data).forEach(([key, value]) => {
+            if (value) localStorage.setItem(key, value.toString());
+          });
+        }
+      } catch (err: unknown) {
+        // Fallback na localStorage ako API ne radi
+        // Unutar catch bloka u useEffect
+        // U catch bloku unutar useEffect
+        if (typeof window !== "undefined") {
+          setFormData({
+            firstName: localStorage.getItem("first_name") || "",
+            lastName: localStorage.getItem("last_name") || "",
+            email: localStorage.getItem("email") || "",
+            username: localStorage.getItem("username") || "",
+            avatarUrl: localStorage.getItem("avatar_url") || "",
+            // DODAJ OVA POLJA DA NESTANE CRVENILO:
+            phone: localStorage.getItem("phone") || "",
+            city: localStorage.getItem("city") || "",
+            county: localStorage.getItem("county") || "",
+            zipCode: localStorage.getItem("zip_code") || "",
+          });
+        }
+      } finally {
+        setLoadingProfile(false);
       }
-    } catch (err: unknown) {
-      // Fallback na localStorage ako API ne radi
-     // Unutar catch bloka u useEffect
-// U catch bloku unutar useEffect
-if (typeof window !== "undefined") {
-  setFormData({
-    firstName: localStorage.getItem("first_name") || "",
-    lastName: localStorage.getItem("last_name") || "",
-    email: localStorage.getItem("email") || "",
-    username: localStorage.getItem("username") || "",
-    avatarUrl: localStorage.getItem("avatar_url") || "",
-    // DODAJ OVA POLJA DA NESTANE CRVENILO:
-    phone: localStorage.getItem("phone") || "",
-    city: localStorage.getItem("city") || "",
-    county: localStorage.getItem("county") || "",
-    zipCode: localStorage.getItem("zip_code") || "",
-  });
-}
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
-  fetchProfile();
-}, []);
+    };
+    fetchProfile();
+  }, []);
 
   const getApiErrorMessage = (errorData?: ApiErrorResponse) => {
     if (!errorData) return t("profile.genericError");
@@ -238,67 +238,67 @@ if (typeof window !== "undefined") {
   };
 
   const persistNameChanges = async () => {
-  try {
-    setSavingNames(true);
-    setProfileError(null);
-    setProfileMessage(null);
+    try {
+      setSavingNames(true);
+      setProfileError(null);
+      setProfileMessage(null);
 
-    const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      phone: formData.phone,
-      county: formData.county,
-      city: formData.city,
-      zip_code: formData.zipCode,
-    });
+      const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        phone: formData.phone,
+        county: formData.county,
+        city: formData.city,
+        zip_code: formData.zipCode,
+      });
 
-    const updated = response.data;
-    console.log('After upload, API returned:', {
-      avatar_url: updated.avatar_url,
-      has_custom_avatar: updated.has_custom_avatar,
-    });
-    
-    // AŽURIRAJ SVA POLJA OVDJE:
-    setFormData({
-      firstName: updated.first_name || "",
-      lastName: updated.last_name || "",
-      email: updated.email || "",
-      username: updated.username || "",
-      avatarUrl: updated.avatar_url || "",
-      phone: updated.phone || "",
-      county: updated.county || "",
-      city: updated.city || "",
-      zipCode: updated.zip_code || "",
-    });
+      const updated = response.data;
+      console.log('After upload, API returned:', {
+        avatar_url: updated.avatar_url,
+        has_custom_avatar: updated.has_custom_avatar,
+      });
 
-    setHasCustomAvatar(Boolean(updated.has_custom_avatar));
-    setIsEditing(false); // Automatski izađi iz edit moda nakon spremanja
+      // AŽURIRAJ SVA POLJA OVDJE:
+      setFormData({
+        firstName: updated.first_name || "",
+        lastName: updated.last_name || "",
+        email: updated.email || "",
+        username: updated.username || "",
+        avatarUrl: updated.avatar_url || "",
+        phone: updated.phone || "",
+        county: updated.county || "",
+        city: updated.city || "",
+        zipCode: updated.zip_code || "",
+      });
 
-    // ... unutar persistNameChanges funkcije
-if (typeof window !== "undefined") {
-  localStorage.setItem("first_name", updated.first_name || "");
-  localStorage.setItem("last_name", updated.last_name || "");
-  localStorage.setItem("username", updated.username || "");
-  localStorage.setItem("email", updated.email || "");
-  localStorage.setItem("avatar_url", updated.avatar_url || "");
-  
-  // DODAJ OVE LINIJE KOJE SU NEDOSTAJALE:
-  localStorage.setItem("phone", updated.phone || "");
-  localStorage.setItem("city", updated.city || "");
-  localStorage.setItem("county", updated.county || "");
-  localStorage.setItem("zip_code", updated.zip_code || "");
+      setHasCustomAvatar(Boolean(updated.has_custom_avatar));
+      setIsEditing(false); // Automatski izađi iz edit moda nakon spremanja
 
-  window.dispatchEvent(new Event("profile-updated"));
-}
+      // ... unutar persistNameChanges funkcije
+      if (typeof window !== "undefined") {
+        localStorage.setItem("first_name", updated.first_name || "");
+        localStorage.setItem("last_name", updated.last_name || "");
+        localStorage.setItem("username", updated.username || "");
+        localStorage.setItem("email", updated.email || "");
+        localStorage.setItem("avatar_url", updated.avatar_url || "");
 
-    setProfileMessage(t("profile.nameSavedSuccess"));
-  } catch (err: unknown) {
-    const apiError = err as { response?: { data?: ApiErrorResponse } };
-    setProfileError(getApiErrorMessage(apiError.response?.data));
-  } finally {
-    setSavingNames(false);
-  }
-};
+        // DODAJ OVE LINIJE KOJE SU NEDOSTAJALE:
+        localStorage.setItem("phone", updated.phone || "");
+        localStorage.setItem("city", updated.city || "");
+        localStorage.setItem("county", updated.county || "");
+        localStorage.setItem("zip_code", updated.zip_code || "");
+
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+
+      setProfileMessage(t("profile.nameSavedSuccess"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: ApiErrorResponse } };
+      setProfileError(getApiErrorMessage(apiError.response?.data));
+    } finally {
+      setSavingNames(false);
+    }
+  };
 
   const persistAvatarChange = async () => {
     if (!pendingAvatarFile) return;
@@ -357,46 +357,46 @@ if (typeof window !== "undefined") {
   };
 
   const removeCustomAvatar = async () => {
-  try {
-    setUploadingAvatar(true);
-    setAvatarError(null);
-    setAvatarMessage(null);
+    try {
+      setUploadingAvatar(true);
+      setAvatarError(null);
+      setAvatarMessage(null);
 
-    const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
-      avatar: null,
-    });
-    const updated = response.data;
+      const response = await api.patch<ProfileResponse>("/api/accounts/me/", {
+        avatar: null,
+      });
+      const updated = response.data;
 
-    setFormData((prev) => ({
-      ...prev,
-      avatarUrl: updated.avatar_url || "",  // ✅ NE koristi prev.avatarUrl kao fallback!
-      firstName: updated.first_name || prev.firstName,
-      lastName: updated.last_name || prev.lastName,
-      email: updated.email || prev.email,
-      username: updated.username || prev.username,
-      phone: updated.phone || prev.phone,
-      county: updated.county || prev.county,
-      city: updated.city || prev.city,
-      zipCode: updated.zip_code || prev.zipCode,
-    }));
-    
-    setHasCustomAvatar(false);  // ✅ Eksplicitno postavi na false
+      setFormData((prev) => ({
+        ...prev,
+        avatarUrl: updated.avatar_url || "",  // ✅ NE koristi prev.avatarUrl kao fallback!
+        firstName: updated.first_name || prev.firstName,
+        lastName: updated.last_name || prev.lastName,
+        email: updated.email || prev.email,
+        username: updated.username || prev.username,
+        phone: updated.phone || prev.phone,
+        county: updated.county || prev.county,
+        city: updated.city || prev.city,
+        zipCode: updated.zip_code || prev.zipCode,
+      }));
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("avatar_url", "");  // ✅ Obriši iz localStorage
-      localStorage.setItem("username", updated.username || "");
-      window.dispatchEvent(new Event("profile-updated"));
+      setHasCustomAvatar(false);  // ✅ Eksplicitno postavi na false
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("avatar_url", "");  // ✅ Obriši iz localStorage
+        localStorage.setItem("username", updated.username || "");
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+
+      setAvatarMessage(t("profile.avatarRemoveSuccess"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: ApiErrorResponse } };
+      setAvatarError(getApiErrorMessage(apiError.response?.data));
+    } finally {
+      setUploadingAvatar(false);
+      setPendingAvatarFile(null);
     }
-
-    setAvatarMessage(t("profile.avatarRemoveSuccess"));
-  } catch (err: unknown) {
-    const apiError = err as { response?: { data?: ApiErrorResponse } };
-    setAvatarError(getApiErrorMessage(apiError.response?.data));
-  } finally {
-    setUploadingAvatar(false);
-    setPendingAvatarFile(null);
-  }
-};
+  };
 
   const persistPasswordChanges = async () => {
     try {
@@ -522,29 +522,29 @@ if (typeof window !== "undefined") {
     });
   };
 
-const SUPABASE_STORAGE_URL = 'https://itqhsfuxuhrnbfrcwbbt.supabase.co/storage/v1/object/public';
+  const SUPABASE_STORAGE_URL = 'https://itqhsfuxuhrnbfrcwbbt.supabase.co/storage/v1/object/public';
 
-const avatarUrl = useMemo(() => {
+  const avatarUrl = useMemo(() => {
     console.log('avatarUrl raw value:', formData.avatarUrl);
 
-  if (formData.avatarUrl) {
-    if (formData.avatarUrl.startsWith('http')) return formData.avatarUrl;
+    if (formData.avatarUrl) {
+      if (formData.avatarUrl.startsWith('http')) return formData.avatarUrl;
 
-    // Strip leading slashes from the stored path
-    const filePath = formData.avatarUrl.replace(/^\/+/, '');
+      // Strip leading slashes from the stored path
+      const filePath = formData.avatarUrl.replace(/^\/+/, '');
 
-    // If the path already includes 'avatars/', don't add it again
-    if (filePath.startsWith('avatars/')) {
-      return `${SUPABASE_STORAGE_URL}/${filePath}`;
+      // If the path already includes 'avatars/', don't add it again
+      if (filePath.startsWith('avatars/')) {
+        return `${SUPABASE_STORAGE_URL}/${filePath}`;
+      }
+
+      // Otherwise, assume it's just the filename
+      return `${SUPABASE_STORAGE_URL}/avatars/${filePath}`;
     }
 
-    // Otherwise, assume it's just the filename
-    return `${SUPABASE_STORAGE_URL}/avatars/${filePath}`;
-  }
 
-
-  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.username || "User")}`;
-}, [formData.avatarUrl, formData.username]);
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.username || "User")}`;
+  }, [formData.avatarUrl, formData.username]);
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
       <Header />
@@ -631,102 +631,96 @@ const avatarUrl = useMemo(() => {
                     value={formData.firstName}
                     onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
                     disabled={!isEditing || loadingProfile || savingNames} // DODATO !isEditing
-className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
-        !isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-      }`}                  />
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                      }`} />
                 </div>
-{/* Last Name */}
-  <div className="space-y-2">
-    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-      {t("profile.lastName")}
-    </label>
-    <input
-      type="text"
-      value={formData.lastName}
-      onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-      disabled={!isEditing || loadingProfile || savingNames}
-      className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
-        !isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-      }`}
-    />
-  </div>
-              {/* Phone Number */}
-  <div className="space-y-2">
-    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-      {t("profile.phone") !== "profile.phone" ? t("profile.phone") : "Phone Number"}
-    </label>
-    <style>{phoneInputCustomStyles}</style>
-    <PhoneInput
-      international
-      placeholder={t("profile.placeholders.phone")}
-      value={formData.phone}
-      onChange={(value) => setFormData(prev => ({ ...prev, phone: value || "" }))}
-      disabled={!isEditing || loadingProfile || savingNames}
-  className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
-        !isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-      }`}    />
-  </div>
+                {/* Last Name */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    {t("profile.lastName")}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    disabled={!isEditing || loadingProfile || savingNames}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                      }`}
+                  />
+                </div>
+                {/* Phone Number */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    {t("profile.phone") !== "profile.phone" ? t("profile.phone") : "Phone Number"}
+                  </label>
+                  <style>{phoneInputCustomStyles}</style>
+                  <PhoneInput
+                    international
+                    placeholder={t("profile.placeholders.phone")}
+                    value={formData.phone}
+                    onChange={(value) => setFormData(prev => ({ ...prev, phone: value || "" }))}
+                    disabled={!isEditing || loadingProfile || savingNames}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                      }`} />
+                </div>
 
-               {/* City */}
-  <div className="space-y-2">
-    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-      {t("profile.city") || "City"}
-    </label>
-    <input
-      type="text"
-      value={formData.city}
-      onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-      disabled={!isEditing || loadingProfile || savingNames}
-      className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
-        !isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-      }`}
-    />
-  </div>
+                {/* City */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    {t("profile.city") || "City"}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                    disabled={!isEditing || loadingProfile || savingNames}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                      }`}
+                  />
+                </div>
 
                 {/* County / Region */}
-  <div className="space-y-2">
-    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-      {t("profile.county") || "County / Region"}
-    </label>
-    <div className="relative">
-      <select
-        value={formData.county}
-        onChange={(e) => setFormData(prev => ({ ...prev, county: e.target.value }))}
-        disabled={!isEditing || loadingProfile || savingNames}
-        className={`w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold text-gray-900 dark:text-white outline-none appearance-none transition-all ${
-          !isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-        }`}
-      >
-        <option value="" disabled>
-          {t("register.select") || "Select country"}
-        </option>
-        {countries.map((c) => (
-          <option key={c.value} value={c.label}>
-            {c.label}
-          </option>
-        ))}
-      </select>
-      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="black" strokeWidth="2" strokeLinecap="round"/></svg>
-      </div>
-    </div>
-  </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    {t("profile.county") || "County / Region"}
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={formData.county}
+                      onChange={(e) => setFormData(prev => ({ ...prev, county: e.target.value }))}
+                      disabled={!isEditing || loadingProfile || savingNames}
+                      className={`w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold text-gray-900 dark:text-white outline-none appearance-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                        }`}
+                    >
+                      <option value="" disabled>
+                        {t("register.select") || "Select country"}
+                      </option>
+                      {countries.map((c) => (
+                        <option key={c.value} value={c.label}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="black" strokeWidth="2" strokeLinecap="round" /></svg>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Zip Code */}
-  <div className="space-y-2">
-    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-      {t("profile.zipCode") || "Zip Code"}
-    </label>
-    <input
-      type="text"
-      value={formData.zipCode}
-      onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
-      disabled={!isEditing || loadingProfile || savingNames}
-      className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
-        !isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-      }`}
-    />
-  </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    {t("profile.zipCode") || "Zip Code"}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.zipCode}
+                    onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
+                    disabled={!isEditing || loadingProfile || savingNames}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                      }`}
+                  />
+                </div>
               </div>
 
               {profileError && (
@@ -740,34 +734,34 @@ className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl fon
                 </p>
               )}
 
-             <div className="flex flex-wrap gap-4 mt-8">
-  {!isEditing ? (
-    <button
-      onClick={() => setIsEditing(true)}
-      className="px-8 py-3 border-[3px] border-black rounded-[20px] bg-[#EF9D39] text-black font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-    >
-      Edit Profile
-    </button>
-  ) : (
-    <>
-      <button
-        onClick={handleOpenNamesConfirm}
-        disabled={loadingProfile || savingNames}
-        className="px-8 py-3 border-[3px] border-black rounded-[20px] bg-green-500 text-white font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
-      >
-        {savingNames ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-        {t("profile.saveChanges")}
-      </button>
-      
-      <button
-        onClick={() => setIsEditing(false)}
-        className="px-8 py-3 border-[3px] border-black rounded-[20px] bg-white text-black font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-      >
-        Cancel
-      </button>
-    </>
-  )}
-</div>
+              <div className="flex flex-wrap gap-4 mt-8">
+                {!isEditing ? (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-8 py-3 border-[3px] border-black rounded-[20px] bg-[#EF9D39] text-black font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                  >
+                    Edit Profile
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleOpenNamesConfirm}
+                      disabled={loadingProfile || savingNames}
+                      className="px-8 py-3 border-[3px] border-black rounded-[20px] bg-green-500 text-white font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
+                    >
+                      {savingNames ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                      {t("profile.saveChanges")}
+                    </button>
+
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="px-8 py-3 border-[3px] border-black rounded-[20px] bg-white text-black font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* --- THE DYNAMIC DASHBOARD --- */}

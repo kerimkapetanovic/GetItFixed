@@ -6,6 +6,8 @@ User = get_user_model()
 
 class BookingSerializer(serializers.ModelSerializer):
     client_name = serializers.SerializerMethodField()
+    client_email = serializers.SerializerMethodField()
+    client_phone = serializers.SerializerMethodField()
     handyman_name = serializers.SerializerMethodField()
     handyman_email = serializers.SerializerMethodField()
     handyman_phone = serializers.SerializerMethodField()
@@ -28,6 +30,8 @@ class BookingSerializer(serializers.ModelSerializer):
             'handyman', # The ID field for writing
             'handyman_id', # The ID field for reading
             'client_name', 
+            'client_email',
+            'client_phone',
             'handyman_name', 
             'handyman_email', 
             'handyman_phone',
@@ -53,6 +57,8 @@ class BookingSerializer(serializers.ModelSerializer):
             'client_proposed_time',
             'handyman_proposed_time',
             'client_name',
+            'client_email',
+            'client_phone',
             'handyman_name',
             'handyman_email',
             'handyman_phone',
@@ -83,4 +89,12 @@ class BookingSerializer(serializers.ModelSerializer):
         if obj.handyman:
             return obj.handyman.id
         return None
-    
+    def get_client_email(self, obj):
+        if obj.client:
+            return obj.client.email
+        return None
+
+    def get_client_phone(self, obj):
+        if obj.client:
+            return obj.client.phone
+        return None
