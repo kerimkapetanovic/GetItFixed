@@ -62,7 +62,9 @@ class AcceptJobView(APIView):
                 return Response({"error": "Job is assigned to another handyman."}, status=status.HTTP_403_FORBIDDEN)
 
             booking.handyman = request.user
-            
+            knows_fix = request.data.get('knows_fix')
+            if knows_fix is not None:
+                booking.knows_fix = knows_fix
             # 2. Spremanje trajanja
             booking.duration_minutes = int(duration)
 
@@ -91,6 +93,7 @@ class HandymanNegotiationActionView(APIView):
 
         action = request.data.get('action')
         duration = request.data.get('duration_minutes') # Hvatanje sati sa frontenda
+        knows_fix = request.data.get('knows_fix')
 
         if action not in {'accept', 'decline', 'counter'}:
             return Response(
@@ -112,6 +115,8 @@ class HandymanNegotiationActionView(APIView):
             
             booking.scheduled_time = agreed_time
             booking.duration_minutes = int(duration) # Spašavamo sate
+            if knows_fix is not None:
+                booking.knows_fix = knows_fix
             booking.status = 'accepted'
             booking.negotiation_status = 'agreed'
             booking.save()
@@ -143,6 +148,8 @@ class HandymanNegotiationActionView(APIView):
             
             booking.handyman_proposed_time = proposed_time
             booking.handyman_counter_message = message or None
+            if knows_fix is not None:
+                booking.knows_fix = knows_fix
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_client' # Sada klijent mora odgovoriti
             booking.expires_at = timezone.now() + timedelta(hours=1)

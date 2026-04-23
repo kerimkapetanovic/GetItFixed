@@ -152,6 +152,8 @@ export default function HandymanRequestDetailsPage() {
     const [actionError, setActionError] = useState("");
     const [actionSuccess, setActionSuccess] = useState("");
 
+    const [knowsFix, setKnowsFix] = useState(false);
+
     const [busySlots, setBusySlots] = useState<{ start: Date; end: Date }[]>([]);
 
     const toUtcIso = (date: Date | null) => date ? date.toISOString() : "";
@@ -163,6 +165,11 @@ export default function HandymanRequestDetailsPage() {
             return t >= new Date(slot.start).getTime() && t <= new Date(slot.end).getTime();
         });
     };
+    useEffect(() => {
+        if (booking) {
+            setKnowsFix(!!booking.knows_fix);
+        }
+    }, [booking]);
 
     // Timer
     useEffect(() => {
@@ -222,6 +229,7 @@ export default function HandymanRequestDetailsPage() {
             const res = await api.post(`/api/bookings/${booking.id}/handyman-action/`, {
                 action: "accept",
                 duration_minutes: Number(acceptDuration),
+                knows_fix: knowsFix,
             });
             setBooking(res.data);
             setActionSuccess("Booking accepted! Appointment is now confirmed.");
@@ -269,6 +277,7 @@ export default function HandymanRequestDetailsPage() {
                 proposed_time: toUtcIso(counterProposedTime),
                 duration_minutes: Number(counterDuration),
                 message: counterMessage,
+                knows_fix: knowsFix,
             });
             setBooking(res.data);
             setActionSuccess("Counter offer sent to client.");
@@ -456,6 +465,54 @@ export default function HandymanRequestDetailsPage() {
                                         </p>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        {/* KNOWS FIX TOGGLE SECTION */}
+                        <div
+                            onClick={() => {
+                                // Dozvoli promjenu samo ako je booking u pending stanju
+                                if (booking?.status === 'pending') {
+                                    setKnowsFix(!knowsFix);
+                                }
+                            }}
+                            className={`p-4 border-2 rounded-xl transition-all flex items-center justify-between mb-4 
+        ${booking?.status !== 'pending' ? "opacity-60 cursor-not-allowed border-gray-300 bg-gray-50" : "cursor-pointer"}
+        ${knowsFix
+                                    ? "bg-green-50 dark:bg-green-900/20 border-green-600 shadow-[4px_4px_0px_0px_#16a34a]"
+                                    : "bg-white dark:bg-zinc-800 border-black shadow-[4px_4px_0px_0px_#000000]"
+                                }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors 
+            ${knowsFix
+                                        ? 'bg-green-600 text-white border-green-700'
+                                        : 'bg-zinc-100 text-gray-400 border-black'
+                                    }`}>
+                                    <CheckCircle
+                                        size={20}
+                                        className={knowsFix ? "text-white" : "text-gray-400"}
+                                    />
+                                </div>
+                                <div>
+                                    <p className={`text-sm font-black uppercase tracking-tight 
+                ${knowsFix ? "text-green-700 dark:text-green-400" : "text-black dark:text-white"}`}>
+                                        Skip Inspection?
+                                    </p>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-tight">
+                                        {knowsFix
+                                            ? "Confirmed: Moving straight to repair"
+                                            : "I know the problem, go straight to repair phase"
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Custom Slide Toggle */}
+                            <div className={`w-12 h-6 rounded-full border-2 border-black relative transition-colors 
+                    ${knowsFix ? 'bg-green-500' : 'bg-gray-200'}`}>
+                                <div className={`absolute top-0.5 w-4 h-4 bg-white border-2 border-black rounded-full transition-all 
+                        ${knowsFix ? 'left-6' : 'left-0.5'}`}
+                                />
                             </div>
                         </div>
 

@@ -20,8 +20,8 @@ function BookingFormContent() {
   const [loading, setLoading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-const [generatedTicket, setGeneratedTicket] = useState("");
-const [busySlots, setBusySlots] = useState<{start: Date, end: Date}[]>([]);
+  const [generatedTicket, setGeneratedTicket] = useState("");
+  const [busySlots, setBusySlots] = useState<{ start: Date, end: Date }[]>([]);
 
   const username = params.username;
   const handymanIdFromUrl = searchParams ? searchParams.get("handyman_id") : null;
@@ -32,8 +32,8 @@ const [busySlots, setBusySlots] = useState<{start: Date, end: Date}[]>([]);
     service_type: serviceTypeFromUrl || "General",
     description: "",
     // POSTAVLJENO NA NULL - Da ne bude ništa izabrano po defaultu
-    scheduled_time: null as Date | null, 
-    handyman_id: handymanIdFromUrl || "", 
+    scheduled_time: null as Date | null,
+    handyman_id: handymanIdFromUrl || "",
     handyman_name: handymanNameFromUrl || "",
     is_urgent: false, // <-- DODAJ OVO
   });
@@ -41,64 +41,64 @@ const [busySlots, setBusySlots] = useState<{start: Date, end: Date}[]>([]);
   useEffect(() => { setMounted(true); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!formData.scheduled_time) {
-    alert("Please select a preferred visit time before confirming.");
-    setIsCalendarOpen(true);
-    return;
-  }
+    e.preventDefault();
 
-  setLoading(true);
-  try {
-    const res = await api.post("/api/bookings/create/", {
-      service_type: formData.service_type,
-      description: formData.description,
-      scheduled_time: formData.scheduled_time.toISOString(),
-      handyman_id: formData.handyman_id || null,
-      is_urgent: formData.is_urgent, // <-- OBAVEZNO POSLATI OVO
-    });
-
-    if (res.data && res.data.ticket_id) {
-      setGeneratedTicket(res.data.ticket_id);
-      setShowSuccess(true);
-    } else {
-      router.push(`/${username}/requests`);
+    if (!formData.scheduled_time) {
+      alert("Please select a preferred visit time before confirming.");
+      setIsCalendarOpen(true);
+      return;
     }
-  } catch (err: unknown) {
-    alert("Booking Error: Failed to create request.");
-  } finally {
-    setLoading(false);
-  }
-};
 
-   useEffect(() => {
-  if (formData.handyman_id) {
-    api.get(`/api/bookings/busy-slots/${formData.handyman_id}/`)
-      .then(res => {
-        // Pretvaramo stringove iz baze u prave JS Date objekte
-        const slots = res.data.map((slot: any) => ({
-          start: new Date(slot.scheduled_time),
-          // Kraj je start + trajanje + buffer
-          end: addMinutes(new Date(slot.scheduled_time), (slot.duration_minutes || 60) + 25), // 25 min buffer
-        }));
-        setBusySlots(slots);
-      })
-      .catch(err => console.error("Error fetching busy slots", err));
-  }
-}, [formData.handyman_id]);
+    setLoading(true);
+    try {
+      const res = await api.post("/api/bookings/create/", {
+        service_type: formData.service_type,
+        description: formData.description,
+        scheduled_time: formData.scheduled_time.toISOString(),
+        handyman_id: formData.handyman_id || null,
+        is_urgent: formData.is_urgent, // <-- OBAVEZNO POSLATI OVO
+      });
 
-const filterPassedTime = (time: Date) => {
-  const currentDate = new Date();
-  if (time < currentDate) return false;
+      if (res.data && res.data.ticket_id) {
+        setGeneratedTicket(res.data.ticket_id);
+        setShowSuccess(true);
+      } else {
+        router.push(`/${username}/requests`);
+      }
+    } catch (err: unknown) {
+      alert("Booking Error: Failed to create request.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return !busySlots.some(slot => {
-    const checkTime = time.getTime();
-    const startTime = new Date(slot.start).getTime();
-    const endTime = new Date(slot.end).getTime();
-    return checkTime >= startTime && checkTime <= endTime;
-  });
-};
+  useEffect(() => {
+    if (formData.handyman_id) {
+      api.get(`/api/bookings/busy-slots/${formData.handyman_id}/`)
+        .then(res => {
+          // Pretvaramo stringove iz baze u prave JS Date objekte
+          const slots = res.data.map((slot: any) => ({
+            start: new Date(slot.scheduled_time),
+            // Kraj je start + trajanje + buffer
+            end: addMinutes(new Date(slot.scheduled_time), (slot.duration_minutes || 60) + 25), // 25 min buffer
+          }));
+          setBusySlots(slots);
+        })
+        .catch(err => console.error("Error fetching busy slots", err));
+    }
+  }, [formData.handyman_id]);
+
+  const filterPassedTime = (time: Date) => {
+    const currentDate = new Date();
+    if (time < currentDate) return false;
+
+    return !busySlots.some(slot => {
+      const checkTime = time.getTime();
+      const startTime = new Date(slot.start).getTime();
+      const endTime = new Date(slot.end).getTime();
+      return checkTime >= startTime && checkTime <= endTime;
+    });
+  };
 
   if (!mounted) return null;
 
@@ -143,49 +143,48 @@ const filterPassedTime = (time: Date) => {
           {/* DATE PICKER TRIGGER */}
           <div>
             <label className="text-xs font-black uppercase mb-2 block text-gray-500">Preferred visit time</label>
-            <div 
+            <div
               onClick={() => setIsCalendarOpen(true)}
-                                      className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
+              className="relative cursor-pointer w-full bg-white dark:bg-zinc-800 border-2 p-4 pl-12 rounded-xl font-bold border-black"
 
             >
               <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              {formData.scheduled_time 
-                ? formData.scheduled_time.toLocaleString('de-DE', { hour12: false }) 
+              {formData.scheduled_time
+                ? formData.scheduled_time.toLocaleString('de-DE', { hour12: false })
                 : "CLICK TO SELECT DATE & TIME"
               }
             </div>
-           
+
           </div>
- {/* URGENT TOGGLE SECTION */}
-<div 
-  onClick={() => setFormData({ ...formData, is_urgent: !formData.is_urgent })}
-  className={`p-4 border-2 border-black rounded-xl cursor-pointer transition-all flex items-center justify-between ${
-    formData.is_urgent 
-    ? "bg-red-50 dark:bg-red-900/20 border-red-600 shadow-[4px_4px_0px_0px_#dc2626]" 
-    : "bg-gray-50 dark:bg-zinc-800"
-  }`}
->
-  <div className="flex items-center gap-3">
-    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-black ${formData.is_urgent ? 'bg-red-600 text-white' : 'bg-white text-gray-400'}`}>
-      <span className="font-black">!</span>
-    </div>
-    <div>
-      <p className="text-sm font-black uppercase tracking-tight text-black dark:text-white">Is this urgent?</p>
-      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Surcharge applies for immediate response</p>
-    </div>
-  </div>
-  
-  {/* Custom Slide Toggle */}
-  <div className={`w-12 h-6 rounded-full border-2 border-black relative transition-colors ${formData.is_urgent ? 'bg-red-500' : 'bg-gray-200'}`}>
-    <div className={`absolute top-0.5 w-4 h-4 bg-white border-2 border-black rounded-full transition-all ${formData.is_urgent ? 'left-6' : 'left-0.5'}`} />
-  </div>
-</div>
+          {/* URGENT TOGGLE SECTION */}
+          <div
+            onClick={() => setFormData({ ...formData, is_urgent: !formData.is_urgent })}
+            className={`p-4 border-2 border-black rounded-xl cursor-pointer transition-all flex items-center justify-between ${formData.is_urgent
+                ? "bg-red-50 dark:bg-red-900/20 border-red-600 shadow-[4px_4px_0px_0px_#dc2626]"
+                : "bg-gray-50 dark:bg-zinc-800"
+              }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-black ${formData.is_urgent ? 'bg-red-600 text-white' : 'bg-white text-gray-400'}`}>
+                <span className="font-black">!</span>
+              </div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-tight text-black dark:text-white">Is this urgent?</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Surcharge applies for immediate response</p>
+              </div>
+            </div>
+
+            {/* Custom Slide Toggle */}
+            <div className={`w-12 h-6 rounded-full border-2 border-black relative transition-colors ${formData.is_urgent ? 'bg-red-500' : 'bg-gray-200'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 bg-white border-2 border-black rounded-full transition-all ${formData.is_urgent ? 'left-6' : 'left-0.5'}`} />
+            </div>
+          </div>
           {/* MODAL POPUP */}
           {isCalendarOpen && (
             <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">
               <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-10 max-w-2xl w-full relative flex flex-col items-center">
-                
-                <button 
+
+                <button
                   type="button" // Eksplicitno type="button" da ne trigeruje submit
                   onClick={() => setIsCalendarOpen(false)}
                   className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
@@ -217,7 +216,7 @@ const filterPassedTime = (time: Date) => {
                   />
                 </div>
 
-                <button 
+                <button
                   type="button" // Eksplicitno type="button"
                   onClick={() => setIsCalendarOpen(false)}
                   className="mt-10 bg-[#EF9D39] border-4 border-black px-16 py-4 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
@@ -238,37 +237,37 @@ const filterPassedTime = (time: Date) => {
           </button>
         </form>
       </div> {/* Ovaj DIV zatvara onaj glavni beli kontejner sa senkom */}
-    {/* SUCCESS MODAL */}
-{showSuccess && (
-  <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-    <div className="bg-white dark:bg-zinc-900 border-[4px] border-black p-10 rounded-[40px] shadow-[20px_20px_0px_0px_#EF9D39] max-w-sm w-full text-center relative animate-in zoom-in-95">
-      
-      {/* IKONA */}
-      <div className="w-20 h-20 bg-[#EF9D39] border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6 shadow-[5px_5px_0px_0px_#000]">
-        <Send className="text-black ml-1" size={32} />
-      </div>
+      {/* SUCCESS MODAL */}
+      {showSuccess && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-zinc-900 border-[4px] border-black p-10 rounded-[40px] shadow-[20px_20px_0px_0px_#EF9D39] max-w-sm w-full text-center relative animate-in zoom-in-95">
 
-      {/* GLAVNI NASLOV SA BROJEM TIKETA */}
-      <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-4 dark:text-white leading-tight">
-        Booking Sent! <br />
-        <span className="text-[#EF9D39]">#{generatedTicket}</span>
-      </h2>
+            {/* IKONA */}
+            <div className="w-20 h-20 bg-[#EF9D39] border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6 shadow-[5px_5px_0px_0px_#000]">
+              <Send className="text-black ml-1" size={32} />
+            </div>
 
-      {/* PODNASLOV */}
-      <p className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-8">
-        Your request has been received. <br /> Check your dashboard for updates.
-      </p>
-      
-      {/* DUGME */}
-      <button 
-        onClick={() => router.push(`/${username}/requests`)}
-        className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-tighter border-2 border-black hover:bg-zinc-800 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-none transition-all"
-      >
-        Back to My Requests
-      </button>
-    </div>
-  </div>
-)}
+            {/* GLAVNI NASLOV SA BROJEM TIKETA */}
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-4 dark:text-white leading-tight">
+              Booking Sent! <br />
+              <span className="text-[#EF9D39]">#{generatedTicket}</span>
+            </h2>
+
+            {/* PODNASLOV */}
+            <p className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-8">
+              Your request has been received. <br /> Check your dashboard for updates.
+            </p>
+
+            {/* DUGME */}
+            <button
+              onClick={() => router.push(`/${username}/requests`)}
+              className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-tighter border-2 border-black hover:bg-zinc-800 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-none transition-all"
+            >
+              Back to My Requests
+            </button>
+          </div>
+        </div>
+      )}
     </main> // <-- Ovo je taj tag iznad kojeg ubacuješ
   );
 }

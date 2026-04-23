@@ -54,6 +54,7 @@ class Booking(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(null=True, blank=True)
+    knows_fix = models.BooleanField(null=True, blank=True) 
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     negotiation_status = models.CharField(

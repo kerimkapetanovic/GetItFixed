@@ -48,6 +48,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'duration_minutes',
             'estimated_price',
             'last_action_by',
+            'knows_fix',
             
         ]
         read_only_fields = [
