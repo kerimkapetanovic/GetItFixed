@@ -124,7 +124,6 @@ export default function HandymanDashboard() {
     );
 
     try {
-      await api.post(`/api/bookings/${jobId}/expire/`);
       console.log(`Job #${jobId} has officially expired.`);
     } catch (error) {
       console.error("Error:", error);
@@ -267,7 +266,6 @@ export default function HandymanDashboard() {
                     <span className="bg-blue-500 text-white px-2 py-0.5 rounded-md font-black text-[10px] uppercase">
                       #{job.ticket_id}
                     </span>
-                    <JobTimer expiresAt={job.expires_at} onExpire={() => handleExpire(job.id)} />
                     <span className="text-[10px] font-black uppercase text-blue-500">
                       🔧 {job.service_type}
                     </span>

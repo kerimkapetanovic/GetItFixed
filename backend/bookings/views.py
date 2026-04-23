@@ -327,3 +327,26 @@ class ExpireBookingView(APIView):
                 
         except Booking.DoesNotExist:
             return Response({"error": "Job not found or already processed."}, status=status.HTTP_404_NOT_FOUND)
+        
+class CompleteBookingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        user = request.user
+
+        # KORAK 1: Majstor označava kraj
+        if user == booking.handyman:
+            booking.status = 'handyman_done'
+            booking.handyman_marked_done_at = timezone.now()
+            booking.save()
+            return Response({"message": "Označen kraj rada. Klijent ima 30 min za potvrdu."})
+
+        # KORAK 2: Klijent potvrđuje
+        if user == booking.client:
+            if booking.status != 'handyman_done':
+                return Response({"error": "Majstor još nije označio kraj rada."}, status=400)
+            
+            booking.status = 'completed'
+            booking.save()
+            return Response({"message": "Posao uspješno završen i zatvoren!"})
