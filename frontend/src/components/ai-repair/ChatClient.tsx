@@ -5,6 +5,7 @@ import MessageBubble from './MessageBubble';
 import InputBar from './InputBar';
 import styles from './styles.module.css';
 import { Message } from '../../types/ai';
+import api from '../../../lib/axios';
 
 const INITIAL_MESSAGES: Message[] = [
   {
@@ -19,7 +20,6 @@ export default function ChatClient() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [serviceCategory, setServiceCategory] = useState('general');
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -33,32 +33,36 @@ export default function ChatClient() {
     setMessages((prev) => [...prev, msg]);
   }
 
-  function simulateAiReply(userText: string) {
+  async function requestAiReply(userText: string) {
     setIsThinking(true);
+    try {
+      const response = await api.post('/api/ai-helper/', { message: userText });
+      const status = response.data?.status;
+      const category = response.data?.category;
+      const explanation = response.data?.explanation;
+      const fallbackMessage = response.data?.message;
 
-    const cannedReply = (() => {
-      if (/leak|faucet|pipe/i.test(userText)) {
-        return `Sounds like a leak. First check if the shut-off valve is working and turn off the water supply. Inspect the connection points and look for loose fittings or damaged washers. If the leak is from a joint, tightening may help. If it's from the faucet body, you may need a replacement cartridge.`;
-      }
-      if (/ac|air|cool/i.test(userText)) {
-        return `If the AC is not cooling, check the thermostat settings, verify the filter is clean, and ensure the outdoor unit is running. If the compressor is not starting or there are strange noises, stop using the unit and consult a technician.`;
-      }
-      if (/electr|power|outlet/i.test(userText)) {
-        return `For electrical issues, switch off power at the breaker before inspecting. Check for tripped breakers, loose outlet connections, or burnt smells. If you are unsure, hire a licensed electrician — electrical faults can be dangerous.`;
-      }
-      return `Thanks for the description. As a first step try these troubleshooting tips: 1) Inspect the obvious parts (connections, filters, switches). 2) Take photos and note error messages. 3) If it’s unsafe (smoke, sparks, major leaks), stop and call a pro. Tell me more details and I can suggest step-by-step actions.`;
-    })();
+      const aiText =
+        status === 'match' && category
+          ? `The category you should look for is "${category}".${explanation ? `\n\n${explanation}` : ''}`
+          : fallbackMessage || explanation || 'I could not generate a clear recommendation right now.';
 
-    // Simulate streaming/typing delay
-    setTimeout(() => {
       appendMessage({
         id: `m-${Date.now()}`,
         role: 'assistant',
-        text: cannedReply,
+        text: aiText,
         timestamp: new Date().toISOString(),
       });
+    } catch {
+      appendMessage({
+        id: `m-${Date.now()}`,
+        role: 'assistant',
+        text: 'The AI helper is currently unavailable. Please try again shortly.',
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
       setIsThinking(false);
-    }, 900 + Math.min(1200, userText.length * 20));
+    }
   }
 
   function handleSend(text: string) {
@@ -71,7 +75,7 @@ export default function ChatClient() {
     };
     appendMessage(userMsg);
     setInput('');
-    simulateAiReply(text.trim());
+    requestAiReply(text.trim());
   }
 
   const quickPrompts = [
@@ -118,23 +122,6 @@ export default function ChatClient() {
         </div>
 
         <div className={styles.footer}>
-          <div className="flex items-center gap-3 mb-2">
-            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">Category</label>
-            <select
-              value={serviceCategory}
-              onChange={(e) => setServiceCategory(e.target.value)}
-              className="text-sm border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 px-3 py-1 rounded-md"
-              aria-label="Service category"
-            >
-              <option value="general">General</option>
-              <option value="plumbing">Plumbing</option>
-              <option value="electrical">Electrical</option>
-              <option value="hvac">HVAC</option>
-              <option value="carpentry">Carpentry</option>
-            </select>
-            <div className="text-xs text-gray-500 dark:text-zinc-400 ml-auto">Frontend-only (dummy)</div>
-          </div>
-
           <InputBar
             value={input}
             setValue={setInput}
