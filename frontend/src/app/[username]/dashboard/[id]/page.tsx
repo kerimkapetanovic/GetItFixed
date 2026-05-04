@@ -577,7 +577,7 @@ export default function HandymanRequestDetailsPage() {
                                 <button
                                     onClick={handleMarkDone}
                                     disabled={markDoneLoading}
-                                    className="w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#7c3aed] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                    className="w-full bg-white dark:bg-black text-black dark:text-white border-2 border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#7c3aed] hover:bg-violet-50 dark:hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                                 >
                                     {markDoneLoading
                                         ? <Loader2 size={14} className="animate-spin" />

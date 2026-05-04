@@ -542,14 +542,14 @@ export default function RequestDetailsPage() {
                 <button
                   disabled={actionLoading}
                   onClick={confirmJobDone}
-                  className="w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#a855f7] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full bg-white dark:bg-black text-black dark:text-white border-2 border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#a855f7] hover:bg-purple-50 dark:hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   {actionLoading ? <Loader2 size={14} className="animate-spin" /> : "Confirm Job Completed"}
                 </button>
                 <button
                   disabled={actionLoading}
                   onClick={markJobNotCompleted}
-                  className="w-full bg-white text-black border-2 border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] hover:bg-red-50 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60"
+                  className="w-full bg-white dark:bg-black text-black dark:text-white border-2 border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] hover:bg-red-50 dark:hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60"
                 >
                   Mark as Not Completed
                 </button>

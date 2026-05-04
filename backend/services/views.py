@@ -4,10 +4,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.auth import get_user_model
 
 from .handyman_ai import classify_problem_to_service
-from .models import HandymanProfile
-from .serializers import HandymanProfileSerializer
+from .serializers import HandymanServiceListSerializer
+
+User = get_user_model()
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -27,14 +29,22 @@ class AIHelperView(APIView):
 
 
 class HandymanListByCategoryView(generics.ListAPIView):
-    serializer_class = HandymanProfileSerializer
+    serializer_class = HandymanServiceListSerializer
+
+    def _normalize(self, value: str) -> str:
+        return " ".join((value or "").strip().lower().replace("-", " ").replace("_", " ").split())
 
     def get_queryset(self):
-        # Grabs the category from the URL (e.g., /services/plumbing/)
-        category_slug = self.kwargs['category_slug']
-        
-        # Returns handymen matching that category
-        return HandymanProfile.objects.filter(
-            user__service_type=category_slug, 
-            user__role='handyman'
-        )
+        # Read slug from URL (e.g., /services/plumbing/)
+        category_slug = self.kwargs["category_slug"]
+        wanted = self._normalize(category_slug)
+
+        # Return handyman users; match service_type robustly even if DB has spaces/case differences.
+        handymen = User.objects.filter(role="handyman").order_by("id")
+        matched_ids = [
+            user.id
+            for user in handymen
+            if self._normalize(user.service_type or "") == wanted
+        ]
+
+        return User.objects.filter(id__in=matched_ids).order_by("id")

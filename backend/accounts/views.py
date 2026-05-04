@@ -30,6 +30,56 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'service_type', 'location', 'rating', 'hourly_rate'
         ]
 
+class HandymanDirectorySerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    category = serializers.CharField(source="service_type", read_only=True)
+    service_type = serializers.CharField(read_only=True)
+    location = serializers.CharField(source="city", default="Sarajevo")
+    jobs = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    hourly_rate = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "service_type",
+            "hourly_rate",
+            "name",
+            "category",
+            "rating",
+            "jobs",
+            "price",
+            "location",
+        ]
+
+    def get_name(self, obj):
+        last_initial = f"{obj.last_name[0]}." if obj.last_name else ""
+        full = f"{obj.first_name} {last_initial}".strip()
+        return full or obj.email
+
+    def get_jobs(self, obj):
+        profile = getattr(obj, "handyman_profile", None)
+        return profile.jobs_completed if profile else 0
+
+    def get_price(self, obj):
+        profile = getattr(obj, "handyman_profile", None)
+        rate = profile.hourly_rate if profile else obj.hourly_rate
+        return f"{int(rate)} BAM/hr"
+
+    def get_hourly_rate(self, obj):
+        profile = getattr(obj, "handyman_profile", None)
+        rate = profile.hourly_rate if profile else obj.hourly_rate
+        return int(rate)
+
+    def get_rating(self, obj):
+        profile = getattr(obj, "handyman_profile", None)
+        value = profile.rating if profile else obj.rating
+        return f"{value}"
+
 class EmailAuthSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
@@ -68,11 +118,25 @@ class EmailAuthSerializer(serializers.Serializer):
 
 class HandymanListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny] 
-    serializer_class = UserSerializer
+    serializer_class = HandymanDirectorySerializer
+
+    def _normalize(self, value: str) -> str:
+        return " ".join((value or "").strip().lower().replace("-", " ").replace("_", " ").split())
 
     def get_queryset(self):
-        # Return handyman users directly so all DB service types are represented.
-        return User.objects.filter(role='handyman').order_by('id')
+        # Return handyman users and optionally filter by service_type.
+        queryset = User.objects.filter(role='handyman').order_by('id')
+        service_type = self.request.query_params.get("service_type")
+        if not service_type:
+            return queryset
+
+        wanted = self._normalize(service_type)
+        matched_ids = [
+            user.id
+            for user in queryset
+            if self._normalize(user.service_type or "") == wanted
+        ]
+        return queryset.filter(id__in=matched_ids)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
