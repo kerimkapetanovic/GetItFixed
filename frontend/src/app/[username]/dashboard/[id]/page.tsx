@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/header";
@@ -8,7 +8,8 @@ import Footer from "@/components/footer";
 import api from "../../../../../lib/axios";
 import {
     Loader2, Check, X, AlertCircle, PlayCircle, Timer,
-    CheckCircle2, Calendar as CalendarIcon, CheckCircle
+    CheckCircle2, Calendar as CalendarIcon, CheckCircle,
+    Wrench, Flag
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -39,6 +40,38 @@ export function getStatusInfo(booking: BookingDetail) {
             icon: <X className="text-red-400 shrink-0" size={18} strokeWidth={3} />
         };
     }
+    if (booking.status === "completed") {
+        return {
+            label: "Completed",
+            badgeClass: "bg-green-400 text-black",
+            helperText: "Job finished! Thank you for your work.",
+            icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "handyman_done") {
+        return {
+            label: "Awaiting Client",
+            badgeClass: "bg-purple-400 text-black",
+            helperText: "You marked job as done. Waiting for client confirmation.",
+            icon: <CheckCircle className="text-purple-400 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "not_completed") {
+        return {
+            label: "Not Completed",
+            badgeClass: "bg-red-400 text-black",
+            helperText: "Client reported the job is not completed. Follow-up is required.",
+            icon: <AlertCircle className="text-red-500 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "in_progress") {
+        return {
+            label: "In Progress",
+            badgeClass: "bg-violet-400 text-black",
+            helperText: "Job is in progress. Mark as done when finished.",
+            icon: <PlayCircle className="text-violet-400 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
     if (booking.status === "accepted" || booking.negotiation_status === "agreed") {
         return {
             label: "Accepted",
@@ -57,26 +90,10 @@ export function getStatusInfo(booking: BookingDetail) {
     }
     if (booking.negotiation_status === "awaiting_handyman") {
         return {
-            label: " Confirmation Required",
+            label: "Confirmation Required",
             badgeClass: "bg-yellow-400 text-black",
             helperText: "Client is waiting for your response.",
             icon: <Timer className="text-yellow-400 shrink-0" size={18} strokeWidth={3} />
-        };
-    }
-    if (booking.status === "in_progress") {
-        return {
-            label: "In Progress",
-            badgeClass: "bg-violet-400 text-black",
-            helperText: "You are currently working on this request.",
-            icon: <PlayCircle className="text-violet-400 shrink-0" size={18} strokeWidth={3} />
-        };
-    }
-    if (booking.status === "completed") {
-        return {
-            label: "Completed",
-            badgeClass: "bg-green-400 text-black",
-            helperText: "Job finished! Thank you for your work.",
-            icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
         };
     }
     return {
@@ -115,14 +132,10 @@ const formatMs = (ms: number) => {
     return `${minutes}m ${seconds}s`;
 };
 
-// Determines if the handyman action panel should be shown
-// Show when: status is pending AND negotiation is awaiting_handyman (or no negotiation yet)
 function shouldShowHandymanActions(booking: BookingDetail) {
-    if (booking.status === "cancelled" || booking.status === "accepted" || booking.status === "completed") return false;
+    if (["cancelled", "accepted", "completed", "in_progress", "handyman_done", "not_completed"].includes(booking.status)) return false;
     if (booking.negotiation_status === "declined" || booking.negotiation_status === "agreed") return false;
-    // Awaiting handyman means it's the handyman's turn
     if (booking.negotiation_status === "awaiting_handyman") return true;
-    // Initial state — no negotiation yet, status is pending
     if (!booking.negotiation_status && booking.status === "pending") return true;
     return false;
 }
@@ -152,8 +165,12 @@ export default function HandymanRequestDetailsPage() {
     const [actionError, setActionError] = useState("");
     const [actionSuccess, setActionSuccess] = useState("");
 
-    const [knowsFix, setKnowsFix] = useState(false);
+    // Job completion
+    const [markDoneLoading, setMarkDoneLoading] = useState(false);
+    const [secondsUntilUnlock, setSecondsUntilUnlock] = useState<number | null>(null);
+    const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
+    const [knowsFix, setKnowsFix] = useState(false);
     const [busySlots, setBusySlots] = useState<{ start: Date; end: Date }[]>([]);
 
     const toUtcIso = (date: Date | null) => date ? date.toISOString() : "";
@@ -165,13 +182,12 @@ export default function HandymanRequestDetailsPage() {
             return t >= new Date(slot.start).getTime() && t <= new Date(slot.end).getTime();
         });
     };
+
     useEffect(() => {
-        if (booking) {
-            setKnowsFix(!!booking.knows_fix);
-        }
+        if (booking) setKnowsFix(!!booking.knows_fix);
     }, [booking]);
 
-    // Timer
+    // Negotiation expiry timer
     useEffect(() => {
         if (!booking || booking.status === "accepted" || booking.status === "completed") {
             setTimeLeft(0);
@@ -183,10 +199,38 @@ export default function HandymanRequestDetailsPage() {
         return () => clearInterval(interval);
     }, [booking]);
 
+    // ── POLLING: status-check (accepted → in_progress) ──
+    useEffect(() => {
+        if (!booking || booking.status !== "accepted") {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            return;
+        }
+
+        const poll = async () => {
+            try {
+                const res = await api.post(`/api/bookings/${booking.id}/status-check/`);
+                if (res.data.status !== "not_yet") {
+                    setBooking(res.data);
+                } else {
+                    setSecondsUntilUnlock(res.data.seconds_left);
+                }
+            } catch (e) {
+                console.error("Status check failed:", e);
+            }
+        };
+
+        poll();
+        pollingRef.current = setInterval(poll, 30_000);
+
+        return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+        };
+    }, [booking?.status, booking?.id]);
+
     // Fetch booking
     useEffect(() => {
         if (!bookingId) return;
-        const fetch = async () => {
+        const fetchBooking = async () => {
             try {
                 const res = await api.get(`/api/bookings/${bookingId}/`);
                 setBooking(res.data);
@@ -196,7 +240,7 @@ export default function HandymanRequestDetailsPage() {
                 setLoading(false);
             }
         };
-        fetch();
+        fetchBooking();
     }, [bookingId]);
 
     // Fetch busy slots
@@ -212,10 +256,7 @@ export default function HandymanRequestDetailsPage() {
             .catch(err => console.error("Error fetching busy slots", err));
     }, [booking?.handyman_id]);
 
-    const clearActionMessages = () => {
-        setActionError("");
-        setActionSuccess("");
-    };
+    const clearActionMessages = () => { setActionError(""); setActionSuccess(""); };
 
     const handleAccept = async () => {
         if (!booking) return;
@@ -247,9 +288,7 @@ export default function HandymanRequestDetailsPage() {
         clearActionMessages();
         try {
             setActionLoading(true);
-            const res = await api.post(`/api/bookings/${booking.id}/handyman-action/`, {
-                action: "decline",
-            });
+            const res = await api.post(`/api/bookings/${booking.id}/handyman-action/`, { action: "decline" });
             setBooking(res.data);
             setActionSuccess("Request declined and closed.");
         } catch (e) {
@@ -261,10 +300,7 @@ export default function HandymanRequestDetailsPage() {
 
     const handleCounter = async () => {
         if (!booking) return;
-        if (!counterProposedTime) {
-            setActionError("Please select a new date and time.");
-            return;
-        }
+        if (!counterProposedTime) { setActionError("Please select a new date and time."); return; }
         if (!counterDuration || isNaN(Number(counterDuration)) || Number(counterDuration) <= 0) {
             setActionError("Please enter a valid estimated duration in minutes.");
             return;
@@ -292,6 +328,22 @@ export default function HandymanRequestDetailsPage() {
         }
     };
 
+    // ── HANDYMAN: označi job kao završen ──
+    const handleMarkDone = async () => {
+        if (!booking) return;
+        clearActionMessages();
+        try {
+            setMarkDoneLoading(true);
+            const res = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "mark_done" });
+            setBooking(res.data);
+            setActionSuccess("Job marked as done! Waiting for client confirmation.");
+        } catch (e) {
+            setActionError(getBackendErrorMessage(e));
+        } finally {
+            setMarkDoneLoading(false);
+        }
+    };
+
     if (loading)
         return (
             <div className="min-h-screen flex items-center justify-center font-black uppercase text-xl dark:text-white">
@@ -315,21 +367,20 @@ export default function HandymanRequestDetailsPage() {
             <main className="flex-grow flex flex-col items-center p-6 py-12 w-full max-w-3xl mx-auto">
                 <div className="w-full mb-6">
                     <Link
-                        href={`/${username}/requests`}
+                        href={`/${username}/dashboard`}
                         className="font-bold text-sm uppercase text-gray-500 hover:text-black dark:hover:text-white transition-colors"
                     >
-                        ← Back to My Requests
+                        ← Back to Dashboard
                     </Link>
                 </div>
 
-                <div
-                    className={`w-full bg-white dark:bg-zinc-900 border-2 p-8 md:p-12 rounded-[32px] transition-all 
+                <div className={`w-full bg-white dark:bg-zinc-900 border-2 p-8 md:p-12 rounded-[32px] transition-all
                     ${booking.is_urgent
-                            ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]"
-                            : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-                        }`}
+                        ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]"
+                        : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                    }`}
                 >
-                    {/* Header: ID + Badges */}
+                    {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                         <div className="flex items-center gap-3">
                             <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none">
@@ -349,13 +400,9 @@ export default function HandymanRequestDetailsPage() {
                     <div className="space-y-6">
                         {/* Current State */}
                         <div className="p-4 bg-gray-50 dark:bg-zinc-800 border-2 border-black rounded-xl">
-                            <p className="text-xs font-black uppercase tracking-widest text-[#EF9D39] dark:text-zinc-400 mb-1">
-                                Current state
-                            </p>
+                            <p className="text-xs font-black uppercase tracking-widest text-[#EF9D39] dark:text-zinc-400 mb-1">Current state</p>
                             <div className="flex items-center justify-between gap-4 p-3 border-2 border-black rounded-xl bg-white dark:bg-zinc-800">
-                                <p className="font-bold text-sm text-black dark:text-white leading-tight">
-                                    {statusInfo.helperText}
-                                </p>
+                                <p className="font-bold text-sm text-black dark:text-white leading-tight">{statusInfo.helperText}</p>
                                 <div className="shrink-0 p-2 bg-zinc-100 dark:bg-zinc-700 rounded-lg border-2 border-black">
                                     {statusInfo.icon}
                                 </div>
@@ -385,13 +432,9 @@ export default function HandymanRequestDetailsPage() {
                         {/* Scheduling Timeline */}
                         <div className="border-2 border-black rounded-xl bg-white dark:bg-zinc-900 overflow-hidden">
                             <div className="px-4 py-3 bg-black">
-                                <p className="text-[12px] font-black uppercase tracking-widest text-[#EF9D39] m-0">
-                                    Scheduling timeline
-                                </p>
+                                <p className="text-[12px] font-black uppercase tracking-widest text-[#EF9D39] m-0">Scheduling timeline</p>
                             </div>
-
                             <div className="p-4 flex flex-col gap-0">
-                                {/* Step 1: Client proposed */}
                                 <div className="flex gap-3">
                                     <div className="flex flex-col items-center w-7 shrink-0">
                                         <div className="w-7 h-7 rounded-full bg-[#EF9D39] border-2 border-black flex items-center justify-center text-[11px] font-black text-black shrink-0">1</div>
@@ -411,7 +454,6 @@ export default function HandymanRequestDetailsPage() {
                                     </div>
                                 </div>
 
-                                {/* Step 2: Expert counter (samo ako postoji) */}
                                 {booking.handyman_proposed_time && (
                                     <div className="flex gap-3">
                                         <div className="flex flex-col items-center w-7 shrink-0">
@@ -419,10 +461,8 @@ export default function HandymanRequestDetailsPage() {
                                             <div className="w-0.5 flex-1 bg-gray-200 dark:bg-zinc-700 min-h-6" />
                                         </div>
                                         <div className="pb-5 flex-1">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Expert countered</p>
-                                            <p className="text-sm font-bold text-black dark:text-white mb-2">
-                                                {formatDateTime(booking.handyman_proposed_time)}
-                                            </p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Your counter</p>
+                                            <p className="text-sm font-bold text-black dark:text-white mb-2">{formatDateTime(booking.handyman_proposed_time)}</p>
                                             {booking.handyman_counter_message && (
                                                 <div className="inline-flex gap-1.5 items-start bg-violet-50 dark:bg-zinc-800 border-2 border-black rounded-lg px-2.5 py-1.5">
                                                     <span className="text-[12px] font-black uppercase text-violet-500 whitespace-nowrap">Note:</span>
@@ -433,7 +473,6 @@ export default function HandymanRequestDetailsPage() {
                                     </div>
                                 )}
 
-                                {/* Step 3: Estimated duration */}
                                 {booking.duration_minutes && (
                                     <div className="flex gap-3">
                                         <div className="flex flex-col items-center w-7 shrink-0">
@@ -447,7 +486,6 @@ export default function HandymanRequestDetailsPage() {
                                     </div>
                                 )}
 
-                                {/* Step 4: Confirmed */}
                                 <div className="flex gap-3">
                                     <div className="flex flex-col items-center w-7 shrink-0">
                                         <div className="w-7 h-7 rounded-full bg-green-400 border-2 border-black flex items-center justify-center shrink-0">
@@ -459,93 +497,124 @@ export default function HandymanRequestDetailsPage() {
                                         <p className={`text-sm font-black ${booking.status === "accepted" || booking.negotiation_status === "agreed" ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
                                             {formatDateTime(
                                                 booking.status === "accepted" || booking.negotiation_status === "agreed"
-                                                    ? booking.scheduled_time
-                                                    : null
+                                                    ? booking.scheduled_time : null
                                             )}
                                         </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        {/* KNOWS FIX TOGGLE SECTION */}
+
+                        {/* Knows Fix Toggle */}
                         <div
-                            onClick={() => {
-                                // Dozvoli promjenu samo ako je booking u pending stanju
-                                if (booking?.status === 'pending') {
-                                    setKnowsFix(!knowsFix);
-                                }
-                            }}
-                            className={`p-4 border-2 rounded-xl transition-all flex items-center justify-between mb-4 
-        ${booking?.status !== 'pending' ? "opacity-60 cursor-not-allowed border-gray-300 bg-gray-50" : "cursor-pointer"}
-        ${knowsFix
-                                    ? "bg-green-50 dark:bg-green-900/20 border-green-600 shadow-[4px_4px_0px_0px_#16a34a]"
-                                    : "bg-white dark:bg-zinc-800 border-black shadow-[4px_4px_0px_0px_#000000]"
-                                }`}
+                            onClick={() => { if (booking?.status === 'pending') setKnowsFix(!knowsFix); }}
+                            className={`p-4 border-2 rounded-xl transition-all flex items-center justify-between
+                                ${booking?.status !== 'pending' ? "opacity-60 cursor-not-allowed border-gray-300 bg-gray-50" : "cursor-pointer"}
+                                ${knowsFix ? "bg-green-50 dark:bg-green-900/20 border-green-600 shadow-[4px_4px_0px_0px_#16a34a]" : "bg-white dark:bg-zinc-800 border-black shadow-[4px_4px_0px_0px_#000000]"}`}
                         >
                             <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors 
-            ${knowsFix
-                                        ? 'bg-green-600 text-white border-green-700'
-                                        : 'bg-zinc-100 text-gray-400 border-black'
-                                    }`}>
-                                    <CheckCircle
-                                        size={20}
-                                        className={knowsFix ? "text-white" : "text-gray-400"}
-                                    />
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${knowsFix ? 'bg-green-600 text-white border-green-700' : 'bg-zinc-100 text-gray-400 border-black'}`}>
+                                    <CheckCircle size={20} className={knowsFix ? "text-white" : "text-gray-400"} />
                                 </div>
                                 <div>
-                                    <p className={`text-sm font-black uppercase tracking-tight 
-                ${knowsFix ? "text-green-700 dark:text-green-400" : "text-black dark:text-white"}`}>
+                                    <p className={`text-sm font-black uppercase tracking-tight ${knowsFix ? "text-green-700 dark:text-green-400" : "text-black dark:text-white"}`}>
                                         Skip Inspection?
                                     </p>
                                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-tight">
-                                        {knowsFix
-                                            ? "Confirmed: Moving straight to repair"
-                                            : "I know the problem, go straight to repair phase"
-                                        }
+                                        {knowsFix ? "Confirmed: Moving straight to repair" : "I know the problem, go straight to repair phase"}
                                     </p>
                                 </div>
                             </div>
-
-                            {/* Custom Slide Toggle */}
-                            <div className={`w-12 h-6 rounded-full border-2 border-black relative transition-colors 
-                    ${knowsFix ? 'bg-green-500' : 'bg-gray-200'}`}>
-                                <div className={`absolute top-0.5 w-4 h-4 bg-white border-2 border-black rounded-full transition-all 
-                        ${knowsFix ? 'left-6' : 'left-0.5'}`}
-                                />
+                            <div className={`w-12 h-6 rounded-full border-2 border-black relative transition-colors ${knowsFix ? 'bg-green-500' : 'bg-gray-200'}`}>
+                                <div className={`absolute top-0.5 w-4 h-4 bg-white border-2 border-black rounded-full transition-all ${knowsFix ? 'left-6' : 'left-0.5'}`} />
                             </div>
                         </div>
 
-                        {/* Timer */}
+                        {/* Negotiation expiry timer */}
                         {timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && (
                             <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-500 rounded-2xl flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <Timer className="text-orange-500 animate-pulse" size={24} />
                                     <div>
-                                        <p className="text-[12px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">
-                                            Response Deadline
-                                        </p>
-                                        <p className="text-xl font-black text-black dark:text-white tabular-nums">
-                                            {formatMs(timeLeft)}
-                                        </p>
+                                        <p className="text-[12px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">Response Deadline</p>
+                                        <p className="text-xl font-black text-black dark:text-white tabular-nums">{formatMs(timeLeft)}</p>
                                     </div>
                                 </div>
                                 {timeLeft < 15 * 60 * 1000 && (
-                                    <span className="text-[12px] bg-red-500 text-white px-2 py-1 rounded font-black uppercase animate-bounce">
-                                        Expiring soon!
-                                    </span>
+                                    <span className="text-[12px] bg-red-500 text-white px-2 py-1 rounded font-black uppercase animate-bounce">Expiring soon!</span>
                                 )}
                             </div>
                         )}
 
-                        {/* ─── HANDYMAN ACTION PANEL ─── */}
+                        {/* ── ACCEPTED: countdown do početka posla ── */}
+                        {booking.status === "accepted" && secondsUntilUnlock !== null && secondsUntilUnlock > 0 && (
+                            <div className="p-4 bg-violet-50 dark:bg-violet-950/20 border-2 border-violet-500 rounded-2xl flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Wrench className="text-violet-500 animate-pulse" size={24} />
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">Job unlocks in</p>
+                                        <p className="text-xl font-black text-black dark:text-white tabular-nums">{formatMs(secondsUntilUnlock * 1000)}</p>
+                                    </div>
+                                </div>
+                                <span className="text-[10px] bg-violet-500 text-white px-2 py-1 rounded font-black uppercase">Scheduled</span>
+                            </div>
+                        )}
+
+                        {/* ── IN PROGRESS: handyman označava kraj ── */}
+                        {booking.status === "in_progress" && (
+                            <div className="p-6 bg-violet-50 dark:bg-zinc-800/60 border-2 border-violet-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#7c3aed]">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-violet-500 border-2 border-black flex items-center justify-center shrink-0">
+                                        <Wrench size={18} className="text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black uppercase text-base text-black dark:text-white tracking-tight">Job In Progress</h3>
+                                        <p className="text-xs font-bold text-gray-500">Click below when you have finished the inspection.</p>
+                                    </div>
+                                </div>
+                                {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
+                                {actionSuccess && <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>}
+                                <button
+                                    onClick={handleMarkDone}
+                                    disabled={markDoneLoading}
+                                    className="w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#7c3aed] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {markDoneLoading
+                                        ? <Loader2 size={14} className="animate-spin" />
+                                        : <><Flag size={14} /> Mark Job as Finished</>
+                                    }
+                                </button>
+                            </div>
+                        )}
+
+                        {/* ── HANDYMAN DONE: čekamo klijenta ── */}
+                        {booking.status === "handyman_done" && (
+                            <div className="p-5 bg-purple-50 dark:bg-zinc-800/60 border-2 border-purple-400 rounded-xl flex items-center gap-3 shadow-[4px_4px_0px_0px_#a855f7]">
+                                <Loader2 size={18} className="animate-spin text-purple-500 shrink-0" />
+                                <div>
+                                    <p className="font-black uppercase text-sm text-black dark:text-white">Waiting for client confirmation</p>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Client has 60 minutes to confirm. Auto-completes after.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {booking.status === "not_completed" && (
+                            <div className="p-5 bg-red-50 dark:bg-zinc-800/60 border-2 border-red-400 rounded-xl flex items-center gap-3 shadow-[4px_4px_0px_0px_#ef4444]">
+                                <AlertCircle size={18} className="text-red-500 shrink-0" />
+                                <div>
+                                    <p className="font-black uppercase text-sm text-black dark:text-white">Client marked job as not completed</p>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Contact client and arrange follow-up before payment step.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Handyman action panel (accept/decline/counter) */}
                         {showActions && (
                             <div className="space-y-4">
-                                {/* Status row */}
                                 <div className="flex flex-wrap gap-3 justify-center">
                                     <button
                                         onClick={() => { setAcceptOpen(v => !v); setCounterOpen(false); clearActionMessages(); }}
-                                        className="cursor-pointer bg-white text-black dark:bg-black dark:text-white  border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#4ade80] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#4ade80] transition-all active:translate-y-1 active:shadow-none"
+                                        className="cursor-pointer bg-white text-black dark:bg-black dark:text-white border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#4ade80] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#4ade80] transition-all active:translate-y-1 active:shadow-none"
                                     >
                                         Accept
                                     </button>
@@ -554,10 +623,7 @@ export default function HandymanRequestDetailsPage() {
                                         disabled={actionLoading}
                                         className="cursor-pointer bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#f87171] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#f87171] transition-all active:translate-y-1 active:shadow-none disabled:opacity-60"
                                     >
-                                        {actionLoading && !acceptOpen && !counterOpen
-                                            ? <Loader2 size={14} className="animate-spin mx-auto" />
-                                            : "Decline"
-                                        }
+                                        {actionLoading && !acceptOpen && !counterOpen ? <Loader2 size={14} className="animate-spin mx-auto" /> : "Decline"}
                                     </button>
                                     <button
                                         onClick={() => { setCounterOpen(v => !v); setAcceptOpen(false); clearActionMessages(); }}
@@ -572,22 +638,16 @@ export default function HandymanRequestDetailsPage() {
                                     <div className="p-5 border-2 border-black rounded-xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[4px_4px_0px_0px_#000] space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-gray-500">
-                                                    Scheduled time
-                                                </label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-gray-500">Scheduled time</label>
                                                 <div className="bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 font-bold text-sm text-black dark:text-white">
                                                     {formatDateTime(booking.client_proposed_time || booking.scheduled_time)}
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-gray-500">
-                                                    Duration (minutes) *Required
-                                                </label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-gray-500">Duration (minutes) *Required</label>
                                                 <div className="relative flex items-center">
                                                     <input
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        placeholder="e.g. 60"
+                                                        type="text" inputMode="numeric" placeholder="e.g. 60"
                                                         className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pr-14 font-bold text-sm text-black dark:text-white outline-none focus:border-green-500"
                                                         value={acceptDuration}
                                                         onChange={(e) => setAcceptDuration(e.target.value.replace(/\D/g, ""))}
@@ -597,14 +657,14 @@ export default function HandymanRequestDetailsPage() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={handleAccept}
-                                            disabled={actionLoading}
+                                            onClick={handleAccept} disabled={actionLoading}
                                             className="cursor-pointer w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#16a34a] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                                         >
                                             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : "Confirm & Accept"}
                                         </button>
                                     </div>
                                 )}
+
                                 {/* Counter Form */}
                                 {counterOpen && (
                                     <div className="border-2 border-black rounded-xl bg-[#FFF8EA] dark:bg-zinc-900 p-5 space-y-4 animate-in slide-in-from-top-2 shadow-[4px_4px_0px_0px_#000]">
@@ -626,9 +686,7 @@ export default function HandymanRequestDetailsPage() {
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Duration (minutes) *Required</label>
                                                 <div className="relative flex items-center">
                                                     <input
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        placeholder="e.g. 60"
+                                                        type="text" inputMode="numeric" placeholder="e.g. 60"
                                                         className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pr-14 font-bold text-sm text-black dark:text-white outline-none focus:border-[#EF9D39] min-h-[50px]"
                                                         value={counterDuration}
                                                         onChange={(e) => setCounterDuration(e.target.value.replace(/\D/g, ""))}
@@ -640,16 +698,13 @@ export default function HandymanRequestDetailsPage() {
                                         <div className="flex flex-col gap-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Message to client (optional)</label>
                                             <textarea
-                                                rows={3}
-                                                placeholder="Could you do a little earlier/later?"
-                                                value={counterMessage}
-                                                onChange={(e) => setCounterMessage(e.target.value)}
+                                                rows={3} placeholder="Could you do a little earlier/later?"
+                                                value={counterMessage} onChange={(e) => setCounterMessage(e.target.value)}
                                                 className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 font-bold text-sm text-black dark:text-white outline-none focus:border-[#EF9D39] resize-none"
                                             />
                                         </div>
                                         <button
-                                            onClick={handleCounter}
-                                            disabled={actionLoading}
+                                            onClick={handleCounter} disabled={actionLoading}
                                             className="cursor-pointer w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#EF9D39] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                                         >
                                             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : "Send Counter Offer"}
@@ -657,23 +712,16 @@ export default function HandymanRequestDetailsPage() {
                                     </div>
                                 )}
 
-                                {/* Feedback messages */}
-                                {actionError && (
-                                    <p className="text-sm font-black text-red-600">{actionError}</p>
-                                )}
-                                {actionSuccess && (
-                                    <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>
-                                )}
+                                {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
+                                {actionSuccess && <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>}
                             </div>
                         )}
 
-                        {/* Waiting for client */}
+                        {/* Waiting for client after counter */}
                         {booking.negotiation_status === "awaiting_client" && booking.status !== "cancelled" && (
                             <div className="bg-zinc-100 dark:bg-zinc-700 border-2 border-dashed border-black px-4 py-3 rounded-xl flex items-center gap-2">
                                 <Loader2 size={14} className="animate-spin text-[#EF9D39]" />
-                                <span className="font-black uppercase text-[10px] dark:text-white">
-                                    Waiting for client confirmation
-                                </span>
+                                <span className="font-black uppercase text-[10px] dark:text-white">Waiting for client confirmation</span>
                             </div>
                         )}
 
@@ -681,11 +729,7 @@ export default function HandymanRequestDetailsPage() {
                         {isCalendarOpen && (
                             <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200 p-4">
                                 <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-6 md:p-10 max-w-2xl w-full relative flex flex-col items-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCalendarOpen(false)}
-                                        className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
-                                    >
+                                    <button type="button" onClick={() => setIsCalendarOpen(false)} className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all">
                                         <X size={24} />
                                     </button>
                                     <div className="text-center mb-8">
@@ -696,42 +740,29 @@ export default function HandymanRequestDetailsPage() {
                                         <DatePicker
                                             selected={counterProposedTime}
                                             onChange={(date: Date | null) => setCounterProposedTime(date)}
-                                            inline
-                                            showTimeSelect
-                                            timeIntervals={5}
-                                            timeFormat="HH:mm"
-                                            dateFormat="dd.MM.yyyy HH:mm"
-                                            minDate={new Date()}
-                                            filterTime={filterPassedTime}
+                                            inline showTimeSelect timeIntervals={5}
+                                            timeFormat="HH:mm" dateFormat="dd.MM.yyyy HH:mm"
+                                            minDate={new Date()} filterTime={filterPassedTime}
                                             calendarClassName="popup-brutalist-calendar-final"
-                                            nextMonthButtonLabel=">"
-                                            previousMonthButtonLabel="<"
+                                            nextMonthButtonLabel=">" previousMonthButtonLabel="<"
                                         />
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCalendarOpen(false)}
-                                        className="mt-8 bg-[#EF9D39] border-4 border-black px-12 py-3 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-                                    >
+                                    <button type="button" onClick={() => setIsCalendarOpen(false)} className="mt-8 bg-[#EF9D39] border-4 border-black px-12 py-3 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
                                         Confirm Choice
                                     </button>
                                 </div>
                             </div>
                         )}
 
-                        {/* Accepted: Handyman Contact Card */}
-                        {(booking.status === "accepted" || booking.negotiation_status === "agreed") && (
-                            <div className="p-6 bg-[#EF9D39] border-2 border-black rounded-xl mt-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        {/* Appointment Confirmed Card — vidljiv i tokom in_progress i handyman_done */}
+                        {["accepted", "in_progress", "handyman_done", "not_completed", "completed"].includes(booking.status) && (
+                            <div className="p-6 bg-[#EF9D39] border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                                 <div className="flex items-center gap-2 mb-4">
                                     <div className="w-2.5 h-2.5 bg-black rounded-full" />
-                                    <h3 className="font-black text-black uppercase tracking-widest text-[11px]">
-                                        Appointment Confirmed
-                                    </h3>
+                                    <h3 className="font-black text-black uppercase tracking-widest text-[11px]">Appointment Confirmed</h3>
                                 </div>
                                 <div className="bg-white border-2 border-black rounded-xl p-5 flex flex-col gap-3">
-                                    <p className="font-black text-black text-2xl uppercase tracking-tight">
-                                        {booking.client_name || "Client"}
-                                    </p>
+                                    <p className="font-black text-black text-2xl uppercase tracking-tight">{booking.client_name || "Client"}</p>
                                     <div className="h-0.5 bg-gray-100" />
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 shrink-0 rounded-lg border-2 border-black bg-gray-50 flex items-center justify-center">
@@ -739,9 +770,7 @@ export default function HandymanRequestDetailsPage() {
                                                 <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                                             </svg>
                                         </div>
-                                        <span className="font-bold text-gray-800 text-sm">
-                                            {booking.client_email || "Contact info unavailable"}
-                                        </span>
+                                        <span className="font-bold text-gray-800 text-sm">{booking.client_email || "Contact info unavailable"}</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 shrink-0 rounded-lg border-2 border-black bg-gray-50 flex items-center justify-center">
@@ -749,10 +778,21 @@ export default function HandymanRequestDetailsPage() {
                                                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z" />
                                             </svg>
                                         </div>
-                                        <span className="font-bold text-gray-800 text-sm">
-                                            {booking.client_phone || "Contact info unavailable"}
-                                        </span>
+                                        <span className="font-bold text-gray-800 text-sm">{booking.client_phone || "Contact info unavailable"}</span>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Completed */}
+                        {booking.status === "completed" && (
+                            <div className="p-6 bg-green-50 dark:bg-green-950/20 border-2 border-green-500 rounded-xl shadow-[4px_4px_0px_0px_#16a34a] flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-green-500 border-2 border-black flex items-center justify-center shrink-0">
+                                    <CheckCircle2 size={24} className="text-white" />
+                                </div>
+                                <div>
+                                    <p className="font-black uppercase text-base text-green-700 dark:text-green-400">Job Completed!</p>
+                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Phase 1 finished. Payment phase coming next.</p>
                                 </div>
                             </div>
                         )}

@@ -5,8 +5,11 @@ from django.conf import settings
 
 class Booking(models.Model):
     STATUS_CHOICES = (
-        ('pending', 'Pending'),   
-        ('accepted', 'Accepted'), 
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('in_progress', 'In Progress'),   # NOVO — termin je počeo
+        ('handyman_done', 'Handyman Done'), # NOVO — majstor kliknuo "Job Finished"
+        ('not_completed', 'Not Completed'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     )
@@ -21,6 +24,7 @@ class Booking(models.Model):
     # Core Fields
     ticket_id = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True)
     is_urgent = models.BooleanField(default=False) # Nova logika za hitnost
+
     
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
@@ -44,6 +48,8 @@ class Booking(models.Model):
     handyman_proposed_time = models.DateTimeField(null=True, blank=True)
     duration_minutes = models.IntegerField(null=True, blank=True) 
     handyman_counter_message = models.TextField(blank=True, null=True)
+    client_confirmed_done_at = models.DateTimeField(null=True, blank=True)  # NOVO
+
     last_action_by = models.CharField(
         max_length=10, 
         choices=[('client', 'Client'), ('handyman', 'Handyman')], 

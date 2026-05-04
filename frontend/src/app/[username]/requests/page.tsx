@@ -34,6 +34,38 @@ function getRequestState(request: BookingDetail) {
     };
   }
 
+  if (request.status === "in_progress") {
+    return {
+      label: "In Progress",
+      badgeClass: "bg-violet-400 text-black",
+      message: "Handyman is currently working on your request.",
+    };
+  }
+
+  if (request.status === "handyman_done") {
+    return {
+      label: "Awaiting Confirmation",
+      badgeClass: "bg-purple-400 text-black",
+      message: "Handyman marked the job as finished. Confirm completion in request details.",
+    };
+  }
+
+  if (request.status === "not_completed") {
+    return {
+      label: "Not Completed",
+      badgeClass: "bg-red-400 text-black",
+      message: "You marked this job as not completed. Follow-up with handyman is required.",
+    };
+  }
+
+  if (request.status === "completed") {
+    return {
+      label: "Completed",
+      badgeClass: "bg-green-400 text-black",
+      message: "Job completed! Thank you for using our service.",
+    };
+  }
+
   if (request.status === "accepted" || request.negotiation_status === "agreed") {
     return {
       label: "Accepted",
@@ -47,22 +79,6 @@ function getRequestState(request: BookingDetail) {
       label: "Handyman Countered",
       badgeClass: "bg-purple-400 text-black",
       message: "Handyman proposed a different time and is waiting for your response.",
-    };
-  }
-
-  if (request.status === "in_progress") {
-    return {
-      label: "In Progress",
-      badgeClass: "bg-violet-400 text-black",
-      message: "Handyman is currently working on your request.",
-    };
-  }
-
-  if (request.status === "completed") {
-    return {
-      label: "Completed",
-      badgeClass: "bg-green-400 text-black",
-      message: "Job completed! Thank you for using our service.",
     };
   }
 
@@ -194,7 +210,7 @@ export default function MyRequestsPage() {
                             </span>
                           )}
                           <span>
-                            {req.status !== 'accepted' && req.status !== 'completed' && req.status !== 'cancelled' && (
+                            {req.status !== 'accepted' && req.status !== 'completed' && req.status !== 'cancelled' && req.status !== 'handyman_done' && req.status !== 'not_completed' && (
                               <JobTimer
                                 expiresAt={req.expires_at}
                                 onExpire={() => handleExpire(req.id)}

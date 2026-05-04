@@ -36,6 +36,38 @@ export function getStatusInfo(booking: BookingDetail) {
       icon: <X className="text-red-400 shrink-0" size={18} strokeWidth={3} />
     };
   }
+  if (booking.status === "in_progress") {
+    return {
+      label: "In Progress",
+      badgeClass: "bg-violet-400 text-black",
+      helperText: "Expert is currently working on your request.",
+      icon: <PlayCircle className="text-violet-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "handyman_done") {
+    return {
+      label: "Awaiting Your Confirmation",
+      badgeClass: "bg-purple-400 text-black",
+      helperText: "Handyman marked the job as finished. Confirm within 60 minutes.",
+      icon: <AlertCircle className="text-purple-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "not_completed") {
+    return {
+      label: "Not Completed",
+      badgeClass: "bg-red-400 text-black",
+      helperText: "You reported that the job is not completed. Waiting for next steps.",
+      icon: <AlertCircle className="text-red-500 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "completed") {
+    return {
+      label: "Completed",
+      badgeClass: "bg-green-400 text-black",
+      helperText: "Job finished! Thank you for using our service.",
+      icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
   if (booking.status === "accepted" || booking.negotiation_status === "agreed") {
     return {
       label: "Accepted",
@@ -50,22 +82,6 @@ export function getStatusInfo(booking: BookingDetail) {
       badgeClass: "bg-purple-400 text-black",
       helperText: "Expert proposed a new time. Choose your response.",
       icon: <AlertCircle className="text-purple-400 shrink-0" size={18} strokeWidth={3} />
-    };
-  }
-  if (booking.status === "in_progress") {
-    return {
-      label: "In Progress",
-      badgeClass: "bg-violet-400 text-black",
-      helperText: "Expert is currently working on your request.",
-      icon: <PlayCircle className="text-violet-400 shrink-0" size={18} strokeWidth={3} />
-    };
-  }
-  if (booking.status === "completed") {
-    return {
-      label: "Completed",
-      badgeClass: "bg-green-400 text-black",
-      helperText: "Job finished! Thank you for using our service.",
-      icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
     };
   }
   return {
@@ -104,6 +120,13 @@ const formatMs = (ms: number) => {
   return `${minutes}m ${seconds}s`;
 };
 
+type AutoCompleteCheckResponse =
+  | BookingDetail
+  | {
+      status: "awaiting_client";
+      seconds_left: number;
+    };
+
 export default function RequestDetailsPage() {
   const params = useParams() as { id: string; username: string };
   const bookingId = params.id;
@@ -119,6 +142,7 @@ export default function RequestDetailsPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [busySlots, setBusySlots] = useState<{ start: Date; end: Date }[]>([]);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [completionTimeLeftSeconds, setCompletionTimeLeftSeconds] = useState<number | null>(null);
 
   const toUtcIso = (localDateTime: string) => {
     const parsed = new Date(localDateTime);
@@ -134,7 +158,7 @@ export default function RequestDetailsPage() {
   };
 
   useEffect(() => {
-    if (!booking || booking.status === "accepted" || booking.status === "completed") {
+    if (!booking || booking.status === "accepted" || booking.status === "completed" || booking.status === "handyman_done") {
       setTimeLeft(0);
       return;
     }
@@ -143,6 +167,54 @@ export default function RequestDetailsPage() {
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, [booking]);
+
+  // Handyman marked done -> client has 60 min to confirm, otherwise auto-complete.
+  useEffect(() => {
+    if (!booking || booking.status !== "handyman_done") {
+      setCompletionTimeLeftSeconds(null);
+      return;
+    }
+
+    let isActive = true;
+
+    const checkAutoComplete = async () => {
+      try {
+        const response = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "check_auto_complete" });
+        const data = response.data as AutoCompleteCheckResponse;
+
+        if (!isActive) return;
+
+        if ("seconds_left" in data && data.status === "awaiting_client") {
+          setCompletionTimeLeftSeconds(data.seconds_left);
+          return;
+        }
+
+        setBooking(data);
+      } catch (error) {
+        console.error("Failed to check completion countdown:", error);
+      }
+    };
+
+    checkAutoComplete();
+    const poll = setInterval(checkAutoComplete, 30_000);
+
+    return () => {
+      isActive = false;
+      clearInterval(poll);
+    };
+  }, [booking?.id, booking?.status]);
+
+  useEffect(() => {
+    if (completionTimeLeftSeconds === null || completionTimeLeftSeconds <= 0) return;
+    const tick = setInterval(() => {
+      setCompletionTimeLeftSeconds((prev) => {
+        if (prev === null) return prev;
+        return prev > 0 ? prev - 1 : 0;
+      });
+    }, 1000);
+
+    return () => clearInterval(tick);
+  }, [completionTimeLeftSeconds]);
 
   useEffect(() => {
     if (!bookingId) return;
@@ -200,6 +272,38 @@ export default function RequestDetailsPage() {
         setCounterTime("");
         setCounterMessage("");
       }
+    } catch (error: unknown) {
+      setActionError(getBackendErrorMessage(error));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const confirmJobDone = async () => {
+    if (!booking) return;
+    setActionError("");
+    setActionSuccess("");
+    try {
+      setActionLoading(true);
+      const response = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "confirm_done" });
+      setBooking(response.data);
+      setActionSuccess("Great! Job is confirmed as completed.");
+    } catch (error: unknown) {
+      setActionError(getBackendErrorMessage(error));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const markJobNotCompleted = async () => {
+    if (!booking) return;
+    setActionError("");
+    setActionSuccess("");
+    try {
+      setActionLoading(true);
+      const response = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "mark_not_completed" });
+      setBooking(response.data);
+      setActionSuccess("Marked as not completed. We'll keep this request open for follow-up.");
     } catch (error: unknown) {
       setActionError(getBackendErrorMessage(error));
     } finally {
@@ -382,7 +486,7 @@ export default function RequestDetailsPage() {
               </div>
             </div>
             {/* Timer */}
-            {timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && (
+            {timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && booking.status !== "handyman_done" && (
               <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-500 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Timer className="text-orange-500 animate-pulse" size={24} />
@@ -400,6 +504,55 @@ export default function RequestDetailsPage() {
                     Expiring soon!
                   </span>
                 )}
+              </div>
+            )}
+
+            {booking.status === "handyman_done" && (
+              <div className="p-6 bg-purple-50 dark:bg-zinc-800/60 border-2 border-purple-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#a855f7]">
+                <div>
+                  <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                    Handyman finished the job
+                  </h3>
+                  <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
+                    You have 60 minutes to confirm completion. After that, the job auto-completes.
+                  </p>
+                </div>
+
+                {completionTimeLeftSeconds !== null && (
+                  <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">
+                        Time left to confirm
+                      </p>
+                      <p className="text-xl font-black text-black dark:text-white tabular-nums">
+                        {formatMs(completionTimeLeftSeconds * 1000)}
+                      </p>
+                    </div>
+                    {completionTimeLeftSeconds < 15 * 60 && (
+                      <span className="text-[11px] bg-red-500 text-white px-2 py-1 rounded font-black uppercase animate-bounce">
+                        Expiring soon!
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
+                {actionSuccess && <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>}
+
+                <button
+                  disabled={actionLoading}
+                  onClick={confirmJobDone}
+                  className="w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#a855f7] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {actionLoading ? <Loader2 size={14} className="animate-spin" /> : "Confirm Job Completed"}
+                </button>
+                <button
+                  disabled={actionLoading}
+                  onClick={markJobNotCompleted}
+                  className="w-full bg-white text-black border-2 border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] hover:bg-red-50 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60"
+                >
+                  Mark as Not Completed
+                </button>
               </div>
             )}
 
@@ -535,7 +688,7 @@ export default function RequestDetailsPage() {
             )}
 
             {/* Handyman Contact Card */}
-            {(booking.status === "accepted" || booking.negotiation_status === "agreed") && (
+            {(["accepted", "in_progress", "handyman_done", "not_completed", "completed"].includes(booking.status) || booking.negotiation_status === "agreed") && (
               <div className="p-6 bg-[#EF9D39] border-2 border-black rounded-xl mt-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2.5 h-2.5 bg-black rounded-full" />

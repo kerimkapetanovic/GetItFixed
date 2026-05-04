@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated # Dodaj ovo gore ako fali
 from rest_framework.permissions import AllowAny # Dodaj ovo gore ako fali
 from datetime import timedelta # Dodaj ovo
 from django.utils import timezone # Već bi trebalo da imaš od ranije
-
+from django.shortcuts import get_object_or_404 # Dodaj ovo ako fali
 
 from .models import Booking
 from .serializers import BookingSerializer
@@ -41,6 +41,9 @@ class HandymanDashboardView(generics.ListAPIView):
             | Q(handyman=user, negotiation_status='awaiting_handyman')
             | Q(handyman=user, negotiation_status='awaiting_client')
             | Q(handyman=user, status='accepted')
+            | Q(handyman=user, status='in_progress')
+            | Q(handyman=user, status='handyman_done')
+            | Q(handyman=user, status='not_completed')
         ).order_by('-id').distinct()
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -328,25 +331,117 @@ class ExpireBookingView(APIView):
         except Booking.DoesNotExist:
             return Response({"error": "Job not found or already processed."}, status=status.HTTP_404_NOT_FOUND)
         
+@method_decorator(csrf_exempt, name='dispatch')
 class CompleteBookingView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id)
         user = request.user
+        action = request.data.get('action')  # 'mark_done' | 'confirm_done' | 'mark_not_completed' | 'check_auto_complete'
 
-        # KORAK 1: Majstor označava kraj
-        if user == booking.handyman:
+        # Samo client ili handyman mogu pristupiti
+        if user not in (booking.client, booking.handyman):
+            return Response({"error": "Forbidden."}, status=403)
+
+        # ── KORAK 1: Handyman označava kraj ──
+        if action == 'mark_done':
+            if user != booking.handyman:
+                return Response({"error": "Only the handyman can mark job as done."}, status=403)
+            if booking.status != 'in_progress':
+                return Response({"error": "Job must be in_progress to mark as done."}, status=400)
+
             booking.status = 'handyman_done'
             booking.handyman_marked_done_at = timezone.now()
             booking.save()
-            return Response({"message": "Označen kraj rada. Klijent ima 30 min za potvrdu."})
+            return Response(BookingSerializer(booking).data, status=200)
 
-        # KORAK 2: Klijent potvrđuje
-        if user == booking.client:
+        # ── KORAK 2: Klijent potvrđuje ──
+        if action == 'confirm_done':
+            if user != booking.client:
+                return Response({"error": "Only the client can confirm completion."}, status=403)
             if booking.status != 'handyman_done':
-                return Response({"error": "Majstor još nije označio kraj rada."}, status=400)
-            
+                return Response({"error": "Handyman hasn't marked job as done yet."}, status=400)
+
             booking.status = 'completed'
+            booking.client_confirmed_done_at = timezone.now()
             booking.save()
-            return Response({"message": "Posao uspješno završen i zatvoren!"})
+            return Response(BookingSerializer(booking).data, status=200)
+
+        # ── KORAK 2b: Klijent prijavljuje da posao nije završen ──
+        if action == 'mark_not_completed':
+            if user != booking.client:
+                return Response({"error": "Only the client can mark job as not completed."}, status=403)
+            if booking.status != 'handyman_done':
+                return Response({"error": "Handyman hasn't marked job as done yet."}, status=400)
+
+            booking.status = 'not_completed'
+            booking.save()
+            return Response(BookingSerializer(booking).data, status=200)
+
+        # ── KORAK 3: Auto-complete provjera (polling) ──
+        if action == 'check_auto_complete':
+            if user != booking.client:
+                return Response({"error": "Only the client can trigger auto-complete check."}, status=403)
+            if booking.status != 'handyman_done':
+                return Response({"error": "Not in handyman_done state."}, status=400)
+            if not booking.handyman_marked_done_at:
+                return Response({"error": "No done timestamp found."}, status=400)
+
+            deadline = booking.handyman_marked_done_at + timedelta(hours=1)
+            if timezone.now() >= deadline:
+                booking.status = 'completed'
+                booking.client_confirmed_done_at = timezone.now()
+                booking.save()
+                return Response({
+                    **BookingSerializer(booking).data,
+                    "auto_completed": True
+                }, status=200)
+
+            seconds_left = (deadline - timezone.now()).total_seconds()
+            return Response({
+                "status": "awaiting_client",
+                "seconds_left": int(seconds_left)
+            }, status=200)
+
+        return Response({"error": "Invalid action. Use: mark_done, confirm_done, mark_not_completed, check_auto_complete."}, status=400)
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class JobStatusCheckView(APIView):
+    """
+    Frontend polling — provjeri je li scheduled_time (početak termina) prošao.
+    Ako jeste, prebaci status accepted -> in_progress.
+    """
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        try:
+            booking = Booking.objects.get(
+                id=booking_id,
+                status='accepted'
+            )
+        except Booking.DoesNotExist:
+            # Možda je već in_progress/completed — vrati trenutni state
+            booking = get_object_or_404(Booking, id=booking_id)
+            return Response(BookingSerializer(booking).data, status=200)
+
+        if request.user not in (booking.client, booking.handyman):
+            return Response({"error": "Forbidden."}, status=403)
+
+        if not booking.scheduled_time:
+            return Response({"error": "Missing scheduled_time."}, status=400)
+
+        job_start_time = booking.scheduled_time
+
+        if timezone.now() >= job_start_time:
+            booking.status = 'in_progress'
+            booking.save()
+            return Response(BookingSerializer(booking).data, status=200)
+
+        seconds_left = (job_start_time - timezone.now()).total_seconds()
+        return Response({
+            "status": "not_yet",
+            "seconds_left": int(seconds_left)
+        }, status=200)

@@ -166,7 +166,9 @@ export default function HandymanDashboard() {
   };
 
   const pendingJobs = jobs.filter((j) => j.status === "pending");
-  const acceptedJobs = jobs.filter((j) => j.status === "accepted");
+  const acceptedJobs = jobs.filter((j) =>
+    ["accepted", "in_progress", "handyman_done", "not_completed"].includes(j.status)
+  );
   const cancelledJobs = jobs.filter((j) => j.status === "cancelled" || j.status === "declined");
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
@@ -281,7 +283,15 @@ export default function HandymanDashboard() {
                 <div className="flex flex-col items-center gap-3 shrink-0 ml-4">
                   <div className="flex flex-col items-center gap-1">
                     <CheckCircle className="text-blue-500" size={28} strokeWidth={3} />
-                    <span className="text-[10px] font-black uppercase text-blue-500">Confirmed</span>
+                    <span className="text-[10px] font-black uppercase text-blue-500">
+                      {job.status === "accepted"
+                        ? "Confirmed"
+                        : job.status === "in_progress"
+                          ? "In Progress"
+                          : job.status === "handyman_done"
+                            ? "Awaiting Client"
+                            : "Not Completed"}
+                    </span>
                   </div>
                   <Link
                     href={`/${username}/dashboard/${job.id}`}
