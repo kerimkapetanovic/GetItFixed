@@ -16,7 +16,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isThemeMounted, setIsThemeMounted] = useState(false);
   const [userRole, setUserRole] = useState("client");
-  const [userData, setUserData] = useState({ firstName: "", lastName: "" });
+  const [userData, setUserData] = useState({ firstName: "", lastName: "", walletBalance: 0.00 });
   const [username, setUsername] = useState("");
   const [storedAvatarUrl, setStoredAvatarUrl] = useState("");
   const avatarSeed =
@@ -32,19 +32,29 @@ export default function Header() {
     const loggedIn = localStorage.getItem("is_logged_in") === "true";
     const fName = localStorage.getItem("first_name") || "";
     const lName = localStorage.getItem("last_name") || "";
+
+    // Parsiramo u broj jer localStorage vraća string
+    const walletBalance = parseFloat(localStorage.getItem("wallet_balance") || "0");
+
     const storedUsername = localStorage.getItem("username") || "";
     const customAvatarUrl = localStorage.getItem("avatar_url") || "";
+
     setUsername(storedUsername);
     setStoredAvatarUrl(customAvatarUrl);
 
     if (loggedIn && role) {
       setIsLoggedIn(true);
       setUserRole(role);
-      setUserData({ firstName: fName, lastName: lName });
+      // ISPRAVLJENO: Koristimo 'walletBalance' da se podudara sa definicijom u useState
+      setUserData({
+        firstName: fName,
+        lastName: lName,
+        walletBalance: walletBalance
+      });
     } else {
       setIsLoggedIn(false);
       setUserRole("client");
-      setUserData({ firstName: "", lastName: "" });
+      setUserData({ firstName: "", lastName: "", walletBalance: 0.00 });
       setUsername("");
       setStoredAvatarUrl("");
     }
@@ -112,14 +122,14 @@ export default function Header() {
           { name: t("header.dashboard"), href: `/${username}/dashboard` },
           { name: t("header.calendar"), href: `/${username}/calendar` },
         ];
-    case "admin":
-  return [
-    { name: t("header.users"), href: "/admin/users" },
-    { name: t("header.tracking"), href: "/admin/tracking" },
-    { name: t("header.verification"), href: "/admin/verification" },
-    { name: t("header.services"), href: "/admin/services" },
-    { name: t("header.finances"), href: "/admin/finances" },
-  ];
+      case "admin":
+        return [
+          { name: t("header.users"), href: "/admin/users" },
+          { name: t("header.tracking"), href: "/admin/tracking" },
+          { name: t("header.verification"), href: "/admin/verification" },
+          { name: t("header.services"), href: "/admin/services" },
+          { name: t("header.finances"), href: "/admin/finances" },
+        ];
       default:
         return [];
     }
@@ -218,21 +228,25 @@ export default function Header() {
               {/* PROFILE BUTTON */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={`flex items-center gap-3 border-2 border-black dark:border-white p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${
-                  isMenuOpen
+                className={`flex items-center gap-3 border-2 border-black dark:border-white p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${isMenuOpen
                     ? "rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1"
                     : "rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
-                }`}
+                  }`}
               >
                 <div className="text-right hidden sm:block">
-                        <p className="text-xs font-black leading-none uppercase tracking-tight dark:text-white">
-                {userData.firstName && userData.lastName 
-                  ? `${userData.firstName} ${userData.lastName}` 
-                  : (username || translatedRole)} 
-              </p>
-                    <p className="text-[9px] font-bold text-gray-400 dark:text-white mt-1 uppercase leading-none ">
-                    {translatedRole}
+                  <p className="text-xs font-black leading-none uppercase tracking-tight dark:text-white">
+                    {userData.firstName && userData.lastName
+                      ? `${userData.firstName} ${userData.lastName}`
+                      : (username || translatedRole)}
                   </p>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <p className="text-[9px] font-bold text-gray-400 dark:text-zinc-400 uppercase leading-none">
+                      {translatedRole}
+                    </p>
+                    <p className="text-[10px] font-black text-[#EF9D39] leading-none">
+                      {Number(userData.walletBalance).toFixed(2)} <span className="text-[8px] ml-0.5">KM</span>
+                    </p>
+                  </div>
                 </div>
                 <img
                   src={avatarUrl}

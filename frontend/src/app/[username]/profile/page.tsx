@@ -108,6 +108,7 @@ type ProfileResponse = {
   county: string;
   city: string;
   zip_code: string;
+  wallet_balance: number;
 };
 
 type ApiErrorResponse = {
@@ -135,6 +136,7 @@ export default function ProfilePage() {
     county: "",
     city: "",
     zipCode: "",
+    walletBalance: 0.00,
   });
   const [hasCustomAvatar, setHasCustomAvatar] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -188,6 +190,7 @@ export default function ProfilePage() {
           county: data.county || "",
           city: data.city || "",
           zipCode: data.zip_code || "",
+          walletBalance: data.wallet_balance || 0.00,
         };
 
         setFormData(newProfile);
@@ -215,6 +218,7 @@ export default function ProfilePage() {
             city: localStorage.getItem("city") || "",
             county: localStorage.getItem("county") || "",
             zipCode: localStorage.getItem("zip_code") || "",
+            walletBalance: parseFloat(localStorage.getItem("wallet_balance") || "0") || 0.00,
           });
         }
       } finally {
@@ -269,6 +273,7 @@ export default function ProfilePage() {
         county: updated.county || "",
         city: updated.city || "",
         zipCode: updated.zip_code || "",
+        walletBalance: updated.wallet_balance || 0.00,
       });
 
       setHasCustomAvatar(Boolean(updated.has_custom_avatar));
@@ -775,6 +780,21 @@ export default function ProfilePage() {
           {/* RIGHT COLUMN: SECURITY & STATUS */}
           <div className="space-y-6">
             <div className="bg-black text-white border-[3px] border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[24px]">
+              {/* --- NOVI WALLET SEKCIJA --- */}
+              <div className="mb-6 bg-zinc-900 border-2 border-[#EF9D39] p-4 rounded-xl shadow-[4px_4px_0px_0px_#EF9D39]">
+                <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">
+                  Your Balance
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-[#EF9D39]">
+                    {Number(formData.walletBalance).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] font-black text-[#EF9D39] uppercase">KM</span>
+                </div>
+              </div>
+              {/* --- KRAJ WALLET SEKCIJE --- */}
+
+
               <h2 className="text-sm font-black uppercase mb-6 flex items-center gap-2">
                 <ShieldCheck size={18} className="text-[#EF9D39]" />
                 {t("profile.securityStatus")}

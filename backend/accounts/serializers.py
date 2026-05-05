@@ -37,7 +37,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'username', 'email', 'password', 
             'first_name', 'last_name', 'role', 'phone',
-            'county', 'city', 'zip_code', 'service_type' 
+            'county', 'city', 'zip_code', 'service_type', 'wallet_balance'
         )
 
     def validate(self, attrs):
@@ -59,7 +59,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             county=validated_data.get('county', ''),
             city=validated_data.get('city', ''),
             zip_code=validated_data.get('zip_code', ''),
-            service_type=validated_data.get('service_type', None)
+            service_type=validated_data.get('service_type', None),
+            wallet_balance=validated_data.get('wallet_balance', 0.00)
         )
         return user
 
@@ -125,8 +126,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             "first_name", "last_name", "email", "role", "username",
             "avatar", "avatar_url", "has_custom_avatar",
             "phone", "county", "city", "zip_code",
+            "wallet_balance"
         )
-        read_only_fields = ("email", "role", "username", "avatar_url", "has_custom_avatar")
+        read_only_fields = ("email", "role", "username", "avatar_url", "has_custom_avatar", "wallet_balance")
 
     def get_avatar_url(self, obj):
         if obj.avatar:

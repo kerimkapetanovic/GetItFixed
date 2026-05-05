@@ -24,7 +24,8 @@ class User(AbstractUser):
     hourly_rate = models.IntegerField(default=30)
     bio = models.TextField(max_length=500, blank=True, null=True)
     avatar = models.TextField(blank=True, null=True)  # čuva Supabase URL kao string
-    avatar_url = models.URLField(max_length=500, blank=True, null=True) 
+    avatar_url = models.URLField(max_length=500, blank=True, null=True)
+    wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     # Email as primary identifier
     email = models.EmailField(unique=True)
