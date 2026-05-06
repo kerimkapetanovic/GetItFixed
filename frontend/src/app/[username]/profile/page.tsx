@@ -779,50 +779,55 @@ export default function ProfilePage() {
 
           {/* RIGHT COLUMN: SECURITY & STATUS */}
           <div className="space-y-6">
-            <div className="bg-black text-white border-[3px] border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-[24px]">
-              {/* --- NOVI WALLET SEKCIJA --- */}
-              <div className="mb-6 bg-zinc-900 border-2 border-[#EF9D39] p-4 rounded-xl shadow-[4px_4px_0px_0px_#EF9D39]">
-                <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">
+            <div className="bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(239,157,57,0.2)] rounded-[24px]">
+
+              {/* --- WALLET BALANCE BOX --- */}
+              <div className="mb-6 bg-white dark:bg-zinc-900 border-[3px] border-[#EF9D39] p-5 rounded-2xl shadow-[4px_4px_0px_0px_#EF9D39]">
+                <p className="text-[9px] font-black uppercase text-gray-500 dark:text-gray-400 tracking-widest mb-2">
                   Your Balance
                 </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-[#EF9D39]">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-black dark:text-[#EF9D39]">
                     {Number(formData.walletBalance).toFixed(2)}
                   </span>
-                  <span className="text-[10px] font-black text-[#EF9D39] uppercase">KM</span>
+                  <span className="text-sm font-black text-black dark:text-[#EF9D39] uppercase">KM</span>
                 </div>
               </div>
-              {/* --- KRAJ WALLET SEKCIJE --- */}
 
+              {/* --- SECURITY & STATUS HEADER --- */}
+              <div className="flex items-center gap-2 mb-6">
+                <ShieldCheck size={18} className="text-[#EF9D39]" strokeWidth={3} />
+                <h2 className="text-sm font-black uppercase">
+                  {t("profile.securityStatus")}
+                </h2>
+              </div>
 
-              <h2 className="text-sm font-black uppercase mb-6 flex items-center gap-2">
-                <ShieldCheck size={18} className="text-[#EF9D39]" />
-                {t("profile.securityStatus")}
-              </h2>
-
-              <div className="space-y-4">
-                <div className="bg-zinc-900 border-2 border-zinc-700 p-3 rounded-xl">
-                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2">
-                    {t("profile.emailLabel")}
+              <div className="space-y-5">
+                {/* --- EMAIL ADDRESS BOX --- */}
+                <div className="bg-zinc-100 dark:bg-zinc-900 border-[3px] border-zinc-300 dark:border-zinc-700 p-4 rounded-2xl">
+                  <p className="text-[9px] font-black uppercase text-gray-500 dark:text-gray-400 tracking-widest mb-3">
+                    Email Address
                   </p>
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Mail size={14} className="text-[#EF9D39]" />
-                      <p className="text-[10px] font-bold truncate">{formData.email}</p>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Mail size={16} className="text-[#EF9D39] flex-shrink-0" strokeWidth={2.5} />
+                      <p className="text-xs font-bold text-black dark:text-white truncate">{formData.email}</p>
                     </div>
-                    <div className="flex items-center gap-1 text-gray-400">
-                      <Lock size={12} />
-                      <span className="text-[9px] font-black uppercase">
-                        {t("profile.readOnly")}
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 flex-shrink-0">
+                      <Lock size={14} strokeWidth={2.5} />
+                      <span className="text-[9px] font-black uppercase whitespace-nowrap">
+                        Locked
                       </span>
                     </div>
                   </div>
                 </div>
 
+                {/* --- CHANGE PASSWORD SECTION --- */}
                 <div className="space-y-3">
-                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">
-                    {t("profile.changePassword")}
+                  <p className="text-[9px] font-black uppercase text-gray-500 dark:text-gray-400 tracking-widest">
+                    Change Password
                   </p>
+
                   <input
                     type="password"
                     value={passwordData.currentPassword}
@@ -832,10 +837,11 @@ export default function ProfilePage() {
                         currentPassword: e.target.value,
                       }))
                     }
-                    placeholder={t("profile.currentPassword")}
+                    placeholder="Current password"
                     disabled={savingPassword || loadingProfile}
-                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-bold text-[11px] outline-none"
+                    className="w-full bg-white dark:bg-zinc-900 text-black dark:text-white border-[3px] border-black dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-xs placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:focus:shadow-[4px_4px_0px_0px_rgba(239,157,57,0.3)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   />
+
                   <input
                     type="password"
                     value={passwordData.newPassword}
@@ -845,10 +851,11 @@ export default function ProfilePage() {
                         newPassword: e.target.value,
                       }))
                     }
-                    placeholder={t("profile.newPassword")}
+                    placeholder="New password"
                     disabled={savingPassword || loadingProfile}
-                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-bold text-[11px] outline-none"
+                    className="w-full bg-white dark:bg-zinc-900 text-black dark:text-white border-[3px] border-black dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-xs placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:focus:shadow-[4px_4px_0px_0px_rgba(239,157,57,0.3)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   />
+
                   <input
                     type="password"
                     value={passwordData.confirmPassword}
@@ -858,40 +865,44 @@ export default function ProfilePage() {
                         confirmPassword: e.target.value,
                       }))
                     }
-                    placeholder={t("profile.confirmPassword")}
+                    placeholder="Confirm new password"
                     disabled={savingPassword || loadingProfile}
-                    className="w-full bg-white text-black border-2 border-black p-3 rounded-xl font-bold text-[11px] outline-none"
+                    className="w-full bg-white dark:bg-zinc-900 text-black dark:text-white border-[3px] border-black dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-xs placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:focus:shadow-[4px_4px_0px_0px_rgba(239,157,57,0.3)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   />
 
                   {passwordError && (
-                    <p className="text-[10px] font-bold uppercase text-red-400">
+                    <p className="text-[10px] font-bold uppercase text-red-500 pt-1">
                       {passwordError}
                     </p>
                   )}
+
+                  {/* --- SAVE PASSWORD BUTTON --- */}
                   <button
                     onClick={handleOpenPasswordConfirm}
                     disabled={savingPassword || loadingProfile}
-                    className="w-full border-[3px] border-black bg-white text-black p-3 rounded-[20px] font-black text-[10px] uppercase tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all flex items-center justify-between disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[8px_8px_0px_0px_#000] disabled:hover:bg-white"
+                    className="w-full border-[3px] border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-white p-3.5 rounded-2xl font-black text-[11px] uppercase tracking-[0.15em] shadow-[6px_6px_0px_0px_#000] dark:shadow-[6px_6px_0px_0px_rgba(239,157,57,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] dark:hover:bg-[#EF9D39] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[6px_6px_0px_0px_#000] dark:disabled:hover:shadow-[6px_6px_0px_0px_rgba(239,157,57,0.3)] disabled:hover:bg-white dark:disabled:hover:bg-zinc-900"
                   >
                     {savingPassword ? (
-                      <Loader2 size={14} className="animate-spin" />
+                      <Loader2 size={16} className="animate-spin" strokeWidth={3} />
                     ) : (
-                      <Lock size={14} />
+                      <Lock size={16} strokeWidth={3} />
                     )}
-                    {t("profile.savePassword")}
+                    Save Password
                   </button>
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-gray-800">
-                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-4">
-                  {t("profile.accountStatus")}
+              {/* --- ACCOUNT STATUS --- */}
+              <div className="mt-8 pt-6 border-t-2 border-gray-200 dark:border-zinc-800">
+                <p className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-4">
+                  Account Status
                 </p>
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full animate-pulse ${userRole === "handyman" ? "bg-green-500" : "bg-blue-500"}`}
+                    className={`w-2.5 h-2.5 rounded-full animate-pulse ${userRole === "handyman" ? "bg-green-500" : "bg-blue-500"
+                      }`}
                   ></div>
-                  <span className="text-[10px] font-black uppercase">
+                  <span className="text-[10px] font-black uppercase text-black dark:text-white">
                     {userRole === "handyman"
                       ? t("profile.verifiedHandyman")
                       : t("profile.verifiedClient")}
@@ -900,11 +911,12 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0px_0px_rgba(255,0,0,0.2)] rounded-[24px] border-dashed">
-              <p className="text-[10px] font-bold text-red-500 uppercase mb-3">
+            {/* --- DANGER ZONE --- */}
+            <div className="bg-white dark:bg-zinc-900 border-[3px] border-red-500 dark:border-red-500 p-6 shadow-[8px_8px_0px_0px_rgba(239,68,68,0.25)] rounded-[24px] border-dashed">
+              <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-3">
                 Danger Zone
               </p>
-              <button className="text-[10px] font-black uppercase text-gray-400 hover:text-red-500 underline underline-offset-4 decoration-2 transition-all">
+              <button className="text-[11px] font-black uppercase text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-500 underline underline-offset-4 decoration-2 transition-colors">
                 Delete Account Forever
               </button>
             </div>
