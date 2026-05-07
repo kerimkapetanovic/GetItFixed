@@ -527,7 +527,7 @@ export default function ProfilePage() {
     });
   };
 
-  const SUPABASE_STORAGE_URL = 'https://itqhsfuxuhrnbfrcwbbt.supabase.co/storage/v1/object/public';
+  const SUPABASE_STORAGE_URL = process.env.SUPABASE_URL;
 
   const avatarUrl = useMemo(() => {
     console.log('avatarUrl raw value:', formData.avatarUrl);

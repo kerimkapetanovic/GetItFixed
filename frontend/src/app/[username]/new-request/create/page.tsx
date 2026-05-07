@@ -31,7 +31,6 @@ function BookingFormContent() {
   const [formData, setFormData] = useState({
     service_type: serviceTypeFromUrl || "General",
     description: "",
-    // POSTAVLJENO NA NULL - Da ne bude ništa izabrano po defaultu
     scheduled_time: null as Date | null,
     handyman_id: handymanIdFromUrl || "",
     handyman_name: handymanNameFromUrl || "",
@@ -160,8 +159,8 @@ function BookingFormContent() {
           <div
             onClick={() => setFormData({ ...formData, is_urgent: !formData.is_urgent })}
             className={`p-4 border-2 border-black rounded-xl cursor-pointer transition-all flex items-center justify-between ${formData.is_urgent
-                ? "bg-red-50 dark:bg-red-900/20 border-red-600 shadow-[4px_4px_0px_0px_#dc2626]"
-                : "bg-gray-50 dark:bg-zinc-800"
+              ? "bg-red-50 dark:bg-red-900/20 border-red-600 shadow-[4px_4px_0px_0px_#dc2626]"
+              : "bg-gray-50 dark:bg-zinc-800"
               }`}
           >
             <div className="flex items-center gap-3">
