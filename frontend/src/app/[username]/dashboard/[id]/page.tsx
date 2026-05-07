@@ -892,125 +892,125 @@ export default function HandymanRequestDetailsPage() {
                                     </button>
                                 </div>
 
-                                {/* Accept Form */}
-                                {acceptOpen && (
-                                    <div className="p-6 md:p-8 border-[3px] border-black rounded-2xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[6px_6px_0px_0px_#000] space-y-6">
-                                        <p className="text-xs font-black uppercase tracking-wide text-gray-700 dark:text-zinc-300">
-                                            Enter how long the job should take and your total price. This is sent to the client to confirm — no payment happens until later in the flow.
-                                        </p>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[11px] font-black uppercase tracking-widest mb-3 block text-gray-600 dark:text-zinc-400">Appointment time (from request)</label>
-                                                <div className="bg-white dark:bg-zinc-800 border-[3px] border-black rounded-2xl p-6 min-h-[88px] flex items-center font-black text-lg md:text-xl text-black dark:text-white">
-                                                    {formatDateTime(booking.client_proposed_time || booking.scheduled_time)}
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 md:items-stretch">
-                                                <div className="flex min-h-0 flex-col gap-3">
-                                                    <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
-                                                        Estimated exact time (minutes) *
-                                                    </label>
-                                                    <div className="relative min-h-[140px] flex-1">
-                                                        <input
-                                                            type="text" inputMode="numeric" placeholder="60"
-                                                            className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-green-500 dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
-                                                            value={acceptDuration}
-                                                            onChange={(e) => setAcceptDuration(e.target.value.replace(/\D/g, ""))}
-                                                        />
-                                                        <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">min</span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex min-h-0 flex-col gap-3">
-                                                    <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
-                                                        Total job price (KM) *
-                                                    </label>
-                                                    <div className="relative min-h-[140px] flex-1">
-                                                        <input
-                                                            type="text" inputMode="decimal" placeholder="120"
-                                                            className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-green-500 dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
-                                                            value={acceptPrice}
-                                                            onChange={(e) => setAcceptPrice(sanitizeKmPriceInput(e.target.value))}
-                                                        />
-                                                        <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">KM</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={handleAccept} disabled={actionLoading}
-                                            className="cursor-pointer w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#16a34a] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[56px]"
-                                        >
-                                            {actionLoading ? <Loader2 size={18} className="animate-spin" /> : "Send offer to client"}
-                                        </button>
-                                    </div>
-                                )}
+                               {/* Accept Form */}
+{acceptOpen && (
+    <div className="p-4 md:p-5 border-[3px] border-black rounded-2xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[6px_6px_0px_0px_#000] space-y-3">
+        <p className="text-xs font-black uppercase tracking-wide text-gray-700 dark:text-zinc-300">
+            Enter how long the job should take and your total price. This is sent to the client to confirm — no payment happens until later in the flow.
+        </p>
+        <div className="space-y-3">
+            <div>
+                <label className="text-[11px] font-black uppercase tracking-widest mb-2 block text-gray-600 dark:text-zinc-400">Appointment time (from request)</label>
+                <div className="bg-white dark:bg-zinc-800 border-[3px] border-black rounded-xl p-3.5 min-h-[64px] flex items-center font-black text-base md:text-lg text-black dark:text-white">
+                    {formatDateTime(booking.client_proposed_time || booking.scheduled_time)}
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400">
+                        Estimated exact time (minutes) *
+                    </label>
+                    <div className="relative">
+                        <input
+                            type="text" inputMode="numeric" placeholder="60"
+                            className="box-border flex h-[90px] w-full items-center bg-white px-4 pr-14 font-black text-2xl text-black outline-none focus:border-green-500 dark:bg-zinc-800 dark:text-white border-[3px] border-black rounded-xl"
+                            value={acceptDuration}
+                            onChange={(e) => setAcceptDuration(e.target.value.replace(/\D/g, ""))}
+                        />
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">min</span>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400">
+                        Total job price (KM) *
+                    </label>
+                    <div className="relative">
+                        <input
+                            type="text" inputMode="decimal" placeholder="120"
+                            className="box-border flex h-[90px] w-full items-center bg-white px-4 pr-14 font-black text-2xl text-black outline-none focus:border-green-500 dark:bg-zinc-800 dark:text-white border-[3px] border-black rounded-xl"
+                            value={acceptPrice}
+                            onChange={(e) => setAcceptPrice(sanitizeKmPriceInput(e.target.value))}
+                        />
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">KM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button
+            onClick={handleAccept} disabled={actionLoading}
+            className="cursor-pointer w-full bg-black text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[5px_5px_0px_0px_#16a34a] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[48px]"
+        >
+            {actionLoading ? <Loader2 size={16} className="animate-spin" /> : "Send offer to client"}
+        </button>
+    </div>
+)}
 
-                                {/* Counter Form */}
-                                {counterOpen && (
-                                    <div className="border-[3px] border-black rounded-2xl bg-[#FFF8EA] dark:bg-zinc-900 p-6 md:p-8 space-y-6 animate-in slide-in-from-top-2 shadow-[6px_6px_0px_0px_#000]">
-                                        <p className="text-xs font-black uppercase tracking-wide text-gray-700 dark:text-zinc-300">
-                                            Propose a new time, estimated exact duration, and total price. The client confirms before the booking is final — payment stays later.
-                                        </p>
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400">Pick new appointment time *</label>
-                                            <div
-                                                onClick={() => setIsCalendarOpen(true)}
-                                                className="relative cursor-pointer bg-white dark:bg-zinc-800 border-[3px] border-black rounded-2xl p-6 pl-14 font-black text-lg md:text-xl min-h-[100px] flex items-center hover:border-[#EF9D39] transition-colors"
-                                            >
-                                                <CalendarIcon className="absolute left-5 text-gray-400" size={22} />
-                                                {counterProposedTime
-                                                    ? <span className="text-black dark:text-white">{formatDateTime(counterProposedTime)}</span>
-                                                    : <span className="text-gray-400 text-sm uppercase">Tap to select date & time</span>
-                                                }
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 md:items-stretch">
-                                            <div className="flex min-h-0 flex-col gap-3">
-                                                <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
-                                                    Estimated exact time (minutes) *
-                                                </label>
-                                                <div className="relative min-h-[140px] flex-1">
-                                                    <input
-                                                        type="text" inputMode="numeric" placeholder="60"
-                                                        className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-[#EF9D39] dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
-                                                        value={counterDuration}
-                                                        onChange={(e) => setCounterDuration(e.target.value.replace(/\D/g, ""))}
-                                                    />
-                                                    <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">min</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex min-h-0 flex-col gap-3">
-                                                <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
-                                                    Total job price (KM) *
-                                                </label>
-                                                <div className="relative min-h-[140px] flex-1">
-                                                    <input
-                                                        type="text" inputMode="decimal" placeholder="150"
-                                                        className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-[#EF9D39] dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
-                                                        value={counterPrice}
-                                                        onChange={(e) => setCounterPrice(sanitizeKmPriceInput(e.target.value))}
-                                                    />
-                                                    <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">KM</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Message to client (optional)</label>
-                                            <textarea
-                                                rows={3} placeholder="Could you do a little earlier/later?"
-                                                value={counterMessage} onChange={(e) => setCounterMessage(e.target.value)}
-                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 font-bold text-sm text-black dark:text-white outline-none focus:border-[#EF9D39] resize-none"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={handleCounter} disabled={actionLoading}
-                                            className="cursor-pointer w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#EF9D39] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[56px]"
-                                        >
-                                            {actionLoading ? <Loader2 size={18} className="animate-spin" /> : "Send counter offer to client"}
-                                        </button>
-                                    </div>
-                                )}
 
+{/* Counter Form */}
+{counterOpen && (
+    <div className="border-[3px] border-black rounded-2xl bg-[#FFF8EA] dark:bg-zinc-900 p-4 md:p-5 space-y-3 animate-in slide-in-from-top-2 shadow-[6px_6px_0px_0px_#000]">
+        <p className="text-xs font-black uppercase tracking-wide text-gray-700 dark:text-zinc-300">
+            Propose a new time, estimated exact duration, and total price. The client confirms before the booking is final — payment stays later.
+        </p>
+        <div className="flex flex-col gap-2">
+            <label className="text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400">Pick new appointment time *</label>
+            <div
+                onClick={() => setIsCalendarOpen(true)}
+                className="relative cursor-pointer bg-white dark:bg-zinc-800 border-[3px] border-black rounded-xl p-4 pl-12 font-black text-base md:text-lg min-h-[74px] flex items-center hover:border-[#EF9D39] transition-colors"
+            >
+                <CalendarIcon className="absolute left-4 text-gray-400" size={20} />
+                {counterProposedTime
+                    ? <span className="text-black dark:text-white">{formatDateTime(counterProposedTime)}</span>
+                    : <span className="text-gray-400 text-xs uppercase">Tap to select date & time</span>
+                }
+            </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-2">
+                <label className="text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400">
+                    Estimated exact time (minutes) *
+                </label>
+                <div className="relative">
+                    <input
+                        type="text" inputMode="numeric" placeholder="60"
+                        className="box-border flex h-[90px] w-full items-center bg-white px-4 pr-14 font-black text-2xl text-black outline-none focus:border-[#EF9D39] dark:bg-zinc-800 dark:text-white border-[3px] border-black rounded-xl"
+                        value={counterDuration}
+                        onChange={(e) => setCounterDuration(e.target.value.replace(/\D/g, ""))}
+                    />
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">min</span>
+                </div>
+            </div>
+            <div className="flex flex-col gap-2">
+                <label className="text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400">
+                    Total job price (KM) *
+                </label>
+                <div className="relative">
+                    <input
+                        type="text" inputMode="decimal" placeholder="150"
+                        className="box-border flex h-[90px] w-full items-center bg-white px-4 pr-14 font-black text-2xl text-black outline-none focus:border-[#EF9D39] dark:bg-zinc-800 dark:text-white border-[3px] border-black rounded-xl"
+                        value={counterPrice}
+                        onChange={(e) => setCounterPrice(sanitizeKmPriceInput(e.target.value))}
+                    />
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">KM</span>
+                </div>
+            </div>
+        </div>
+        <div className="flex flex-col gap-2">
+            <label className="text-[11px] font-black uppercase tracking-widest text-gray-500">Message to client (optional)</label>
+            <textarea
+                rows={3} placeholder="Could you do a little earlier/later?"
+                value={counterMessage} onChange={(e) => setCounterMessage(e.target.value)}
+                className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-3 font-bold text-sm text-black dark:text-white outline-none focus:border-[#EF9D39] resize-none"
+            />
+        </div>
+        <button
+            onClick={handleCounter} disabled={actionLoading}
+            className="cursor-pointer w-full bg-black text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[5px_5px_0px_0px_#EF9D39] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[48px]"
+        >
+            {actionLoading ? <Loader2 size={16} className="animate-spin" /> : "Send counter offer to client"}
+        </button>
+    </div>
+)}
                                 {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
                                 {actionSuccess && <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>}
                             </div>
