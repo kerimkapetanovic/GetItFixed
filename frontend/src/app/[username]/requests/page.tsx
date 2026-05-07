@@ -70,22 +70,22 @@ function getRequestState(request: BookingDetail) {
     return {
       label: "Accepted",
       badgeClass: "bg-blue-400 text-black",
-      message: "Handyman accepted the request. Appointment is confirmed.",
+      message: "You confirmed the expert's offer. Appointment is locked in.",
     };
   }
 
   if (request.negotiation_status === "awaiting_client") {
     return {
-      label: "Handyman Countered",
+      label: "Expert offer",
       badgeClass: "bg-purple-400 text-black",
-      message: "Handyman proposed a different time and is waiting for your response.",
+      message: "The expert sent time & price — open the ticket to confirm or deny.",
     };
   }
 
   return {
     label: "Waiting for Response",
     badgeClass: "bg-yellow-400 text-black",
-    message: "Request sent. Waiting for Handyman to accept or counter.",
+    message: "Waiting for the expert to send an offer (time & price).",
   };
 }
 

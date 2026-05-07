@@ -46,7 +46,10 @@ class BookingSerializer(serializers.ModelSerializer):
             'status',
             'negotiation_status',
             'duration_minutes',
+            'agreed_price',
             'estimated_price',
+            'payment_amount',
+            'paid_at',
             'last_action_by',
             'knows_fix',
             
@@ -64,6 +67,9 @@ class BookingSerializer(serializers.ModelSerializer):
             'handyman_email',
             'handyman_phone',
             'handyman_id',
+            'agreed_price',
+            'payment_amount',
+            'paid_at',
         ]
 
     def get_client_name(self, obj):

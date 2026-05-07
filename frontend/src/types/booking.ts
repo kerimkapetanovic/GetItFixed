@@ -1,6 +1,17 @@
 // @/types/booking.ts
 
-export type BookingStatus = | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' | 'declined' | 'handyman_done' | 'not_completed';
+export type BookingStatus =
+  | 'pending'
+  | 'accepted'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+  | 'declined'
+  | 'handyman_done'
+  | 'not_completed'
+  | 'awaiting_payment'
+  | 'paid'
+  | 'closed';
 export type NegotiationStatus = 'none' | 'awaiting_handyman' | 'awaiting_client' | 'agreed' | 'declined';
 
 export interface BookingDetail {
@@ -37,6 +48,11 @@ export interface BookingDetail {
   expires_at: string | null;          // ISO string za Countdown tajmer
   duration_minutes: number | null;    // Trajanje u minutama (ako je posao u toku ili završen)
   knows_fix: boolean | null;         // Da li majstor zna u čemu je problem (ako je true, onda se ne prikazuje Countdown i "I don't know" opcija)
+
+  estimated_price?: number;
+  agreed_price?: number | null;
+  payment_amount?: number | null;
+  paid_at?: string | null;
 
   updated_at: string; // OBAVEZNO: Da znamo kad je bila zadnja akcija
   created_at: string; // Dobro je imati za inicijalni request

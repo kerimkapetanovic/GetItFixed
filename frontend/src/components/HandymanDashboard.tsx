@@ -167,7 +167,7 @@ export default function HandymanDashboard() {
 
   const pendingJobs = jobs.filter((j) => j.status === "pending");
   const acceptedJobs = jobs.filter((j) =>
-    ["accepted", "in_progress", "handyman_done", "not_completed"].includes(j.status)
+    ["accepted", "in_progress", "handyman_done", "not_completed", "awaiting_payment", "paid", "closed"].includes(j.status)
   );
   const cancelledJobs = jobs.filter((j) => j.status === "cancelled" || j.status === "declined");
 
@@ -290,7 +290,15 @@ export default function HandymanDashboard() {
                           ? "In Progress"
                           : job.status === "handyman_done"
                             ? "Awaiting Client"
-                            : "Not Completed"}
+                            : job.status === "awaiting_payment"
+                              ? "Awaiting Payment"
+                              : job.status === "paid"
+                                ? "Paid"
+                                : job.status === "closed"
+                                  ? "Closed"
+                                  : job.status === "not_completed"
+                                    ? "Not Completed"
+                                    : "Active"}
                     </span>
                   </div>
                   <Link

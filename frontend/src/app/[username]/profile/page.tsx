@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Loader2,
   Globe,
+  CreditCard,
 } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
 
@@ -170,6 +171,16 @@ export default function ProfilePage() {
     message: "",
   });
 
+  const [addBalanceOpen, setAddBalanceOpen] = useState(false);
+  const [addBalanceAmount, setAddBalanceAmount] = useState("");
+  const [addBalanceLoading, setAddBalanceLoading] = useState(false);
+  const [addBalanceError, setAddBalanceError] = useState<string | null>(null);
+  /** Dummy card fields — UI only until real payments */
+  const [dummyCardName, setDummyCardName] = useState("");
+  const [dummyCardNumber, setDummyCardNumber] = useState("");
+  const [dummyCardExpiry, setDummyCardExpiry] = useState("");
+  const [dummyCardCvv, setDummyCardCvv] = useState("");
+
   const countries = useMemo(() => countryList().getData(), []);
 
   useEffect(() => {
@@ -239,6 +250,60 @@ export default function ProfilePage() {
       errorData.detail ||
       t("profile.genericError")
     );
+  };
+
+  const getWalletErrorMessage = (err: unknown): string => {
+    if (typeof err === "object" && err !== null && "response" in err) {
+      const data = (err as { response?: { data?: { error?: string } } }).response?.data;
+      if (data?.error) return data.error;
+    }
+    return "Could not add balance. Try again.";
+  };
+
+  const handleCloseAddBalance = () => {
+    setAddBalanceOpen(false);
+    setAddBalanceError(null);
+    setAddBalanceAmount("");
+    setDummyCardName("");
+    setDummyCardNumber("");
+    setDummyCardExpiry("");
+    setDummyCardCvv("");
+  };
+
+  const formatExpiryMmYy = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  };
+
+  const handleSubmitAddBalance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddBalanceError(null);
+    const parsed = parseFloat(addBalanceAmount.replace(",", "."));
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      setAddBalanceError("Enter a valid amount greater than zero.");
+      return;
+    }
+
+    try {
+      setAddBalanceLoading(true);
+      const res = await api.post<{ wallet_balance: number; message?: string }>(
+        "/api/accounts/wallet/add/",
+        { amount: parsed.toFixed(2) }
+      );
+      const wb = res.data.wallet_balance;
+      setFormData((prev) => ({ ...prev, walletBalance: wb }));
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wallet_balance", String(wb));
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+      setProfileMessage(res.data.message || "Balance updated.");
+      handleCloseAddBalance();
+    } catch (err: unknown) {
+      setAddBalanceError(getWalletErrorMessage(err));
+    } finally {
+      setAddBalanceLoading(false);
+    }
   };
 
   const persistNameChanges = async () => {
@@ -792,6 +857,19 @@ export default function ProfilePage() {
                   </span>
                   <span className="text-sm font-black text-black dark:text-[#EF9D39] uppercase">KM</span>
                 </div>
+                {userRole === "client" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddBalanceOpen(true);
+                      setAddBalanceError(null);
+                    }}
+                    className="mt-4 w-full border-[3px] border-black dark:border-zinc-600 bg-[#EF9D39] text-black py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                  >
+                    <CreditCard size={16} strokeWidth={2.5} />
+                    Add Balance
+                  </button>
+                )}
               </div>
 
               {/* --- SECURITY & STATUS HEADER --- */}
@@ -925,6 +1003,138 @@ export default function ProfilePage() {
       </main>
 
       <Footer />
+
+      {addBalanceOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center px-4 py-8">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-balance-title"
+            className="w-full max-w-lg bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-6 rounded-[24px] shadow-[8px_8px_0px_0px_rgba(239,157,57,0.45)] max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="text-[#EF9D39]" size={22} strokeWidth={2.5} />
+                <h3
+                  id="add-balance-title"
+                  className="text-lg font-black uppercase text-black dark:text-white leading-tight"
+                >
+                  Add Balance
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseAddBalance}
+                className="p-2 rounded-lg border-2 border-black dark:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                aria-label="Close"
+              >
+                <span className="font-black text-sm leading-none">×</span>
+              </button>
+            </div>
+            <p className="text-xs font-bold text-gray-600 dark:text-zinc-400 mb-4">
+              Demo top-up — no real payment. Amount is saved to your account and persists after logout.
+            </p>
+            <form onSubmit={handleSubmitAddBalance} className="space-y-4">
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 block mb-2">
+                  Amount (KM)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g. 50"
+                  value={addBalanceAmount}
+                  onChange={(e) => setAddBalanceAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                  disabled={addBalanceLoading}
+                  className="w-full bg-white dark:bg-zinc-900 text-black dark:text-white border-[3px] border-black dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:opacity-60"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 block mb-2">
+                  Cardholder (optional — demo)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Name on card"
+                  value={dummyCardName}
+                  onChange={(e) => setDummyCardName(e.target.value)}
+                  disabled={addBalanceLoading}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 text-black dark:text-white border-[3px] border-zinc-300 dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm outline-none disabled:opacity-60"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 block mb-2">
+                  Card details (optional — demo)
+                </label>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="4242 4242 4242 4242"
+                    value={dummyCardNumber}
+                    onChange={(e) =>
+                      setDummyCardNumber(e.target.value.replace(/[^\d\s]/g, "").slice(0, 19))
+                    }
+                    disabled={addBalanceLoading}
+                    className="w-full flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-950 text-black dark:text-white border-[3px] border-zinc-300 dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm outline-none disabled:opacity-60"
+                  />
+                  <div className="flex gap-3 sm:contents sm:gap-0">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="MM/YY"
+                      value={dummyCardExpiry}
+                      onChange={(e) => setDummyCardExpiry(formatExpiryMmYy(e.target.value))}
+                      disabled={addBalanceLoading}
+                      className="w-full sm:w-[5.5rem] shrink-0 bg-zinc-50 dark:bg-zinc-950 text-black dark:text-white border-[3px] border-zinc-300 dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm tabular-nums outline-none disabled:opacity-60"
+                      maxLength={5}
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="CVC"
+                      value={dummyCardCvv}
+                      onChange={(e) =>
+                        setDummyCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))
+                      }
+                      disabled={addBalanceLoading}
+                      className="w-full sm:w-[4.5rem] shrink-0 bg-zinc-50 dark:bg-zinc-950 text-black dark:text-white border-[3px] border-zinc-300 dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm tabular-nums text-center outline-none disabled:opacity-60"
+                      maxLength={3}
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] font-bold text-gray-500 dark:text-zinc-500 mt-2">
+                  Expiry <span className="font-black">MM/YY</span> · Last 3 digits on the back (CVC)
+                </p>
+              </div>
+              {addBalanceError && (
+                <p className="text-sm font-black text-red-600">{addBalanceError}</p>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseAddBalance}
+                  disabled={addBalanceLoading}
+                  className="flex-1 bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white border-2 border-black dark:border-zinc-500 rounded-xl py-3 text-xs font-black uppercase disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addBalanceLoading}
+                  className="flex-1 bg-[#EF9D39] text-black border-[3px] border-black rounded-xl py-3 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {addBalanceLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                  Add to wallet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {confirmModal.open && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">

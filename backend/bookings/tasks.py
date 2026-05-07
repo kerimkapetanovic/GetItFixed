@@ -9,7 +9,8 @@ def auto_complete_booking(booking_id):
         
 
         if booking.status == 'handyman_done':
-            booking.status = 'completed'
+            booking.status = 'awaiting_payment'
+            booking.client_confirmed_done_at = timezone.now()
             booking.save()
             
     except Booking.DoesNotExist:

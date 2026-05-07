@@ -14,12 +14,35 @@ from rest_framework.permissions import AllowAny # Dodaj ovo gore ako fali
 from datetime import timedelta # Dodaj ovo
 from django.utils import timezone # Već bi trebalo da imaš od ranije
 from django.shortcuts import get_object_or_404 # Dodaj ovo ako fali
+from django.db import transaction
+from decimal import Decimal
 
 from .models import Booking
 from .serializers import BookingSerializer
 from accounts.authentication import CookieTokenAuthentication 
 
 User = get_user_model()
+
+
+def _parse_agreed_price(data, *, required: bool):
+    """Reads agreed_price or price from request body. Returns (Decimal | None, error_message | None)."""
+    raw = data.get("agreed_price")
+    if raw is None or raw == "":
+        raw = data.get("price")
+    if raw is None or raw == "":
+        if required:
+            return None, "Agreed price (KM) is required."
+        return None, None
+    try:
+        d = Decimal(str(raw).strip().replace(",", "."))
+    except Exception:
+        return None, "Invalid agreed price."
+    if d <= 0:
+        return None, "Agreed price must be greater than zero."
+    if d > Decimal("999999.99"):
+        return None, "Agreed price is too large."
+    return d.quantize(Decimal("0.01")), None
+
 
 # --- HANDYMAN VIEWS ---
 
@@ -43,6 +66,10 @@ class HandymanDashboardView(generics.ListAPIView):
             | Q(handyman=user, status='accepted')
             | Q(handyman=user, status='in_progress')
             | Q(handyman=user, status='handyman_done')
+            | Q(handyman=user, status='awaiting_payment')
+            | Q(handyman=user, status='paid')
+            | Q(handyman=user, status='closed')
+            | Q(handyman=user, status='completed')
             | Q(handyman=user, status='not_completed')
         ).order_by('-id').distinct()
 
@@ -61,6 +88,10 @@ class AcceptJobView(APIView):
             if not duration:
                 return Response({"error": "Duration is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+            agreed, price_err = _parse_agreed_price(request.data, required=True)
+            if price_err:
+                return Response({"error": price_err}, status=status.HTTP_400_BAD_REQUEST)
+
             if booking.handyman and booking.handyman != request.user:
                 return Response({"error": "Job is assigned to another handyman."}, status=status.HTTP_403_FORBIDDEN)
 
@@ -70,14 +101,23 @@ class AcceptJobView(APIView):
                 booking.knows_fix = knows_fix
             # 2. Spremanje trajanja
             booking.duration_minutes = int(duration)
+            booking.agreed_price = agreed
 
-            if booking.negotiation_status == 'awaiting_handyman':
-                booking.scheduled_time = booking.client_proposed_time or booking.scheduled_time
-                booking.negotiation_status = 'agreed'
-            
-            booking.status = 'accepted'
+            base_time = booking.client_proposed_time or booking.scheduled_time
+            if not base_time:
+                return Response(
+                    {"error": "This request has no appointment time. The client must pick a time first."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            booking.scheduled_time = base_time
+            booking.handyman_proposed_time = base_time
+            booking.status = 'pending'
+            booking.negotiation_status = 'awaiting_client'
+            _hr = 1 if booking.is_urgent else 3
+            booking.expires_at = timezone.now() + timedelta(hours=_hr)
+            booking.last_action_by = 'handyman'
             booking.save()
-            return Response({"message": "Job accepted successfully!"}, status=status.HTTP_200_OK)
+            return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
         except Booking.DoesNotExist:
             return Response({"error": "Job not available"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -108,20 +148,35 @@ class HandymanNegotiationActionView(APIView):
         if action == 'accept':
             if not duration:
                 return Response({"error": "Duration hours is required to accept a job."}, status=status.HTTP_400_BAD_REQUEST)
+
+            agreed, price_err = _parse_agreed_price(request.data, required=True)
+            if price_err:
+                return Response({"error": price_err}, status=status.HTTP_400_BAD_REQUEST)
             
             # Određujemo finalno vrijeme (ono oko kojeg su se zadnje složili)
             agreed_time = booking.handyman_proposed_time or booking.client_proposed_time or booking.scheduled_time
+            if not agreed_time:
+                return Response(
+                    {"error": "No appointment time is set on this request."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             if not Booking.is_timeslot_available(request.user, agreed_time, duration, exclude_booking_id=booking.id):
                 return Response({
                     "error": "You already have a job at this time or too close to it (30min buffer required)."
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             booking.scheduled_time = agreed_time
+            # Expose the slot on handyman_proposed_time so the client UI matches the counter flow.
+            booking.handyman_proposed_time = agreed_time
             booking.duration_minutes = int(duration) # Spašavamo sate
+            booking.agreed_price = agreed
             if knows_fix is not None:
                 booking.knows_fix = knows_fix
-            booking.status = 'accepted'
-            booking.negotiation_status = 'agreed'
+            booking.status = 'pending'
+            booking.negotiation_status = 'awaiting_client'
+            _hr = 1 if booking.is_urgent else 3
+            booking.expires_at = timezone.now() + timedelta(hours=_hr)
+            booking.last_action_by = 'handyman'
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
@@ -148,6 +203,12 @@ class HandymanNegotiationActionView(APIView):
             # Ako je majstor poslao i novi duration tokom kontra-ponude, spasi ga
             if duration:
                 booking.duration_minutes = int(duration)
+
+            counter_price, cp_err = _parse_agreed_price(request.data, required=False)
+            if cp_err:
+                return Response({"error": cp_err}, status=status.HTTP_400_BAD_REQUEST)
+            if counter_price is not None:
+                booking.agreed_price = counter_price
             
             booking.handyman_proposed_time = proposed_time
             booking.handyman_counter_message = message or None
@@ -155,7 +216,8 @@ class HandymanNegotiationActionView(APIView):
                 booking.knows_fix = knows_fix
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_client' # Sada klijent mora odgovoriti
-            booking.expires_at = timezone.now() + timedelta(hours=1)
+            _hr = 1 if booking.is_urgent else 3
+            booking.expires_at = timezone.now() + timedelta(hours=_hr)
             booking.last_action_by = 'handyman'
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
@@ -231,8 +293,17 @@ class ClientNegotiationActionView(APIView):
         action = request.data.get('action')
         
         if action == 'accept':
+            if booking.negotiation_status != 'awaiting_client':
+                return Response(
+                    {"error": "There is no expert offer waiting for your confirmation."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             # Klijent prihvata ono što je zadnje predloženo
-            agreed_time = booking.handyman_proposed_time or booking.client_proposed_time or booking.scheduled_time
+            agreed_time = (
+                booking.handyman_proposed_time
+                or booking.scheduled_time
+                or booking.client_proposed_time
+            )
             booking.scheduled_time = agreed_time
             booking.status = 'accepted'
             booking.negotiation_status = 'agreed'
@@ -240,12 +311,22 @@ class ClientNegotiationActionView(APIView):
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
         if action == 'decline':
+            if booking.negotiation_status != 'awaiting_client':
+                return Response(
+                    {"error": "There is no expert offer to decline."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             booking.status = 'cancelled'
             booking.negotiation_status = 'declined'
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
         if action == 'counter':
+            if booking.negotiation_status != 'awaiting_client':
+                return Response(
+                    {"error": "You can only counter while an expert offer is pending."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             proposed_time_raw = request.data.get('proposed_time')
             proposed_time = parse_datetime(proposed_time_raw) if proposed_time_raw else None
             if not proposed_time:
@@ -258,7 +339,8 @@ class ClientNegotiationActionView(APIView):
             # BITNO: Ne diraj scheduled_time dok majstor ne prihvati!
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_handyman'
-            booking.expires_at = timezone.now() + timedelta(hours=1)
+            _hr = 1 if booking.is_urgent else 3
+            booking.expires_at = timezone.now() + timedelta(hours=_hr)
             booking.last_action_by = 'client'
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
@@ -339,11 +421,59 @@ class CompleteBookingView(APIView):
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id)
         user = request.user
-        action = request.data.get('action')  # 'mark_done' | 'confirm_done' | 'mark_not_completed' | 'check_auto_complete'
+        action = request.data.get('action')
 
         # Samo client ili handyman mogu pristupiti
         if user not in (booking.client, booking.handyman):
             return Response({"error": "Forbidden."}, status=403)
+
+        # ── CLIENT: plati iz novčanika (nakon što je posao potvrđen) ──
+        if action == 'pay':
+            if user != booking.client:
+                return Response({"error": "Only the client can pay."}, status=403)
+            if booking.status != 'awaiting_payment':
+                return Response({"error": "Payment is not pending for this booking."}, status=400)
+            if not booking.handyman_id:
+                return Response({"error": "No handyman assigned."}, status=400)
+
+            amount = booking.get_payment_amount_decimal()
+            client_preview = booking.client.wallet_balance or Decimal("0")
+            if client_preview < amount:
+                return Response(
+                    {"error": "Insufficient balance. Add funds in your Profile."},
+                    status=400,
+                )
+
+            with transaction.atomic():
+                client_u = User.objects.select_for_update().get(pk=booking.client_id)
+                handyman_u = User.objects.select_for_update().get(pk=booking.handyman_id)
+                cur = client_u.wallet_balance or Decimal("0")
+                if cur < amount:
+                    return Response(
+                        {"error": "Insufficient balance. Add funds in your Profile."},
+                        status=400,
+                    )
+                client_u.wallet_balance = cur - amount
+                hm_bal = handyman_u.wallet_balance or Decimal("0")
+                handyman_u.wallet_balance = hm_bal + amount
+                client_u.save(update_fields=["wallet_balance"])
+                handyman_u.save(update_fields=["wallet_balance"])
+                booking.payment_amount = amount
+                booking.paid_at = timezone.now()
+                booking.status = "paid"
+                booking.save()
+
+            return Response(BookingSerializer(booking).data, status=200)
+
+        # ── HANDYMAN: potvrdi primitak uplate / završi flow ──
+        if action == 'acknowledge_payment':
+            if user != booking.handyman:
+                return Response({"error": "Only the handyman can confirm payment receipt."}, status=403)
+            if booking.status != 'paid':
+                return Response({"error": "Payment must be completed first."}, status=400)
+            booking.status = 'closed'
+            booking.save(update_fields=["status", "updated_at"])
+            return Response(BookingSerializer(booking).data, status=200)
 
         # ── KORAK 1: Handyman označava kraj ──
         if action == 'mark_done':
@@ -364,7 +494,7 @@ class CompleteBookingView(APIView):
             if booking.status != 'handyman_done':
                 return Response({"error": "Handyman hasn't marked job as done yet."}, status=400)
 
-            booking.status = 'completed'
+            booking.status = 'awaiting_payment'
             booking.client_confirmed_done_at = timezone.now()
             booking.save()
             return Response(BookingSerializer(booking).data, status=200)
@@ -391,7 +521,7 @@ class CompleteBookingView(APIView):
 
             deadline = booking.handyman_marked_done_at + timedelta(hours=1)
             if timezone.now() >= deadline:
-                booking.status = 'completed'
+                booking.status = 'awaiting_payment'
                 booking.client_confirmed_done_at = timezone.now()
                 booking.save()
                 return Response({
@@ -405,7 +535,13 @@ class CompleteBookingView(APIView):
                 "seconds_left": int(seconds_left)
             }, status=200)
 
-        return Response({"error": "Invalid action. Use: mark_done, confirm_done, mark_not_completed, check_auto_complete."}, status=400)
+        return Response(
+            {
+                "error": "Invalid action. Use: mark_done, confirm_done, mark_not_completed, "
+                "check_auto_complete, pay, acknowledge_payment."
+            },
+            status=400,
+        )
     
 @method_decorator(csrf_exempt, name='dispatch')
 class JobStatusCheckView(APIView):

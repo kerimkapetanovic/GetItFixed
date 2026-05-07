@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import models
 from django.conf import settings
+from decimal import Decimal
 
 class Booking(models.Model):
     STATUS_CHOICES = (
@@ -10,7 +11,10 @@ class Booking(models.Model):
         ('in_progress', 'In Progress'),   # NOVO — termin je počeo
         ('handyman_done', 'Handyman Done'), # NOVO — majstor kliknuo "Job Finished"
         ('not_completed', 'Not Completed'),
-        ('completed', 'Completed'),
+        ('awaiting_payment', 'Awaiting Payment'),
+        ('paid', 'Paid'),
+        ('closed', 'Closed'),
+        ('completed', 'Completed'),  # legacy terminal state
         ('cancelled', 'Cancelled'),
     )
     NEGOTIATION_STATUS_CHOICES = (
@@ -49,6 +53,12 @@ class Booking(models.Model):
     duration_minutes = models.IntegerField(null=True, blank=True) 
     handyman_counter_message = models.TextField(blank=True, null=True)
     client_confirmed_done_at = models.DateTimeField(null=True, blank=True)  # NOVO
+    agreed_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Price (KM) fixed when the handyman accepts or counters.",
+    )
+    payment_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
 
     last_action_by = models.CharField(
         max_length=10, 
@@ -99,14 +109,25 @@ class Booking(models.Model):
         super().save(*args, **kwargs)
 
     def get_estimated_price(self):
-        """Calculates price with a 1.5x multiplier for urgent jobs."""
-        base_hourly_rate = 30  # Default rate in BAM
+        """Uses agreed_price when set; otherwise hourly rate × duration (urgent ×1.5)."""
+        if self.agreed_price is not None:
+            return float(self.agreed_price)
+        if self.handyman and getattr(self.handyman, "hourly_rate", None):
+            base_hourly_rate = int(self.handyman.hourly_rate)
+        else:
+            base_hourly_rate = 30
         duration_hours = (self.duration_minutes / 60) if self.duration_minutes else 1
-        total = base_hourly_rate * duration_hours
-        
+        total = float(base_hourly_rate) * float(duration_hours)
+
         if self.is_urgent:
             return total * 1.5
         return total
+
+    def get_payment_amount_decimal(self) -> Decimal:
+        """Wallet debit amount: agreed_price when set, else same basis as get_estimated_price."""
+        if self.agreed_price is not None:
+            return self.agreed_price.quantize(Decimal("0.01"))
+        return Decimal(str(self.get_estimated_price())).quantize(Decimal("0.01"))
 
     def __str__(self):
         client_name = self.client.first_name if self.client.first_name else self.client.email

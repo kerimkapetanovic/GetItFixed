@@ -9,7 +9,7 @@ import api from "../../../../../lib/axios";
 import {
     Loader2, Check, X, AlertCircle, PlayCircle, Timer,
     CheckCircle2, Calendar as CalendarIcon, CheckCircle,
-    Wrench, Flag, User
+    Wrench, Flag, User, Wallet
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -40,12 +40,36 @@ export function getStatusInfo(booking: BookingDetail) {
             icon: <X className="text-red-400 shrink-0" size={18} strokeWidth={3} />
         };
     }
+    if (booking.status === "closed") {
+        return {
+            label: "Job Finished",
+            badgeClass: "bg-green-400 text-black",
+            helperText: "Payment acknowledged. This job is closed.",
+            icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
     if (booking.status === "completed") {
         return {
             label: "Completed",
             badgeClass: "bg-green-400 text-black",
             helperText: "Job finished! Thank you for your work.",
             icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "awaiting_payment") {
+        return {
+            label: "Awaiting Payment",
+            badgeClass: "bg-amber-400 text-black",
+            helperText: "Client must pay from their wallet to release funds to you.",
+            icon: <Wallet className="text-amber-400 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "paid") {
+        return {
+            label: "Paid",
+            badgeClass: "bg-emerald-400 text-black",
+            helperText: "Payment received. Acknowledge to finish.",
+            icon: <CheckCircle2 className="text-emerald-400 shrink-0" size={18} strokeWidth={3} />
         };
     }
     if (booking.status === "handyman_done") {
@@ -84,7 +108,7 @@ export function getStatusInfo(booking: BookingDetail) {
         return {
             label: "Awaiting Client",
             badgeClass: "bg-purple-400 text-black",
-            helperText: "You countered. Waiting for client response.",
+            helperText: "Your offer (time & price) was sent. Waiting for the client to confirm.",
             icon: <AlertCircle className="text-purple-400 shrink-0" size={18} strokeWidth={3} />
         };
     }
@@ -117,6 +141,16 @@ function getBackendErrorMessage(error: unknown) {
     return "Failed to submit your response.";
 }
 
+/** Allows digits and one decimal point with up to 2 fractional digits (KM). */
+function sanitizeKmPriceInput(raw: string): string {
+    let v = raw.replace(",", ".").replace(/[^\d.]/g, "");
+    const parts = v.split(".");
+    if (parts.length === 1) return parts[0];
+    const head = parts[0];
+    const tail = parts.slice(1).join("").slice(0, 2);
+    return tail.length ? `${head}.${tail}` : `${head}.`;
+}
+
 const calculateTimeLeft = (expiresAt: string | null) => {
     if (!expiresAt) return 0;
     const diff = new Date(expiresAt).getTime() - new Date().getTime();
@@ -133,7 +167,7 @@ const formatMs = (ms: number) => {
 };
 
 function shouldShowHandymanActions(booking: BookingDetail) {
-    if (["cancelled", "accepted", "completed", "in_progress", "handyman_done", "not_completed"].includes(booking.status)) return false;
+    if (["cancelled", "accepted", "completed", "in_progress", "handyman_done", "not_completed", "awaiting_payment", "paid", "closed"].includes(booking.status)) return false;
     if (booking.negotiation_status === "declined" || booking.negotiation_status === "agreed") return false;
     if (booking.negotiation_status === "awaiting_handyman") return true;
     if (!booking.negotiation_status && booking.status === "pending") return true;
@@ -152,11 +186,13 @@ export default function HandymanRequestDetailsPage() {
     // Accept panel
     const [acceptOpen, setAcceptOpen] = useState(false);
     const [acceptDuration, setAcceptDuration] = useState("");
+    const [acceptPrice, setAcceptPrice] = useState("");
 
     // Counter panel
     const [counterOpen, setCounterOpen] = useState(false);
     const [counterProposedTime, setCounterProposedTime] = useState<Date | null>(null);
     const [counterDuration, setCounterDuration] = useState("");
+    const [counterPrice, setCounterPrice] = useState("");
     const [counterMessage, setCounterMessage] = useState("");
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
@@ -167,6 +203,8 @@ export default function HandymanRequestDetailsPage() {
 
     // Job completion
     const [markDoneLoading, setMarkDoneLoading] = useState(false);
+    const [thanksLoading, setThanksLoading] = useState(false);
+    const [jobFinishedModalOpen, setJobFinishedModalOpen] = useState(false);
     const [secondsUntilUnlock, setSecondsUntilUnlock] = useState<number | null>(null);
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
     const unlockZeroSyncRef = useRef(false);
@@ -190,7 +228,7 @@ export default function HandymanRequestDetailsPage() {
 
     // Negotiation expiry timer
     useEffect(() => {
-        if (!booking || booking.status === "accepted" || booking.status === "completed") {
+        if (!booking || booking.status === "accepted" || booking.status === "completed" || booking.status === "awaiting_payment" || booking.status === "paid" || booking.status === "closed") {
             setTimeLeft(0);
             return;
         }
@@ -272,6 +310,32 @@ export default function HandymanRequestDetailsPage() {
         };
     }, [booking?.status, booking?.id]);
 
+    useEffect(() => {
+        if (!booking || booking.status !== "awaiting_payment") return;
+        const poll = async () => {
+            try {
+                const res = await api.get<BookingDetail>(`/api/bookings/${booking.id}/`);
+                const next = res.data;
+                setBooking((prev) => {
+                    if (prev?.status === "awaiting_payment" && next.status === "paid") {
+                        api.get<{ wallet_balance?: number }>("/api/accounts/me/").then((me) => {
+                            if (typeof window !== "undefined" && me.data.wallet_balance != null) {
+                                localStorage.setItem("wallet_balance", String(me.data.wallet_balance));
+                                window.dispatchEvent(new Event("profile-updated"));
+                            }
+                        });
+                    }
+                    return next;
+                });
+            } catch {
+                /* ignore */
+            }
+        };
+        poll();
+        const id = setInterval(poll, 8000);
+        return () => clearInterval(id);
+    }, [booking?.id, booking?.status]);
+
     // Fetch booking
     useEffect(() => {
         if (!bookingId) return;
@@ -306,7 +370,12 @@ export default function HandymanRequestDetailsPage() {
     const handleAccept = async () => {
         if (!booking) return;
         if (!acceptDuration || isNaN(Number(acceptDuration)) || Number(acceptDuration) <= 0) {
-            setActionError("Please enter a valid estimated duration in minutes.");
+            setActionError("Please enter estimated exact time in minutes.");
+            return;
+        }
+        const priceNum = parseFloat(acceptPrice.replace(",", "."));
+        if (!acceptPrice.trim() || isNaN(priceNum) || priceNum <= 0) {
+            setActionError("Please enter the total job price in KM.");
             return;
         }
         clearActionMessages();
@@ -315,12 +384,14 @@ export default function HandymanRequestDetailsPage() {
             const res = await api.post(`/api/bookings/${booking.id}/handyman-action/`, {
                 action: "accept",
                 duration_minutes: Number(acceptDuration),
+                agreed_price: priceNum,
                 knows_fix: knowsFix,
             });
             setBooking(res.data);
-            setActionSuccess("Booking accepted! Appointment is now confirmed.");
+            setActionSuccess("Offer sent to the client. They must confirm the deal before the appointment is locked in.");
             setAcceptOpen(false);
             setAcceptDuration("");
+            setAcceptPrice("");
         } catch (e) {
             setActionError(getBackendErrorMessage(e));
         } finally {
@@ -347,7 +418,12 @@ export default function HandymanRequestDetailsPage() {
         if (!booking) return;
         if (!counterProposedTime) { setActionError("Please select a new date and time."); return; }
         if (!counterDuration || isNaN(Number(counterDuration)) || Number(counterDuration) <= 0) {
-            setActionError("Please enter a valid estimated duration in minutes.");
+            setActionError("Please enter estimated exact time in minutes.");
+            return;
+        }
+        const cPriceNum = parseFloat(counterPrice.replace(",", "."));
+        if (!counterPrice.trim() || isNaN(cPriceNum) || cPriceNum <= 0) {
+            setActionError("Please enter the total job price in KM for this offer.");
             return;
         }
         clearActionMessages();
@@ -357,6 +433,7 @@ export default function HandymanRequestDetailsPage() {
                 action: "counter",
                 proposed_time: toUtcIso(counterProposedTime),
                 duration_minutes: Number(counterDuration),
+                agreed_price: cPriceNum,
                 message: counterMessage,
                 knows_fix: knowsFix,
             });
@@ -365,6 +442,7 @@ export default function HandymanRequestDetailsPage() {
             setCounterOpen(false);
             setCounterProposedTime(null);
             setCounterDuration("");
+            setCounterPrice("");
             setCounterMessage("");
         } catch (e) {
             setActionError(getBackendErrorMessage(e));
@@ -386,6 +464,21 @@ export default function HandymanRequestDetailsPage() {
             setActionError(getBackendErrorMessage(e));
         } finally {
             setMarkDoneLoading(false);
+        }
+    };
+
+    const handleThanksForPaying = async () => {
+        if (!booking) return;
+        clearActionMessages();
+        try {
+            setThanksLoading(true);
+            const res = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "acknowledge_payment" });
+            setBooking(res.data);
+            setJobFinishedModalOpen(true);
+        } catch (e) {
+            setActionError(getBackendErrorMessage(e));
+        } finally {
+            setThanksLoading(false);
         }
     };
 
@@ -576,7 +669,7 @@ export default function HandymanRequestDetailsPage() {
                         </div>
 
                         {/* Negotiation expiry timer */}
-                        {timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && (
+                        {timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && booking.status !== "awaiting_payment" && booking.status !== "paid" && booking.status !== "closed" && (
                             <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-500 rounded-2xl flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <Timer className="text-orange-500 animate-pulse" size={24} />
@@ -692,7 +785,59 @@ export default function HandymanRequestDetailsPage() {
                             </div>
                         )}
 
-                        {/* ── BOTH DONE: quick confirmation strip ── */}
+                        {/* ── AWAITING PAYMENT (client wallet) ── */}
+                        {booking.status === "awaiting_payment" && (
+                            <div className="p-5 bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-500 rounded-xl flex items-start gap-3 shadow-[4px_4px_0px_0px_#f59e0b]">
+                                <Timer className="text-amber-500 shrink-0" size={22} />
+                                <div>
+                                    <p className="font-black uppercase text-sm text-black dark:text-white">Waiting for client payment</p>
+                                    <p className="text-[10px] font-bold text-amber-800 dark:text-amber-200/90 mt-1">
+                                        They pay from their profile balance. This updates automatically when the payment goes through.
+                                    </p>
+                                    {booking.estimated_price != null && (
+                                        <p className="text-xs font-black text-black dark:text-white mt-2 tabular-nums">
+                                            Due: {Number(booking.estimated_price).toFixed(2)} KM
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── PAID: expert acknowledges ── */}
+                        {booking.status === "paid" && (
+                            <div className="p-6 bg-emerald-50 dark:bg-emerald-950/20 border-2 border-emerald-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#10b981]">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle2 className="text-emerald-500 shrink-0" size={28} />
+                                    <div>
+                                        <p className="font-black uppercase text-sm text-black dark:text-white">Payment received</p>
+                                        <p className="text-xs font-bold text-gray-600 dark:text-zinc-400">
+                                            The client paid {booking.payment_amount != null ? Number(booking.payment_amount).toFixed(2) : "—"} KM to your wallet. Tap below to close the job.
+                                        </p>
+                                    </div>
+                                </div>
+                                {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
+                                <button
+                                    type="button"
+                                    onClick={handleThanksForPaying}
+                                    disabled={thanksLoading}
+                                    className="w-full bg-white dark:bg-black text-black dark:text-white border-[3px] border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#10b981] hover:bg-emerald-50 dark:hover:bg-zinc-800 active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {thanksLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                                    Thanks for Paying
+                                </button>
+                            </div>
+                        )}
+
+                        {/* ── CLOSED (payment acknowledged) ── */}
+                        {booking.status === "closed" && (
+                            <div className="p-6 bg-green-50 dark:bg-green-950/25 border-2 border-green-500 rounded-xl text-center shadow-[4px_4px_0px_0px_#22c55e]">
+                                <CheckCircle2 className="mx-auto text-green-600 mb-2" size={40} strokeWidth={2.5} />
+                                <h3 className="font-black uppercase text-lg text-black dark:text-white">Job finished</h3>
+                                <p className="text-sm font-bold text-gray-600 dark:text-zinc-400 mt-1">See you on the next booking.</p>
+                            </div>
+                        )}
+
+                        {/* ── BOTH DONE (legacy bookings before payment flow) ── */}
                         {booking.status === "completed" && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="rounded-xl border-2 border-green-500 bg-green-50 dark:bg-green-950/30 p-4 flex items-center gap-3 shadow-[3px_3px_0px_0px_#16a34a]">
@@ -730,7 +875,7 @@ export default function HandymanRequestDetailsPage() {
                                         onClick={() => { setAcceptOpen(v => !v); setCounterOpen(false); clearActionMessages(); }}
                                         className="cursor-pointer bg-white text-black dark:bg-black dark:text-white border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#4ade80] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#4ade80] transition-all active:translate-y-1 active:shadow-none"
                                     >
-                                        Accept
+                                        Send offer
                                     </button>
                                     <button
                                         onClick={() => handleDecline()}
@@ -749,63 +894,103 @@ export default function HandymanRequestDetailsPage() {
 
                                 {/* Accept Form */}
                                 {acceptOpen && (
-                                    <div className="p-5 border-2 border-black rounded-xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[4px_4px_0px_0px_#000] space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-6 md:p-8 border-[3px] border-black rounded-2xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[6px_6px_0px_0px_#000] space-y-6">
+                                        <p className="text-xs font-black uppercase tracking-wide text-gray-700 dark:text-zinc-300">
+                                            Enter how long the job should take and your total price. This is sent to the client to confirm — no payment happens until later in the flow.
+                                        </p>
+                                        <div className="space-y-4">
                                             <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-gray-500">Scheduled time</label>
-                                                <div className="bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 font-bold text-sm text-black dark:text-white">
+                                                <label className="text-[11px] font-black uppercase tracking-widest mb-3 block text-gray-600 dark:text-zinc-400">Appointment time (from request)</label>
+                                                <div className="bg-white dark:bg-zinc-800 border-[3px] border-black rounded-2xl p-6 min-h-[88px] flex items-center font-black text-lg md:text-xl text-black dark:text-white">
                                                     {formatDateTime(booking.client_proposed_time || booking.scheduled_time)}
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest mb-2 block text-gray-500">Duration (minutes) *Required</label>
-                                                <div className="relative flex items-center">
-                                                    <input
-                                                        type="text" inputMode="numeric" placeholder="e.g. 60"
-                                                        className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pr-14 font-bold text-sm text-black dark:text-white outline-none focus:border-green-500"
-                                                        value={acceptDuration}
-                                                        onChange={(e) => setAcceptDuration(e.target.value.replace(/\D/g, ""))}
-                                                    />
-                                                    <span className="absolute right-4 font-black text-[10px] text-gray-400 uppercase">MIN</span>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 md:items-stretch">
+                                                <div className="flex min-h-0 flex-col gap-3">
+                                                    <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
+                                                        Estimated exact time (minutes) *
+                                                    </label>
+                                                    <div className="relative min-h-[140px] flex-1">
+                                                        <input
+                                                            type="text" inputMode="numeric" placeholder="60"
+                                                            className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-green-500 dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
+                                                            value={acceptDuration}
+                                                            onChange={(e) => setAcceptDuration(e.target.value.replace(/\D/g, ""))}
+                                                        />
+                                                        <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">min</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex min-h-0 flex-col gap-3">
+                                                    <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
+                                                        Total job price (KM) *
+                                                    </label>
+                                                    <div className="relative min-h-[140px] flex-1">
+                                                        <input
+                                                            type="text" inputMode="decimal" placeholder="120"
+                                                            className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-green-500 dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
+                                                            value={acceptPrice}
+                                                            onChange={(e) => setAcceptPrice(sanitizeKmPriceInput(e.target.value))}
+                                                        />
+                                                        <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">KM</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                         <button
                                             onClick={handleAccept} disabled={actionLoading}
-                                            className="cursor-pointer w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#16a34a] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                            className="cursor-pointer w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#16a34a] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[56px]"
                                         >
-                                            {actionLoading ? <Loader2 size={14} className="animate-spin" /> : "Confirm & Accept"}
+                                            {actionLoading ? <Loader2 size={18} className="animate-spin" /> : "Send offer to client"}
                                         </button>
                                     </div>
                                 )}
 
                                 {/* Counter Form */}
                                 {counterOpen && (
-                                    <div className="border-2 border-black rounded-xl bg-[#FFF8EA] dark:bg-zinc-900 p-5 space-y-4 animate-in slide-in-from-top-2 shadow-[4px_4px_0px_0px_#000]">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Pick new time *Required</label>
-                                                <div
-                                                    onClick={() => setIsCalendarOpen(true)}
-                                                    className="relative cursor-pointer bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pl-12 font-bold text-sm min-h-[50px] flex items-center hover:border-[#EF9D39] transition-colors"
-                                                >
-                                                    <CalendarIcon className="absolute left-4 text-gray-400" size={16} />
-                                                    {counterProposedTime
-                                                        ? <span className="text-black dark:text-white">{formatDateTime(counterProposedTime)}</span>
-                                                        : <span className="text-gray-400 text-xs">SELECT DATE & TIME</span>
-                                                    }
-                                                </div>
+                                    <div className="border-[3px] border-black rounded-2xl bg-[#FFF8EA] dark:bg-zinc-900 p-6 md:p-8 space-y-6 animate-in slide-in-from-top-2 shadow-[6px_6px_0px_0px_#000]">
+                                        <p className="text-xs font-black uppercase tracking-wide text-gray-700 dark:text-zinc-300">
+                                            Propose a new time, estimated exact duration, and total price. The client confirms before the booking is final — payment stays later.
+                                        </p>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400">Pick new appointment time *</label>
+                                            <div
+                                                onClick={() => setIsCalendarOpen(true)}
+                                                className="relative cursor-pointer bg-white dark:bg-zinc-800 border-[3px] border-black rounded-2xl p-6 pl-14 font-black text-lg md:text-xl min-h-[100px] flex items-center hover:border-[#EF9D39] transition-colors"
+                                            >
+                                                <CalendarIcon className="absolute left-5 text-gray-400" size={22} />
+                                                {counterProposedTime
+                                                    ? <span className="text-black dark:text-white">{formatDateTime(counterProposedTime)}</span>
+                                                    : <span className="text-gray-400 text-sm uppercase">Tap to select date & time</span>
+                                                }
                                             </div>
-                                            <div className="flex flex-col gap-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Duration (minutes) *Required</label>
-                                                <div className="relative flex items-center">
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 md:items-stretch">
+                                            <div className="flex min-h-0 flex-col gap-3">
+                                                <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
+                                                    Estimated exact time (minutes) *
+                                                </label>
+                                                <div className="relative min-h-[140px] flex-1">
                                                     <input
-                                                        type="text" inputMode="numeric" placeholder="e.g. 60"
-                                                        className="w-full bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pr-14 font-bold text-sm text-black dark:text-white outline-none focus:border-[#EF9D39] min-h-[50px]"
+                                                        type="text" inputMode="numeric" placeholder="60"
+                                                        className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-[#EF9D39] dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
                                                         value={counterDuration}
                                                         onChange={(e) => setCounterDuration(e.target.value.replace(/\D/g, ""))}
                                                     />
-                                                    <span className="absolute right-4 font-black text-[10px] text-gray-400 uppercase">MIN</span>
+                                                    <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">min</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex min-h-0 flex-col gap-3">
+                                                <label className="flex min-h-[3rem] items-end text-[11px] font-black uppercase leading-snug tracking-widest text-gray-600 dark:text-zinc-400">
+                                                    Total job price (KM) *
+                                                </label>
+                                                <div className="relative min-h-[140px] flex-1">
+                                                    <input
+                                                        type="text" inputMode="decimal" placeholder="150"
+                                                        className="box-border flex h-[140px] w-full items-center bg-white px-6 pr-16 font-black text-3xl text-black outline-none focus:border-[#EF9D39] dark:bg-zinc-800 dark:text-white md:text-4xl border-[3px] border-black rounded-2xl"
+                                                        value={counterPrice}
+                                                        onChange={(e) => setCounterPrice(sanitizeKmPriceInput(e.target.value))}
+                                                    />
+                                                    <span className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 font-black text-xs uppercase text-gray-400">KM</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -819,9 +1004,9 @@ export default function HandymanRequestDetailsPage() {
                                         </div>
                                         <button
                                             onClick={handleCounter} disabled={actionLoading}
-                                            className="cursor-pointer w-full bg-black text-white py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#EF9D39] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                            className="cursor-pointer w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-[6px_6px_0px_0px_#EF9D39] hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[56px]"
                                         >
-                                            {actionLoading ? <Loader2 size={14} className="animate-spin" /> : "Send Counter Offer"}
+                                            {actionLoading ? <Loader2 size={18} className="animate-spin" /> : "Send counter offer to client"}
                                         </button>
                                     </div>
                                 )}
@@ -869,7 +1054,7 @@ export default function HandymanRequestDetailsPage() {
                         )}
 
                         {/* Appointment Confirmed Card — vidljiv i tokom in_progress i handyman_done */}
-                        {["accepted", "in_progress", "handyman_done", "not_completed", "completed"].includes(booking.status) && (
+                        {["accepted", "in_progress", "handyman_done", "awaiting_payment", "paid", "closed", "not_completed", "completed"].includes(booking.status) && (
                             <div className="p-6 bg-[#EF9D39] border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                                 <div className="flex items-center gap-2 mb-4">
                                     <div className="w-2.5 h-2.5 bg-black rounded-full" />
@@ -894,25 +1079,36 @@ export default function HandymanRequestDetailsPage() {
                                         </div>
                                         <span className="font-bold text-gray-800 text-sm">{booking.client_phone || "Contact info unavailable"}</span>
                                     </div>
+                                    {booking.agreed_price != null && (
+                                        <div className="pt-2 border-t border-gray-100 mt-1">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Agreed job price</p>
+                                            <p className="font-black text-black text-lg tabular-nums">{Number(booking.agreed_price).toFixed(2)} KM</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        {/* Completed */}
-                        {booking.status === "completed" && (
-                            <div className="p-6 bg-green-50 dark:bg-green-950/20 border-2 border-green-500 rounded-xl shadow-[4px_4px_0px_0px_#16a34a] flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-green-500 border-2 border-black flex items-center justify-center shrink-0">
-                                    <CheckCircle2 size={24} className="text-white" />
-                                </div>
-                                <div>
-                                    <p className="font-black uppercase text-base text-green-700 dark:text-green-400">Job Completed!</p>
-                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Phase 1 finished. Payment phase coming next.</p>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             </main>
+
+            {jobFinishedModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-8 rounded-[24px] shadow-[8px_8px_0px_0px_rgba(34,197,94,0.45)] text-center">
+                        <CheckCircle2 className="mx-auto text-green-500 mb-3" size={48} strokeWidth={2.5} />
+                        <h3 className="text-2xl font-black uppercase text-black dark:text-white">Job finished</h3>
+                        <p className="text-sm font-bold text-gray-600 dark:text-zinc-400 mt-2">Thank you for your work on GetItFixed.</p>
+                        <button
+                            type="button"
+                            onClick={() => setJobFinishedModalOpen(false)}
+                            className="mt-6 w-full bg-[#EF9D39] text-black border-[3px] border-black py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <Footer />
         </div>

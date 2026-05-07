@@ -6,7 +6,7 @@ import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../../lib/axios";
-import { Loader2, Check, X, AlertCircle, PlayCircle, Timer, CheckCircle2, Calendar as CalendarIcon, Wrench, Flag } from "lucide-react";
+import { Loader2, Check, X, AlertCircle, PlayCircle, Timer, CheckCircle2, Calendar as CalendarIcon, Wrench, Flag, Wallet } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
@@ -52,6 +52,30 @@ export function getStatusInfo(booking: BookingDetail) {
       icon: <AlertCircle className="text-purple-400 shrink-0" size={18} strokeWidth={3} />
     };
   }
+  if (booking.status === "awaiting_payment") {
+    return {
+      label: "Payment Due",
+      badgeClass: "bg-amber-400 text-black",
+      helperText: "Work is confirmed. Pay from your profile balance to finish.",
+      icon: <Wallet className="text-amber-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "paid") {
+    return {
+      label: "Paid",
+      badgeClass: "bg-emerald-400 text-black",
+      helperText: "Payment sent. Waiting for the expert to acknowledge.",
+      icon: <CheckCircle2 className="text-emerald-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "closed") {
+    return {
+      label: "Job Finished",
+      badgeClass: "bg-green-400 text-black",
+      helperText: "All done. Thank you for using GetItFixed.",
+      icon: <CheckCircle2 className="text-green-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
   if (booking.status === "not_completed") {
     return {
       label: "Not Completed",
@@ -78,9 +102,9 @@ export function getStatusInfo(booking: BookingDetail) {
   }
   if (booking.negotiation_status === "awaiting_client") {
     return {
-      label: "Expert Countered",
+      label: "Expert offer",
       badgeClass: "bg-purple-400 text-black",
-      helperText: "Expert proposed a new time. Choose your response.",
+      helperText: "Review time & price, then confirm or decline. No payment until later.",
       icon: <AlertCircle className="text-purple-400 shrink-0" size={18} strokeWidth={3} />
     };
   }
@@ -143,6 +167,8 @@ export default function RequestDetailsPage() {
   const [busySlots, setBusySlots] = useState<{ start: Date; end: Date }[]>([]);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [completionTimeLeftSeconds, setCompletionTimeLeftSeconds] = useState<number | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [payLoading, setPayLoading] = useState(false);
 
   const toUtcIso = (localDateTime: string) => {
     const parsed = new Date(localDateTime);
@@ -158,7 +184,7 @@ export default function RequestDetailsPage() {
   };
 
   useEffect(() => {
-    if (!booking || booking.status === "accepted" || booking.status === "completed" || booking.status === "handyman_done") {
+    if (!booking || booking.status === "accepted" || booking.status === "completed" || booking.status === "handyman_done" || booking.status === "awaiting_payment" || booking.status === "paid" || booking.status === "closed") {
       setTimeLeft(0);
       return;
     }
@@ -203,6 +229,17 @@ export default function RequestDetailsPage() {
       clearInterval(poll);
     };
   }, [booking?.id, booking?.status]);
+
+  useEffect(() => {
+    if (booking?.status !== "awaiting_payment") {
+      setWalletBalance(null);
+      return;
+    }
+    api
+      .get<{ wallet_balance?: number }>("/api/accounts/me/")
+      .then((r) => setWalletBalance(Number(r.data.wallet_balance ?? 0)))
+      .catch(() => setWalletBalance(null));
+  }, [booking?.status, booking?.id]);
 
   useEffect(() => {
     if (completionTimeLeftSeconds === null || completionTimeLeftSeconds <= 0) return;
@@ -263,9 +300,9 @@ export default function RequestDetailsPage() {
       setBooking(response.data);
       setActionSuccess(
         action === "accept"
-          ? "Counter accepted and appointment confirmed."
+          ? "Deal confirmed. Your appointment is locked in."
           : action === "decline"
-            ? "Request declined and closed."
+            ? "Offer declined. Request closed."
             : "Your counter proposal was sent.",
       );
       if (action === "counter") {
@@ -287,11 +324,34 @@ export default function RequestDetailsPage() {
       setActionLoading(true);
       const response = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "confirm_done" });
       setBooking(response.data);
-      setActionSuccess("Great! Job is confirmed as completed.");
+      setActionSuccess("Work confirmed. Proceed to payment below using your profile balance.");
     } catch (error: unknown) {
       setActionError(getBackendErrorMessage(error));
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const proceedToPayment = async () => {
+    if (!booking) return;
+    setActionError("");
+    setActionSuccess("");
+    try {
+      setPayLoading(true);
+      const response = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "pay" });
+      setBooking(response.data);
+      const me = await api.get<{ wallet_balance?: number }>("/api/accounts/me/");
+      const wb = me.data.wallet_balance;
+      if (typeof window !== "undefined" && wb != null) {
+        localStorage.setItem("wallet_balance", String(wb));
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+      setWalletBalance(Number(wb ?? 0));
+      setActionSuccess("Payment sent. Your expert will confirm receipt shortly.");
+    } catch (error: unknown) {
+      setActionError(getBackendErrorMessage(error));
+    } finally {
+      setPayLoading(false);
     }
   };
 
@@ -437,7 +497,7 @@ export default function RequestDetailsPage() {
                       <div className="w-0.5 flex-1 bg-gray-200 dark:bg-zinc-700 min-h-6" />
                     </div>
                     <div className="pb-5 flex-1">
-                      <p className="text-[12px] font-black uppercase tracking-widest text-gray-400 mb-1">Expert countered</p>
+                      <p className="text-[12px] font-black uppercase tracking-widest text-gray-400 mb-1">Expert proposal</p>
                       <p className="text-sm font-bold text-black dark:text-white mb-2">
                         {formatDateTime(booking.handyman_proposed_time)}
                       </p>
@@ -452,15 +512,20 @@ export default function RequestDetailsPage() {
                 )}
 
                 {/* Step 3: Estimated duration */}
-                {booking.duration_minutes && (
+                {booking.duration_minutes != null && booking.duration_minutes > 0 && (
                   <div className="flex gap-3">
                     <div className="flex flex-col items-center w-7 shrink-0">
                       <div className="w-7 h-7 rounded-full bg-blue-400 border-2 border-black flex items-center justify-center text-[11px] font-black text-black shrink-0">3</div>
                       <div className="w-0.5 flex-1 bg-gray-200 dark:bg-zinc-700 min-h-6" />
                     </div>
                     <div className="pb-5 flex-1">
-                      <p className="text-[12px] font-black uppercase tracking-widest text-gray-400 mb-1">Estimated duration</p>
+                      <p className="text-[12px] font-black uppercase tracking-widest text-gray-400 mb-1">Estimated exact time</p>
                       <p className="text-sm font-bold text-black dark:text-white">{booking.duration_minutes} minutes</p>
+                      {booking.agreed_price != null && (
+                        <p className="text-sm font-black text-[#EF9D39] mt-2 tabular-nums">
+                          Total job price: {Number(booking.agreed_price).toFixed(2)} KM
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -486,7 +551,7 @@ export default function RequestDetailsPage() {
               </div>
             </div>
             {/* Timer */}
-            {timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && booking.status !== "handyman_done" && (
+            {timeLeft > 0 && booking.status !== "accepted" && booking.status !== "completed" && booking.status !== "handyman_done" && booking.status !== "awaiting_payment" && booking.status !== "paid" && booking.status !== "closed" && (
               <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-500 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Timer className="text-orange-500 animate-pulse" size={24} />
@@ -585,50 +650,142 @@ export default function RequestDetailsPage() {
               </div>
             )}
 
-            {/* ─── CLIENT ACTION PANEL (Expert countered) ─── */}
+            {booking.status === "awaiting_payment" && (
+              <div className="p-6 bg-amber-50 dark:bg-amber-950/25 border-2 border-amber-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#f59e0b]">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500 border-2 border-black flex items-center justify-center shrink-0">
+                    <Wallet size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                      Proceed to payment
+                    </h3>
+                    <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
+                      Pay the agreed job amount from your wallet balance (Profile → Add Balance if you need more funds).
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl flex flex-wrap justify-between gap-4 items-center">
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Due</p>
+                    <p className="text-2xl font-black text-black dark:text-white tabular-nums">
+                      {Number(booking.estimated_price ?? 0).toFixed(2)} <span className="text-sm uppercase">KM</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Your balance</p>
+                    <p className="text-xl font-black text-[#EF9D39] tabular-nums">
+                      {walletBalance !== null ? walletBalance.toFixed(2) : "—"}{" "}
+                      <span className="text-xs uppercase">KM</span>
+                    </p>
+                  </div>
+                </div>
+                {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
+                {actionSuccess && booking.status === "awaiting_payment" && (
+                  <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>
+                )}
+                <button
+                  type="button"
+                  disabled={payLoading || actionLoading}
+                  onClick={proceedToPayment}
+                  className="w-full bg-[#EF9D39] text-black border-[3px] border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {payLoading ? <Loader2 size={14} className="animate-spin" /> : <Wallet size={14} />}
+                  Pay from wallet
+                </button>
+              </div>
+            )}
+
+            {booking.status === "paid" && (
+              <div className="p-5 bg-emerald-50 dark:bg-emerald-950/20 border-2 border-emerald-500 rounded-xl">
+                <p className="font-black uppercase text-sm text-black dark:text-white">
+                  Payment received by your expert
+                </p>
+                <p className="text-xs font-bold text-gray-600 dark:text-zinc-400 mt-1">
+                  They will acknowledge shortly. You can leave this page — we&apos;ll email updates as usual.
+                </p>
+              </div>
+            )}
+
+            {booking.status === "closed" && (
+              <div className="p-6 bg-green-50 dark:bg-green-950/25 border-2 border-green-500 rounded-xl text-center shadow-[4px_4px_0px_0px_#22c55e]">
+                <CheckCircle2 className="mx-auto text-green-600 mb-2" size={40} strokeWidth={2.5} />
+                <h3 className="font-black uppercase text-xl text-black dark:text-white">Job finished</h3>
+                <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-2">
+                  Thank you for choosing GetItFixed.
+                </p>
+              </div>
+            )}
+
+            {/* ─── CLIENT: expert offer — confirm or decline (no payment here) ─── */}
             {booking.negotiation_status === "awaiting_client" && booking.status !== "cancelled" && (
-              <div className="p-6 bg-[#FFF8EA] dark:bg-zinc-800/60 border-2 border-black rounded-xl space-y-5">
+              <div className="p-6 md:p-8 bg-[#FFF8EA] dark:bg-zinc-800/60 border-[3px] border-black rounded-2xl space-y-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
                 <div>
-                  <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
-                    Expert sent a counter-offer
+                  <h3 className="font-black uppercase tracking-tight text-xl text-black dark:text-white">
+                    Expert&apos;s offer
                   </h3>
-                  <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
-                    Review the proposed time above. You can accept it, decline, or send a new time.
+                  <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-2 leading-relaxed">
+                    Review the appointment, estimated exact time, and total price. Confirm to lock the deal — you do not pay here; payment happens later after the work step, as before.
                   </p>
                 </div>
 
-                {/* Counter time + message grid */}
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white dark:bg-zinc-900 border-[3px] border-black rounded-2xl p-5 min-h-[120px] flex flex-col justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Appointment time</p>
+                    <p className="font-black text-lg md:text-xl text-black dark:text-white leading-tight">
+                      {formatDateTime(booking.handyman_proposed_time || booking.scheduled_time)}
+                    </p>
+                  </div>
+                  <div className="bg-white dark:bg-zinc-900 border-[3px] border-black rounded-2xl p-5 min-h-[120px] flex flex-col justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Estimated exact time</p>
+                    <p className="font-black text-3xl md:text-4xl text-black dark:text-white tabular-nums">
+                      {booking.duration_minutes != null && booking.duration_minutes > 0 ? `${booking.duration_minutes}` : "—"}
+                      <span className="text-sm font-black text-gray-400 ml-1">min</span>
+                    </p>
+                  </div>
+                  <div className="bg-white dark:bg-zinc-900 border-[3px] border-black rounded-2xl p-5 min-h-[120px] flex flex-col justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Total job price</p>
+                    <p className="font-black text-3xl md:text-4xl text-[#EF9D39] tabular-nums">
+                      {booking.agreed_price != null ? Number(booking.agreed_price).toFixed(2) : "—"}
+                      <span className="text-sm font-black text-black dark:text-white ml-1">KM</span>
+                    </p>
+                  </div>
+                </div>
+
+                {booking.handyman_counter_message && (
+                  <div className="inline-flex gap-2 items-start bg-violet-50 dark:bg-zinc-900 border-2 border-black rounded-xl px-4 py-3">
+                    <span className="text-xs font-black uppercase text-violet-600 shrink-0">Expert note</span>
+                    <span className="text-sm font-bold text-gray-800 dark:text-zinc-200">{booking.handyman_counter_message}</span>
+                  </div>
+                )}
+
+                <div className="space-y-4 border-t-2 border-black/10 dark:border-zinc-600 pt-6">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Optional: propose a different time</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Calendar picker */}
                     <div className="flex flex-col gap-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400">
-                        Your counter time (optional)
+                        Your counter time
                       </label>
                       <div
                         onClick={() => setIsCalendarOpen(true)}
-                        className="relative cursor-pointer bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pl-12 font-bold text-sm min-h-[50px] flex items-center hover:border-[#EF9D39] transition-colors"
+                        className="relative cursor-pointer bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pl-12 font-bold text-sm min-h-[56px] flex items-center hover:border-[#EF9D39] transition-colors"
                       >
                         <CalendarIcon className="absolute left-4 text-gray-400" size={16} />
                         {counterTime
                           ? <span className="text-black dark:text-white">{formatDateTime(new Date(counterTime))}</span>
-                          : <span className="text-gray-400 text-xs uppercase">Click to select date & time</span>
+                          : <span className="text-gray-400 text-xs uppercase">Tap to select date & time</span>
                         }
                       </div>
                     </div>
-
-                    {/* Expert's proposed time (read-only reference) */}
                     <div className="flex flex-col gap-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400">
-                        Expert proposed
+                        Reference (expert&apos;s time)
                       </label>
-                      <div className="bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 font-bold text-sm text-[#EF9D39] min-h-[50px] flex items-center">
-                        {formatDateTime(booking.handyman_proposed_time)}
+                      <div className="bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-black rounded-xl p-4 font-bold text-sm text-black dark:text-white min-h-[56px] flex items-center">
+                        {formatDateTime(booking.handyman_proposed_time || booking.scheduled_time)}
                       </div>
                     </div>
                   </div>
-
-                  {/* Message */}
                   <div className="flex flex-col gap-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400">
                       Message to expert (optional)
@@ -643,30 +800,28 @@ export default function RequestDetailsPage() {
                   </div>
                 </div>
 
-                {/* Feedback */}
                 {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
                 {actionSuccess && <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>}
 
-                {/* Action buttons — Option B style */}
                 <div className="flex flex-wrap gap-3 justify-center">
                   <button
                     disabled={actionLoading}
                     onClick={() => submitClientAction("accept")}
-                    className="bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#4ade80] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#4ade80] transition-all active:translate-y-1 active:shadow-none disabled:opacity-60"
+                    className="bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-8 py-3 rounded-[20px] font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#4ade80] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#4ade80] transition-all active:translate-y-1 active:shadow-none disabled:opacity-60 min-w-[160px]"
                   >
-                    {actionLoading ? <Loader2 className="mx-auto animate-spin" size={14} /> : "Accept"}
+                    {actionLoading ? <Loader2 className="mx-auto animate-spin" size={14} /> : "Confirm deal"}
                   </button>
                   <button
                     disabled={actionLoading}
                     onClick={() => submitClientAction("decline")}
-                    className="bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#f87171] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#f87171] transition-all active:translate-y-1 active:shadow-none disabled:opacity-60"
+                    className="bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-8 py-3 rounded-[20px] font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#f87171] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#f87171] transition-all active:translate-y-1 active:shadow-none disabled:opacity-60 min-w-[160px]"
                   >
-                    Decline
+                    Deny
                   </button>
                   <button
                     disabled={actionLoading}
                     onClick={() => submitClientAction("counter")}
-                    className="bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#EF9D39] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#EF9D39] transition-all active:translate-y-1 active:shadow-none disabled:opacity-60"
+                    className="bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-8 py-3 rounded-[20px] font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#EF9D39] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#EF9D39] transition-all active:translate-y-1 active:shadow-none disabled:opacity-60 min-w-[160px]"
                   >
                     Counter
                   </button>
@@ -717,7 +872,7 @@ export default function RequestDetailsPage() {
             )}
 
             {/* Handyman Contact Card */}
-            {(["accepted", "in_progress", "handyman_done", "not_completed", "completed"].includes(booking.status) || booking.negotiation_status === "agreed") && (
+            {(["accepted", "in_progress", "handyman_done", "awaiting_payment", "paid", "closed", "not_completed", "completed"].includes(booking.status) || booking.negotiation_status === "agreed") && (
               <div className="p-6 bg-[#EF9D39] border-2 border-black rounded-xl mt-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2.5 h-2.5 bg-black rounded-full" />

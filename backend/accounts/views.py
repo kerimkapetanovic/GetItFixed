@@ -1,4 +1,5 @@
 from urllib import request
+from decimal import Decimal, InvalidOperation
 
 from rest_framework import generics, status, serializers, permissions
 from rest_framework.response import Response
@@ -179,6 +180,7 @@ class CustomLoginView(ObtainAuthToken):
             'last_name': user.last_name,
             'is_staff': user.is_staff,
             'avatar_url': self._build_avatar_url(request, user),
+            'wallet_balance': float(user.wallet_balance or 0),
         }
         
         response = Response(response_data, status=status.HTTP_200_OK)
@@ -242,6 +244,50 @@ class CurrentUserProfileView(generics.RetrieveUpdateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WalletAddBalanceView(APIView):
+    """
+    Demo top-up: increments wallet_balance (no real payment gateway).
+    Replace later with Stripe/payment provider webhook that credits the wallet.
+    """
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if getattr(request.user, "role", None) != "client":
+            return Response(
+                {"error": "Only client accounts can add balance here."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        raw = request.data.get("amount")
+        try:
+            amount = Decimal(str(raw))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({"error": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if amount <= 0:
+            return Response(
+                {"error": "Amount must be greater than zero."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if amount > Decimal("50000"):
+            return Response({"error": "Amount exceeds maximum allowed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        current = user.wallet_balance or Decimal("0")
+        user.wallet_balance = current + amount
+        user.save(update_fields=["wallet_balance"])
+
+        return Response(
+            {
+                "wallet_balance": float(user.wallet_balance),
+                "message": "Balance updated successfully.",
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 @method_decorator(csrf_exempt, name='dispatch')

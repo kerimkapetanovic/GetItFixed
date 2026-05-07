@@ -54,6 +54,9 @@ export default function LoginPage() {
       localStorage.setItem("last_name", response.data.last_name || "");
       localStorage.setItem("username", response.data.username);
       localStorage.setItem("avatar_url", response.data.avatar_url || "");
+      if (response.data.wallet_balance != null) {
+        localStorage.setItem("wallet_balance", String(response.data.wallet_balance));
+      }
 
       // 3. Redirect
       const userPath = `/${response.data.username}`;
