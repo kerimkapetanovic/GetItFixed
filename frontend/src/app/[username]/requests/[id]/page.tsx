@@ -6,7 +6,7 @@ import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../../lib/axios";
-import { Loader2, Check, X, AlertCircle, PlayCircle, Timer, CheckCircle2, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, Check, X, AlertCircle, PlayCircle, Timer, CheckCircle2, Calendar as CalendarIcon, Wrench, Flag } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
@@ -507,15 +507,38 @@ export default function RequestDetailsPage() {
               </div>
             )}
 
+            {booking.status === "in_progress" && (
+              <div className="p-5 bg-violet-50 dark:bg-violet-950/25 border-2 border-violet-500 rounded-xl shadow-[4px_4px_0px_0px_#7c3aed]">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-violet-500 border-2 border-black flex items-center justify-center shrink-0">
+                    <Wrench size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-black uppercase tracking-tight text-base text-black dark:text-white">
+                      Expert is on site / working
+                    </h3>
+                    <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1 leading-snug">
+                      When they finish, a purple <span className="font-black">Mark Job as Finished</span> button appears here so you can confirm the job is done.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {booking.status === "handyman_done" && (
               <div className="p-6 bg-purple-50 dark:bg-zinc-800/60 border-2 border-purple-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#a855f7]">
-                <div>
-                  <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
-                    Handyman finished the job
-                  </h3>
-                  <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
-                    You have 60 minutes to confirm completion. After that, the job auto-completes.
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-500 border-2 border-black flex items-center justify-center shrink-0">
+                    <Flag size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                      Expert marked the job finished
+                    </h3>
+                    <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
+                      Confirm from your side too — same as the expert’s “Mark Job as Finished”. You have limited time; then the job auto-completes.
+                    </p>
+                  </div>
                 </div>
 
                 {completionTimeLeftSeconds !== null && (
@@ -544,7 +567,13 @@ export default function RequestDetailsPage() {
                   onClick={confirmJobDone}
                   className="w-full bg-white dark:bg-black text-black dark:text-white border-2 border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#a855f7] hover:bg-purple-50 dark:hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                 >
-                  {actionLoading ? <Loader2 size={14} className="animate-spin" /> : "Confirm Job Completed"}
+                  {actionLoading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Flag size={14} /> Mark Job as Finished
+                    </>
+                  )}
                 </button>
                 <button
                   disabled={actionLoading}

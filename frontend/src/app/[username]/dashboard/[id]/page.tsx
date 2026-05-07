@@ -9,7 +9,7 @@ import api from "../../../../../lib/axios";
 import {
     Loader2, Check, X, AlertCircle, PlayCircle, Timer,
     CheckCircle2, Calendar as CalendarIcon, CheckCircle,
-    Wrench, Flag
+    Wrench, Flag, User
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -169,6 +169,7 @@ export default function HandymanRequestDetailsPage() {
     const [markDoneLoading, setMarkDoneLoading] = useState(false);
     const [secondsUntilUnlock, setSecondsUntilUnlock] = useState<number | null>(null);
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
+    const unlockZeroSyncRef = useRef(false);
 
     const [knowsFix, setKnowsFix] = useState(false);
     const [busySlots, setBusySlots] = useState<{ start: Date; end: Date }[]>([]);
@@ -199,7 +200,54 @@ export default function HandymanRequestDetailsPage() {
         return () => clearInterval(interval);
     }, [booking]);
 
-    // ── POLLING: status-check (accepted → in_progress) ──
+    useEffect(() => {
+        unlockZeroSyncRef.current = false;
+    }, [booking?.id, booking?.scheduled_time]);
+
+    // Live countdown until scheduled_time (same target as backend JobStatusCheckView)
+    useEffect(() => {
+        if (!booking || booking.status !== "accepted" || !booking.scheduled_time) {
+            setSecondsUntilUnlock(null);
+            return;
+        }
+
+        const targetMs = new Date(booking.scheduled_time).getTime();
+        if (Number.isNaN(targetMs)) {
+            setSecondsUntilUnlock(null);
+            return;
+        }
+
+        const tick = () => {
+            const left = Math.max(0, Math.floor((targetMs - Date.now()) / 1000));
+            setSecondsUntilUnlock(left);
+
+            if (left === 0 && !unlockZeroSyncRef.current) {
+                unlockZeroSyncRef.current = true;
+                api
+                    .post(`/api/bookings/${booking.id}/status-check/`)
+                    .then((res) => {
+                        if (res.data?.status === "not_yet") {
+                            unlockZeroSyncRef.current = false;
+                            if (typeof res.data.seconds_left === "number") {
+                                setSecondsUntilUnlock(Math.max(0, res.data.seconds_left));
+                            }
+                        } else {
+                            setBooking(res.data);
+                        }
+                    })
+                    .catch((e) => {
+                        console.error("Status check at unlock failed:", e);
+                        unlockZeroSyncRef.current = false;
+                    });
+            }
+        };
+
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [booking?.id, booking?.status, booking?.scheduled_time]);
+
+    // ── POLLING: status-check backup (accepted → in_progress) ──
     useEffect(() => {
         if (!booking || booking.status !== "accepted") {
             if (pollingRef.current) clearInterval(pollingRef.current);
@@ -211,15 +259,12 @@ export default function HandymanRequestDetailsPage() {
                 const res = await api.post(`/api/bookings/${booking.id}/status-check/`);
                 if (res.data.status !== "not_yet") {
                     setBooking(res.data);
-                } else {
-                    setSecondsUntilUnlock(res.data.seconds_left);
                 }
             } catch (e) {
                 console.error("Status check failed:", e);
             }
         };
 
-        poll();
         pollingRef.current = setInterval(poll, 30_000);
 
         return () => {
@@ -547,7 +592,7 @@ export default function HandymanRequestDetailsPage() {
                         )}
 
                         {/* ── ACCEPTED: countdown do početka posla ── */}
-                        {booking.status === "accepted" && secondsUntilUnlock !== null && secondsUntilUnlock > 0 && (
+                        {booking.status === "accepted" && secondsUntilUnlock !== null && secondsUntilUnlock >= 0 && (
                             <div className="p-4 bg-violet-50 dark:bg-violet-950/20 border-2 border-violet-500 rounded-2xl flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <Wrench className="text-violet-500 animate-pulse" size={24} />
@@ -560,40 +605,109 @@ export default function HandymanRequestDetailsPage() {
                             </div>
                         )}
 
-                        {/* ── IN PROGRESS: handyman označava kraj ── */}
-                        {booking.status === "in_progress" && (
+                        {/* ── IN PROGRESS / HANDYMAN DONE: two columns — you vs client status ── */}
+                        {(booking.status === "in_progress" || booking.status === "handyman_done") && (
                             <div className="p-6 bg-violet-50 dark:bg-zinc-800/60 border-2 border-violet-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#7c3aed]">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-violet-500 border-2 border-black flex items-center justify-center shrink-0">
                                         <Wrench size={18} className="text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="font-black uppercase text-base text-black dark:text-white tracking-tight">Job In Progress</h3>
-                                        <p className="text-xs font-bold text-gray-500">Click below when you have finished the inspection.</p>
+                                        <h3 className="font-black uppercase text-base text-black dark:text-white tracking-tight">
+                                            {booking.status === "in_progress" ? "Job in progress" : "Waiting for client"}
+                                        </h3>
+                                        <p className="text-xs font-bold text-gray-500">
+                                            {booking.status === "in_progress"
+                                                ? "Finish your work, then mark done. The client must confirm on their side too."
+                                                : "You marked this job finished. Red panel stays until the client confirms."}
+                                        </p>
                                     </div>
                                 </div>
                                 {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
                                 {actionSuccess && <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>}
-                                <button
-                                    onClick={handleMarkDone}
-                                    disabled={markDoneLoading}
-                                    className="w-full bg-white dark:bg-black text-black dark:text-white border-2 border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#7c3aed] hover:bg-violet-50 dark:hover:bg-zinc-800 active:translate-y-1 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-                                >
-                                    {markDoneLoading
-                                        ? <Loader2 size={14} className="animate-spin" />
-                                        : <><Flag size={14} /> Mark Job as Finished</>
-                                    }
-                                </button>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Handyman */}
+                                    <div className="rounded-xl border-2 border-black bg-white dark:bg-zinc-900 p-4 flex flex-col justify-between min-h-[148px] shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-8 h-8 rounded-full bg-violet-500 border-2 border-black flex items-center justify-center shrink-0">
+                                                <Wrench size={14} className="text-white" />
+                                            </div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                                                You (handyman)
+                                            </p>
+                                        </div>
+                                        {booking.status === "in_progress" ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleMarkDone}
+                                                disabled={markDoneLoading}
+                                                className="w-full bg-white dark:bg-black text-black dark:text-white border-2 border-black py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[3px_3px_0px_0px_#7c3aed] hover:bg-violet-50 dark:hover:bg-zinc-800 active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                            >
+                                                {markDoneLoading ? (
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <Flag size={14} /> Mark Job as Finished
+                                                    </>
+                                                )}
+                                            </button>
+                                        ) : (
+                                            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-2 text-center">
+                                                <CheckCircle2 className="text-green-500 shrink-0" size={36} strokeWidth={2.5} />
+                                                <p className="font-black text-sm text-black dark:text-white leading-tight">
+                                                    You marked this job finished
+                                                </p>
+                                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                                    Waiting for client action
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Client — red until they confirm on their request */}
+                                    <div
+                                        className="rounded-xl border-2 border-red-500 bg-red-50 dark:bg-red-950/35 p-4 flex flex-col justify-center min-h-[148px] shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+                                    >
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-8 h-8 rounded-full bg-red-500 border-2 border-black flex items-center justify-center shrink-0">
+                                                <User size={14} className="text-white" />
+                                            </div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-red-700 dark:text-red-400">
+                                                Client — confirm job
+                                            </p>
+                                        </div>
+                                        <p className="font-black text-sm text-black dark:text-white leading-snug">
+                                            {booking.status === "in_progress"
+                                                ? "Pending (red until they confirm)"
+                                                : "Still waiting — red until they open their request and tap Mark Job as Finished"}
+                                        </p>
+                                        <p className="text-[10px] font-bold text-red-800/80 dark:text-red-300/90 mt-2 leading-relaxed">
+                                            {booking.status === "in_progress"
+                                                ? "After you mark done, the client gets the same button on their booking. This turns green only when both sides are done."
+                                                : "They have limited time to confirm; the job completes when they tap Mark Job as Finished."}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        {/* ── HANDYMAN DONE: čekamo klijenta ── */}
-                        {booking.status === "handyman_done" && (
-                            <div className="p-5 bg-purple-50 dark:bg-zinc-800/60 border-2 border-purple-400 rounded-xl flex items-center gap-3 shadow-[4px_4px_0px_0px_#a855f7]">
-                                <Loader2 size={18} className="animate-spin text-purple-500 shrink-0" />
-                                <div>
-                                    <p className="font-black uppercase text-sm text-black dark:text-white">Waiting for client confirmation</p>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Client has 60 minutes to confirm. Auto-completes after.</p>
+                        {/* ── BOTH DONE: quick confirmation strip ── */}
+                        {booking.status === "completed" && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="rounded-xl border-2 border-green-500 bg-green-50 dark:bg-green-950/30 p-4 flex items-center gap-3 shadow-[3px_3px_0px_0px_#16a34a]">
+                                    <CheckCircle2 className="text-green-600 shrink-0" size={28} />
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-green-700 dark:text-green-400">Handyman</p>
+                                        <p className="font-black text-sm text-black dark:text-white">Marked job finished</p>
+                                    </div>
+                                </div>
+                                <div className="rounded-xl border-2 border-green-500 bg-green-50 dark:bg-green-950/30 p-4 flex items-center gap-3 shadow-[3px_3px_0px_0px_#16a34a]">
+                                    <CheckCircle2 className="text-green-600 shrink-0" size={28} />
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-green-700 dark:text-green-400">Client</p>
+                                        <p className="font-black text-sm text-black dark:text-white">Confirmed completion</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
