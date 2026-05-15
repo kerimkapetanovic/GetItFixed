@@ -158,6 +158,32 @@ class ProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+class UserSerializer(serializers.ModelSerializer):
+    location = serializers.CharField(source='city', default="Sarajevo")
+    phone_number = serializers.CharField(source='phone', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'phone_number',
+            'role',
+            'location',
+            'service_type',
+            'hourly_rate',
+            'rating',
+            'wallet_balance',
+            'date_joined',
+            'is_active',
+            'county',
+            'city',
+            'zip_code',
+        ]
+        read_only_fields = ['id', 'date_joined']
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True, min_length=8)

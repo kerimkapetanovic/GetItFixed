@@ -14,22 +14,12 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
-from .serializers import RegisterSerializer, ProfileSerializer, ChangePasswordSerializer
+from .serializers import RegisterSerializer, ProfileSerializer, ChangePasswordSerializer, UserSerializer
 from .authentication import CookieTokenAuthentication
 
 User = get_user_model()
 
-# --- SERIALIZERS ---
 
-class UserSerializer(serializers.ModelSerializer):
-    location = serializers.CharField(source='city', default="Sarajevo")
-    
-    class Meta:
-        model = User
-        fields = [
-            'id', 'first_name', 'last_name', 'email', 
-            'role', 'service_type', 'location', 'rating', 'hourly_rate'
-        ]
 
 class HandymanDirectorySerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
@@ -116,6 +106,12 @@ class EmailAuthSerializer(serializers.Serializer):
 
 
 # --- VIEWS ---
+
+class ListUsers(generics.ListAPIView):
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
 class HandymanListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny] 

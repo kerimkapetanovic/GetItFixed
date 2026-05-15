@@ -124,11 +124,11 @@ export default function Header() {
         ];
       case "admin":
         return [
-          { name: t("header.users"), href: "/admin/users" },
-          { name: t("header.tracking"), href: "/admin/tracking" },
-          { name: t("header.verification"), href: "/admin/verification" },
-          { name: t("header.services"), href: "/admin/services" },
-          { name: t("header.finances"), href: "/admin/finances" },
+          { name: t("header.users"), href: `/${username}/users` },
+          { name: t("header.tracking"), href: `/${username}/tracking` },
+          { name: t("header.verification"), href: `/${username}/verification` },
+          { name: t("header.services"), href: `/${username}/services` },
+          { name: t("header.finances"), href: `/${username}/finances` },
         ];
       default:
         return [];
@@ -229,8 +229,8 @@ export default function Header() {
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className={`flex items-center gap-3 border-2 border-black dark:border-white p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${isMenuOpen
-                    ? "rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1"
-                    : "rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
+                  ? "rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1"
+                  : "rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
                   }`}
               >
                 <div className="text-right hidden sm:block">
