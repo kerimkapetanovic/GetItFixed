@@ -5,6 +5,7 @@ import Header from '@/components/header';
 import Footer from '@/components/footer';
 import Link from 'next/link';
 import { useLanguage } from '@/components/providers/language-provider';
+import { HandymanNewTicketNotifier } from "@/components/HandymanNewTicketNotifier";
 import { 
   Search, 
   Zap, 
@@ -54,6 +55,7 @@ export default function Home() {
 
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
+      <HandymanNewTicketNotifier />
       <Header />
       
       <main className="flex-grow">

@@ -89,13 +89,76 @@ function getRequestState(request: BookingDetail) {
   };
 }
 
+type RequestFilterId =
+  | "all"
+  | "waiting"
+  | "expert_offer"
+  | "accepted"
+  | "completed"
+  | "canceled";
+
+const REQUEST_FILTERS: {
+  id: RequestFilterId;
+  label: string;
+  badgeClass?: string;
+}[] = [
+  { id: "all", label: "All" },
+  { id: "waiting", label: "Waiting for Response", badgeClass: "bg-yellow-400 text-black" },
+  { id: "expert_offer", label: "Expert Offer", badgeClass: "bg-purple-400 text-black" },
+  { id: "accepted", label: "Accepted", badgeClass: "bg-blue-400 text-black" },
+  { id: "completed", label: "Completed", badgeClass: "bg-green-400 text-black" },
+  { id: "canceled", label: "Canceled", badgeClass: "bg-red-400 text-black" },
+];
+
+function getRequestCategory(request: BookingDetail): Exclude<RequestFilterId, "all"> {
+  if (request.status === "cancelled" || request.negotiation_status === "declined") {
+    return "canceled";
+  }
+  if (request.status === "completed" || request.status === "closed") {
+    return "completed";
+  }
+  if (
+    request.status === "accepted" ||
+    request.status === "in_progress" ||
+    request.status === "handyman_done" ||
+    request.status === "not_completed" ||
+    request.status === "awaiting_payment" ||
+    request.status === "paid" ||
+    request.negotiation_status === "agreed"
+  ) {
+    return "accepted";
+  }
+  if (request.negotiation_status === "awaiting_client") {
+    return "expert_offer";
+  }
+  return "waiting";
+}
+
 export default function MyRequestsPage() {
   const params = useParams() as { username: string };
   const username = params.username;
 
   const [requests, setRequests] = useState<BookingDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<RequestFilterId>("all");
   const [now, setNow] = useState(new Date());
+
+  const filterCounts = REQUEST_FILTERS.reduce(
+    (acc, filter) => {
+      if (filter.id === "all") {
+        acc.all = requests.length;
+      } else {
+        acc[filter.id] = requests.filter((r) => getRequestCategory(r) === filter.id).length;
+      }
+      return acc;
+    },
+    {} as Record<RequestFilterId, number>
+  );
+
+  const filteredRequests =
+    activeFilter === "all"
+      ? requests
+      : requests.filter((req) => getRequestCategory(req) === activeFilter);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -165,6 +228,40 @@ export default function MyRequestsPage() {
           </p>
         </div>
 
+        {!loading && requests.length > 0 && (
+          <div
+            className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 mb-8"
+            style={cardStyle}
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {REQUEST_FILTERS.map((filter) => {
+                const isActive = activeFilter === filter.id;
+                const count = filterCounts[filter.id];
+                const colorClass =
+                  filter.id === "all"
+                    ? isActive
+                      ? "bg-[#EF9D39] text-black"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-gray-900 dark:text-white"
+                    : filter.badgeClass ?? "";
+
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setActiveFilter(filter.id)}
+                    className={`w-full px-2 py-2 border-2 border-black font-black text-[10px] uppercase rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:scale-[1.02] ${colorClass} ${
+                      isActive ? "ring-2 ring-black ring-offset-2 ring-offset-white dark:ring-offset-zinc-900" : "opacity-90"
+                    }`}
+                  >
+                    <span className="block leading-tight">{filter.label}</span>
+                    <span className="block text-[9px] opacity-90">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="w-full space-y-6">
           {loading ? (
             <div className="text-center font-bold animate-pulse uppercase">
@@ -174,8 +271,12 @@ export default function MyRequestsPage() {
             <div className="text-center font-bold text-gray-500 dark:text-zinc-400 uppercase">
               You have not posted any jobs yet.
             </div>
+          ) : filteredRequests.length === 0 ? (
+            <div className="text-center font-bold text-gray-500 dark:text-zinc-400 uppercase py-8">
+              No requests in this category.
+            </div>
           ) : (
-            requests.map((req) => (
+            filteredRequests.map((req) => (
               <div
                 key={req.id}
                 style={cardStyle}

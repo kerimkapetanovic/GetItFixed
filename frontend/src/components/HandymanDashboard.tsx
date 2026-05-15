@@ -11,10 +11,6 @@ import { JobTimer } from "@/components/JobTimer";
 import { useParams } from "next/navigation";
 
 import Link from "next/link";
-
-// --- POMOĆNA KOMPONENTA ZA TAJMER ---
-
-
 export default function HandymanDashboard() {
   const params = useParams() as { username: string };
   const username = params.username;
