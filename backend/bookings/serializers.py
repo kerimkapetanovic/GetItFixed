@@ -43,6 +43,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'handyman_proposed_time',
             'handyman_counter_message',
             'expires_at', 'updated_at', 'created_at',
+            'handyman_response_phase',
             'status',
             'negotiation_status',
             'duration_minutes',

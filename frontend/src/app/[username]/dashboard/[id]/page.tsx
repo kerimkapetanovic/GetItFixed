@@ -16,6 +16,11 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
 import { addMinutes } from "date-fns";
 import { BookingDetail } from "@/types/booking";
+import {
+    canHandymanSendOffer,
+    getPhaseHint,
+    getResponseDeadlineLabel,
+} from "@/lib/handymanDeadline";
 
 export const formatDateTime = (value: string | Date | null) => {
     if (!value) return "Not set";
@@ -200,6 +205,7 @@ export default function HandymanRequestDetailsPage() {
     const [actionLoading, setActionLoading] = useState(false);
     const [actionError, setActionError] = useState("");
     const [actionSuccess, setActionSuccess] = useState("");
+    const expiryHandledRef = useRef(false);
 
     // Job completion
     const [markDoneLoading, setMarkDoneLoading] = useState(false);
@@ -226,13 +232,48 @@ export default function HandymanRequestDetailsPage() {
         if (booking) setKnowsFix(!!booking.knows_fix);
     }, [booking]);
 
+    useEffect(() => {
+        if (booking && !canHandymanSendOffer(booking)) {
+            setAcceptOpen(false);
+        }
+    }, [booking?.handyman_response_phase]);
+
+    const handleNegotiationExpire = async () => {
+        if (!booking || expiryHandledRef.current) return;
+        expiryHandledRef.current = true;
+        try {
+            const res = await api.post(`/api/bookings/${booking.id}/expire/`);
+            setBooking(res.data.booking ?? res.data);
+            setAcceptOpen(false);
+            if (res.data.result === "post_proposal_started") {
+                setActionError("");
+                setActionSuccess("Client's requested time has passed. You can decline or send a counter offer — 3 hours left.");
+            } else if (res.data.result === "declined") {
+                setActionSuccess("Request expired and was declined automatically.");
+            }
+        } catch (e) {
+            console.error("Expire failed:", e);
+            expiryHandledRef.current = false;
+        }
+    };
+
+    useEffect(() => {
+        expiryHandledRef.current = false;
+    }, [booking?.id, booking?.expires_at, booking?.handyman_response_phase]);
+
     // Negotiation expiry timer
     useEffect(() => {
         if (!booking || booking.status === "accepted" || booking.status === "completed" || booking.status === "awaiting_payment" || booking.status === "paid" || booking.status === "closed") {
             setTimeLeft(0);
             return;
         }
-        const update = () => setTimeLeft(calculateTimeLeft(booking.expires_at));
+        const update = () => {
+            const left = calculateTimeLeft(booking.expires_at);
+            setTimeLeft(left);
+            if (left === 0 && shouldShowHandymanActions(booking)) {
+                handleNegotiationExpire();
+            }
+        };
         update();
         const interval = setInterval(update, 1000);
         return () => clearInterval(interval);
@@ -497,6 +538,8 @@ export default function HandymanRequestDetailsPage() {
 
     const statusInfo = getStatusInfo(booking);
     const showActions = shouldShowHandymanActions(booking);
+    const showSendOffer = showActions && canHandymanSendOffer(booking);
+    const phaseHint = getPhaseHint(booking);
 
     return (
         <div className="page-gradient flex flex-col min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950">
@@ -674,7 +717,7 @@ export default function HandymanRequestDetailsPage() {
                                 <div className="flex items-center gap-3">
                                     <Timer className="text-orange-500 animate-pulse" size={24} />
                                     <div>
-                                        <p className="text-[12px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">Response Deadline</p>
+                                        <p className="text-[12px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">{getResponseDeadlineLabel(booking)}</p>
                                         <p className="text-xl font-black text-black dark:text-white tabular-nums">{formatMs(timeLeft)}</p>
                                     </div>
                                 </div>
@@ -867,16 +910,24 @@ export default function HandymanRequestDetailsPage() {
                             </div>
                         )}
 
+                        {phaseHint && showActions && (
+                            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-500 rounded-2xl">
+                                <p className="text-xs font-bold text-amber-900 dark:text-amber-200">{phaseHint}</p>
+                            </div>
+                        )}
+
                         {/* Handyman action panel (accept/decline/counter) */}
                         {showActions && (
                             <div className="space-y-4">
                                 <div className="flex flex-wrap gap-3 justify-center">
+                                    {showSendOffer && (
                                     <button
                                         onClick={() => { setAcceptOpen(v => !v); setCounterOpen(false); clearActionMessages(); }}
                                         className="cursor-pointer bg-white text-black dark:bg-black dark:text-white border-[3px] border-black px-6 py-2.5 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#4ade80] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#4ade80] transition-all active:translate-y-1 active:shadow-none"
                                     >
                                         Send offer
                                     </button>
+                                    )}
                                     <button
                                         onClick={() => handleDecline()}
                                         disabled={actionLoading}
@@ -893,7 +944,7 @@ export default function HandymanRequestDetailsPage() {
                                 </div>
 
                                {/* Accept Form */}
-{acceptOpen && (
+{acceptOpen && showSendOffer && (
     <div className="p-4 md:p-5 border-[3px] border-black rounded-2xl bg-green-50 dark:bg-zinc-900 animate-in slide-in-from-top-2 shadow-[6px_6px_0px_0px_#000] space-y-3">
         <p className="text-xs font-black uppercase tracking-wide text-gray-700 dark:text-zinc-300">
             Enter how long the job should take and your total price. This is sent to the client to confirm — no payment happens until later in the flow.

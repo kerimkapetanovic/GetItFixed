@@ -113,16 +113,18 @@ export default function HandymanDashboard() {
   };
 
   const handleExpire = async (jobId: number) => {
-    setJobs((prevJobs) =>
-      prevJobs.map((job) =>
-        job.id === jobId ? { ...job, status: "cancelled" } : job
-      )
-    );
-
     try {
-      console.log(`Job #${jobId} has officially expired.`);
+      const res = await api.post(`/api/bookings/${jobId}/expire/`);
+      const updated = res.data.booking ?? res.data;
+      setJobs((prevJobs) =>
+        prevJobs.map((job) => (job.id === jobId ? { ...job, ...updated } : job))
+      );
+      if (res.data.result === "declined") {
+        await fetchJobs();
+      }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Expire failed:", error);
+      await fetchJobs();
     }
   };
   const handleCounterJob = async (jobId: number) => {

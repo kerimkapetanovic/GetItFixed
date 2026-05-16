@@ -19,6 +19,11 @@ from decimal import Decimal
 
 from .models import Booking
 from .serializers import BookingSerializer
+from .deadline_utils import (
+    set_handyman_response_deadline,
+    process_handyman_negotiation_expiry,
+    repair_stale_handyman_deadline,
+)
 from accounts.authentication import CookieTokenAuthentication 
 
 User = get_user_model()
@@ -72,6 +77,13 @@ class HandymanDashboardView(generics.ListAPIView):
             | Q(handyman=user, status='completed')
             | Q(handyman=user, status='not_completed')
         ).order_by('-id').distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        for booking in queryset:
+            repair_stale_handyman_deadline(booking)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AcceptJobView(APIView):
@@ -142,6 +154,14 @@ class HandymanNegotiationActionView(APIView):
             return Response(
                 {"error": "Action must be one of: accept, decline, counter."},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if action == 'accept' and booking.handyman_response_phase == 'after_client_time':
+            return Response(
+                {
+                    "error": "The client's requested time has passed. Send a counter offer with a new time, or decline."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # 1. AKCIJA: ACCEPT (Prihvatanje ponude)
@@ -253,8 +273,7 @@ class CreateBookingView(generics.CreateAPIView):
 
         # 3. Save the booking with the client and current status
         print(f"--- NEW JOB CREATED BY: {self.request.user.email} ---")
-        hours_to_expire = 1 if is_urgent else 3
-        serializer.save(
+        booking = serializer.save(
             client=self.request.user, 
             handyman=handyman,
             service_type=(
@@ -265,8 +284,10 @@ class CreateBookingView(generics.CreateAPIView):
             status=final_status,
             negotiation_status=negotiation_status,
             client_proposed_time=client_proposed_time,
-            expires_at=timezone.now() + timedelta(hours=hours_to_expire)
         )
+        if handyman and negotiation_status == 'awaiting_handyman':
+            set_handyman_response_deadline(booking)
+            booking.save(update_fields=['expires_at', 'handyman_response_phase', 'updated_at'])
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ClientRequestsView(generics.ListAPIView):
@@ -339,9 +360,8 @@ class ClientNegotiationActionView(APIView):
             # BITNO: Ne diraj scheduled_time dok majstor ne prihvati!
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_handyman'
-            _hr = 1 if booking.is_urgent else 3
-            booking.expires_at = timezone.now() + timedelta(hours=_hr)
             booking.last_action_by = 'client'
+            set_handyman_response_deadline(booking)
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
@@ -354,6 +374,13 @@ class BookingDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         return Booking.objects.filter(Q(client=user) | Q(handyman=user))
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        repair_stale_handyman_deadline(instance)
+        instance.refresh_from_db()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
     
 class TicketTrackingView(APIView):
     authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
@@ -399,19 +426,30 @@ class ExpireBookingView(APIView):
 
     def post(self, request, booking_id):
         try:
-            # Tražimo booking koji je još uvijek pending
             booking = Booking.objects.get(id=booking_id, status='pending')
-            
-            # Provjeravamo da li je stvarno vrijeme isteklo (dodatna sigurnost)
-            if booking.expires_at and timezone.now() >= booking.expires_at:
-                booking.status = 'cancelled'
-                booking.save()
-                return Response({"message": "Job expired successfully."}, status=status.HTTP_200_OK)
-            else:
-                return Response({"error": "Job has not expired yet."}, status=status.HTTP_400_BAD_REQUEST)
-                
         except Booking.DoesNotExist:
             return Response({"error": "Job not found or already processed."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not booking.expires_at or timezone.now() < booking.expires_at:
+            return Response({"error": "Job has not expired yet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = process_handyman_negotiation_expiry(booking)
+        booking.refresh_from_db()
+
+        if result == "no_op":
+            booking.status = 'cancelled'
+            if booking.negotiation_status in ('awaiting_handyman', 'none'):
+                booking.negotiation_status = 'declined'
+            booking.save(update_fields=['status', 'negotiation_status', 'updated_at'])
+
+        return Response(
+            {
+                "message": "Deadline processed.",
+                "result": result,
+                "booking": BookingSerializer(booking).data,
+            },
+            status=status.HTTP_200_OK,
+        )
         
 @method_decorator(csrf_exempt, name='dispatch')
 class CompleteBookingView(APIView):

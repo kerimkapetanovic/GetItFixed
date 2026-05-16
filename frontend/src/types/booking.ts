@@ -13,6 +13,7 @@ export type BookingStatus =
   | 'paid'
   | 'closed';
 export type NegotiationStatus = 'none' | 'awaiting_handyman' | 'awaiting_client' | 'agreed' | 'declined';
+export type HandymanResponsePhase = 'before_client_time' | 'after_client_time' | 'negotiation';
 
 export interface BookingDetail {
   id: number;
@@ -46,6 +47,7 @@ export interface BookingDetail {
   diagnostic_fee: string | null;      // Cijena dolaska (šalje se kao string/decimal sa beka)
   estimated_duration: number | null;  // Procjena u minutama (npr. 60, 90, 120)
   expires_at: string | null;          // ISO string za Countdown tajmer
+  handyman_response_phase?: HandymanResponsePhase;
   duration_minutes: number | null;    // Trajanje u minutama (ako je posao u toku ili završen)
   knows_fix: boolean | null;         // Da li majstor zna u čemu je problem (ako je true, onda se ne prikazuje Countdown i "I don't know" opcija)
 

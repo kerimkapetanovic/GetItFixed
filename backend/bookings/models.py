@@ -24,6 +24,11 @@ class Booking(models.Model):
         ('agreed', 'Agreed'),
         ('declined', 'Declined'),
     )
+    HANDYMAN_RESPONSE_PHASE_CHOICES = (
+        ('before_client_time', 'Before client proposed time'),
+        ('after_client_time', 'After client proposed time'),
+        ('negotiation', 'Counter-offer negotiation'),
+    )
     
     # Core Fields
     ticket_id = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True)
@@ -70,6 +75,11 @@ class Booking(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(null=True, blank=True)
+    handyman_response_phase = models.CharField(
+        max_length=30,
+        choices=HANDYMAN_RESPONSE_PHASE_CHOICES,
+        default='before_client_time',
+    )
     knows_fix = models.BooleanField(null=True, blank=True) 
     handyman_marked_done_at = models.DateTimeField(null=True, blank=True)
     

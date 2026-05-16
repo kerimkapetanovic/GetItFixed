@@ -58,10 +58,19 @@ export function HandymanNewTicketNotifier() {
     };
   }, [username, pickNextUnseen]);
 
-  const handleExpire = (jobId: number) => {
-    setJobs((prev) =>
-      prev.map((job) => (job.id === jobId ? { ...job, status: "cancelled" as const } : job))
-    );
+  const handleExpire = async (jobId: number) => {
+    try {
+      const res = await api.post(`/api/bookings/${jobId}/expire/`);
+      const updated = res.data.booking ?? res.data;
+      setJobs((prev) =>
+        prev.map((job) => (job.id === jobId ? { ...job, ...updated } : job))
+      );
+      setToastJob((current) =>
+        current?.id === jobId ? { ...current, ...updated } : current
+      );
+    } catch (error) {
+      console.error("Expire failed:", error);
+    }
   };
 
   const dismissToast = () => {

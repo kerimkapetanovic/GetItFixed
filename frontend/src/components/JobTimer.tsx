@@ -14,6 +14,10 @@ export const JobTimer = ({ expiresAt, onExpire }: JobTimerProps) => {
   const [hasExpired, setHasExpired] = useState(false);
 
   useEffect(() => {
+    setHasExpired(false);
+  }, [expiresAt]);
+
+  useEffect(() => {
     if (!expiresAt) return;
 
     const calculate = () => {
