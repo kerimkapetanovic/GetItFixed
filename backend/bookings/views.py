@@ -76,6 +76,8 @@ class HandymanDashboardView(generics.ListAPIView):
             | Q(handyman=user, status='closed')
             | Q(handyman=user, status='completed')
             | Q(handyman=user, status='not_completed')
+            | Q(handyman=user, status='cancelled')
+            | Q(handyman=user, negotiation_status='declined')
         ).order_by('-id').distinct()
 
     def list(self, request, *args, **kwargs):
@@ -141,10 +143,22 @@ class HandymanNegotiationActionView(APIView):
 
     def post(self, request, booking_id):
         try:
-            # Pronalazimo booking koji pripada ovom majstoru
             booking = Booking.objects.get(id=booking_id, handyman=request.user)
         except Booking.DoesNotExist:
-            return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+            action = request.data.get('action')
+            if action == 'decline':
+                try:
+                    booking = Booking.objects.get(
+                        id=booking_id,
+                        status='pending',
+                        handyman__isnull=True,
+                        service_type=request.user.service_type,
+                    )
+                    booking.handyman = request.user
+                except Booking.DoesNotExist:
+                    return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
 
         action = request.data.get('action')
         duration = request.data.get('duration_minutes') # Hvatanje sati sa frontenda
@@ -373,7 +387,15 @@ class BookingDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return Booking.objects.filter(Q(client=user) | Q(handyman=user))
+        return Booking.objects.filter(
+            Q(client=user)
+            | Q(handyman=user)
+            | Q(
+                status='pending',
+                handyman__isnull=True,
+                service_type=user.service_type,
+            )
+        )
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()

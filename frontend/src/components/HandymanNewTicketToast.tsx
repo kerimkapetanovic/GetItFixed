@@ -33,7 +33,7 @@ export function HandymanNewTicketToast({
   return (
     <div
       role="alert"
-      className="fixed bottom-6 right-6 z-[200] w-[min(340px,calc(100vw-2rem))] handyman-toast-enter"
+      className="pointer-events-auto w-[min(340px,calc(100vw-2rem))] handyman-toast-enter"
     >
       <div
         className={`relative bg-white dark:bg-zinc-800 border-[3px] p-4 rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] ${

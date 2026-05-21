@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import api from "../../lib/axios";
-import { Clock, Briefcase, CheckCircle, Loader2, CalendarIcon, X, Send, Timer, ArrowUpRight } from "lucide-react";
+import { Clock, Briefcase, CheckCircle, Loader2, CalendarIcon, X, Send, Timer, ArrowUpRight, AlertCircle } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../app/datepicker-custom.css";
@@ -11,6 +11,54 @@ import { JobTimer } from "@/components/JobTimer";
 import { useParams } from "next/navigation";
 
 import Link from "next/link";
+
+type DashboardFilterId = "all" | "available" | "active" | "rejected";
+
+const DASHBOARD_FILTERS: {
+  id: DashboardFilterId;
+  label: string;
+  badgeClass?: string;
+}[] = [
+  { id: "all", label: "All" },
+  { id: "available", label: "Available Requests", badgeClass: "bg-[#EF9D39] text-black" },
+  { id: "active", label: "My Active Jobs", badgeClass: "bg-blue-400 text-black" },
+  { id: "rejected", label: "Rejected Requests", badgeClass: "bg-red-400 text-black" },
+];
+
+function isRejectedJob(job: BookingDetail) {
+  return job.status === "cancelled" || job.negotiation_status === "declined";
+}
+
+function isAvailableJob(job: BookingDetail) {
+  return job.status === "pending" && !isRejectedJob(job);
+}
+
+function isAwaitingClientOffer(job: BookingDetail) {
+  return job.negotiation_status === "awaiting_client" && !isRejectedJob(job);
+}
+
+function isActiveJob(job: BookingDetail) {
+  return (
+    [
+      "accepted",
+      "in_progress",
+      "handyman_done",
+      "not_completed",
+      "awaiting_payment",
+      "paid",
+      "closed",
+      "completed",
+    ].includes(job.status) && !isRejectedJob(job)
+  );
+}
+
+function getJobCategory(job: BookingDetail): Exclude<DashboardFilterId, "all"> {
+  if (isRejectedJob(job)) return "rejected";
+  if (isAvailableJob(job)) return "available";
+  if (isActiveJob(job)) return "active";
+  return "rejected";
+}
+
 export default function HandymanDashboard() {
   const params = useParams() as { username: string };
   const username = params.username;
@@ -24,6 +72,7 @@ export default function HandymanDashboard() {
   >({});
   const [counterOpenFor, setCounterOpenFor] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string>("");
+  const [activeFilter, setActiveFilter] = useState<DashboardFilterId>("all");
 
   const updateJobValue = (jobId: number, field: string, value: any) => {
     setCounterValues((prev) => ({
@@ -163,16 +212,69 @@ export default function HandymanDashboard() {
     }
   };
 
-  const pendingJobs = jobs.filter((j) => j.status === "pending");
-  const acceptedJobs = jobs.filter((j) =>
-    ["accepted", "in_progress", "handyman_done", "not_completed", "awaiting_payment", "paid", "closed"].includes(j.status)
+  const pendingJobs = jobs.filter(isAvailableJob);
+  const acceptedJobs = jobs.filter(isActiveJob);
+  const rejectedJobs = jobs.filter(isRejectedJob);
+
+  const filterCounts = DASHBOARD_FILTERS.reduce(
+    (acc, filter) => {
+      if (filter.id === "all") {
+        acc.all = jobs.length;
+      } else {
+        acc[filter.id] = jobs.filter((j) => getJobCategory(j) === filter.id).length;
+      }
+      return acc;
+    },
+    {} as Record<DashboardFilterId, number>
   );
-  const cancelledJobs = jobs.filter((j) => j.status === "cancelled" || j.status === "declined");
+
+  const showAvailable = activeFilter === "all" || activeFilter === "available";
+  const showActive = activeFilter === "all" || activeFilter === "active";
+  const showRejected = activeFilter === "all" || activeFilter === "rejected";
+
+  const cardStyle = { borderRadius: "24px" };
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="space-y-8 mt-10 p-4 max-w-6xl mx-auto">
+      {jobs.length > 0 && (
+        <div
+          className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4"
+          style={cardStyle}
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {DASHBOARD_FILTERS.map((filter) => {
+              const isActive = activeFilter === filter.id;
+              const count = filterCounts[filter.id];
+              const colorClass =
+                filter.id === "all"
+                  ? isActive
+                    ? "bg-[#EF9D39] text-black"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-gray-900 dark:text-white"
+                  : filter.badgeClass ?? "";
+
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.id)}
+                  className={`w-full px-2 py-2 border-2 border-black font-black text-[10px] uppercase rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:scale-[1.02] ${colorClass} ${
+                    isActive
+                      ? "ring-2 ring-black ring-offset-2 ring-offset-white dark:ring-offset-zinc-900"
+                      : "opacity-90"
+                  }`}
+                >
+                  <span className="block leading-tight">{filter.label}</span>
+                  <span className="block text-[9px] opacity-90">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {showAvailable && (
       <div>
         <h2 className="text-2xl font-black uppercase mb-4 flex items-center gap-2 text-black dark:text-white">
           <Clock className="text-[#EF9D39]" strokeWidth={3} /> Available Requests
@@ -181,26 +283,35 @@ export default function HandymanDashboard() {
 
         <div className="grid gap-4">
           {pendingJobs.length > 0 ? (
-            pendingJobs.map((job) => (
+            pendingJobs.map((job) => {
+              const awaitingClient = isAwaitingClientOffer(job);
+              return (
               <div
                 key={job.id}
-                className={`relative bg-white dark:bg-zinc-800 border-[3px] p-5 rounded-2xl transition-all ${job.is_urgent
-                  ? "border-red-600 shadow-[8px_8px_0px_0px_#dc2626] bg-red-50/30"
-                  : "border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
-                  }`}
+                className={`relative bg-white dark:bg-zinc-800 border-[3px] p-5 rounded-2xl transition-all ${
+                  job.is_urgent && !awaitingClient
+                    ? "border-red-600 shadow-[8px_8px_0px_0px_#dc2626] bg-red-50/30"
+                    : awaitingClient
+                      ? "border-purple-500 shadow-[5px_5px_0px_0px_#a855f7]"
+                      : "border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]"
+                }`}
               >
-                {/* HITNI BEDŽ */}
-                {job.is_urgent && (
+                {job.is_urgent && !awaitingClient && (
                   <div className="absolute -top-3 -right-3 bg-red-600 text-white px-3 py-1 rounded-lg font-black uppercase text-[10px] border-2 border-black animate-bounce shadow-[3px_3px_0px_0px_#000]">
                     Urgent +50% BAM
                   </div>
                 )}
 
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  {/* LIJEVA STRANA: INFO O POSLU */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <span className="bg-black text-[#EF9D39] px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase">
+                      <span
+                        className={`px-2 py-0.5 rounded-md font-black text-[12px] tracking-widest uppercase ${
+                          awaitingClient
+                            ? "bg-purple-500 text-white"
+                            : "bg-black text-[#EF9D39]"
+                        }`}
+                      >
                         #{job.ticket_id}
                       </span>
                       <JobTimer expiresAt={job.expires_at}
@@ -208,7 +319,11 @@ export default function HandymanDashboard() {
                     </div>
 
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-[#EF9D39]">
+                      <span
+                        className={`text-[10px] font-black uppercase ${
+                          awaitingClient ? "text-purple-500" : "text-[#EF9D39]"
+                        }`}
+                      >
                         🔧 {job.service_type}
                       </span>
                       <h3 className="font-black text-lg uppercase leading-tight dark:text-white">
@@ -217,42 +332,58 @@ export default function HandymanDashboard() {
                       <p className="text-sm font-bold text-gray-500">{job.description}</p>
                     </div>
 
-                    {job.client_proposed_time && (
-                      <p className="text-xs font-black uppercase text-blue-500">
-                        Client requested: {formatDateTime(job.client_proposed_time)}
+                    {awaitingClient ? (
+                      <p className="text-xs font-black uppercase text-purple-500">
+                        Offer sent — waiting for client to confirm
                       </p>
+                    ) : (
+                      job.client_proposed_time && (
+                        <p className="text-xs font-black uppercase text-blue-500">
+                          Client requested: {formatDateTime(job.client_proposed_time)}
+                        </p>
+                      )
                     )}
                   </div>
 
-                  {/* DESNA STRANA: AKCIJE ILI STATUS */}
-                  <div className="flex flex-wrap gap-2 md:justify-end md:w-[40%]">
-
-                    <div className="flex justify-end mt-4">
-                      <Link
-                        href={`/${username}/dashboard/${job.id}`}
-                        className="group flex items-center gap-4 border-[3px] border-black bg-white px-6 py-3 font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none"
-                        style={{ borderRadius: "20px" }}
-                      >
-                        <span className="text-black">View Details</span>
-                        <span className="flex items-center justify-center rounded-full bg-black p-1.5 transition-colors group-hover:bg-white">
-                          <ArrowUpRight
-                            size={16}
-                            className="text-white transition-transform group-hover:rotate-45 group-hover:text-black"
-                          />
+                  <div className="flex flex-wrap items-center gap-3 md:justify-end md:w-[40%]">
+                    {awaitingClient && (
+                      <div className="flex flex-col items-center gap-1 shrink-0">
+                        <AlertCircle className="text-purple-500" size={28} strokeWidth={3} />
+                        <span className="text-[10px] font-black uppercase text-purple-500">
+                          Awaiting Client
                         </span>
-                      </Link>
-                    </div>
+                      </div>
+                    )}
+                    <Link
+                      href={`/${username}/dashboard/${job.id}`}
+                      className={`group flex items-center gap-4 border-[3px] border-black bg-white px-6 py-3 font-black uppercase text-xs tracking-[0.2em] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${
+                        awaitingClient
+                          ? "shadow-[8px_8px_0px_0px_#a855f7] hover:bg-purple-400"
+                          : "shadow-[8px_8px_0px_0px_#000] hover:bg-[#EF9D39]"
+                      }`}
+                      style={{ borderRadius: "20px" }}
+                    >
+                      <span className="text-black">View Details</span>
+                      <span className="flex items-center justify-center rounded-full bg-black p-1.5 transition-colors group-hover:bg-white">
+                        <ArrowUpRight
+                          size={16}
+                          className="text-white transition-transform group-hover:rotate-45 group-hover:text-black"
+                        />
+                      </span>
+                    </Link>
                   </div>
                 </div>
               </div>
-            ))
+            );
+            })
           ) : (
             <p className="italic text-gray-400">No pending requests.</p>
           )}
         </div>
       </div>
+      )}
 
-      {/* --- MY ACTIVE JOBS --- */}
+      {showActive && (
       <div>
         <h2 className="text-2xl font-black uppercase mb-4 flex items-center gap-2 text-black dark:text-white">
           <Briefcase className="text-blue-500" strokeWidth={3} /> My Active Jobs
@@ -316,15 +447,16 @@ export default function HandymanDashboard() {
           )}
         </div>
       </div>
+      )}
 
-      {/* --- REJECTED / DENIED JOBS --- */}
+      {showRejected && (
       <div className="opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
         <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-2 text-gray-500 dark:text-gray-400">
           <X className="text-red-500" strokeWidth={3} /> Rejected Requests
         </h2>
         <div className="grid gap-3">
-          {cancelledJobs.length > 0 ? (
-            cancelledJobs.map((job) => (
+          {rejectedJobs.length > 0 ? (
+            rejectedJobs.map((job) => (
               <div key={job.id} className="bg-gray-50 dark:bg-zinc-900 border-[3px] border-gray-300 p-4 rounded-2xl flex justify-between items-center border-dashed">
                 <div>
                   <div className="flex items-center gap-2">
@@ -340,7 +472,10 @@ export default function HandymanDashboard() {
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-black uppercase bg-red-100 text-red-600 px-2 py-1 rounded-md border border-red-200">
-                    {job.status === "cancelled" ? "Expired" : "Declined"}                  </span>
+                    {job.status === "cancelled" && job.negotiation_status !== "declined"
+                      ? "Expired"
+                      : "Declined"}
+                  </span>
                 </div>
               </div>
             ))
@@ -349,6 +484,16 @@ export default function HandymanDashboard() {
           )}
         </div>
       </div>
+      )}
+
+      {activeFilter !== "all" &&
+        ((activeFilter === "available" && pendingJobs.length === 0) ||
+          (activeFilter === "active" && acceptedJobs.length === 0) ||
+          (activeFilter === "rejected" && rejectedJobs.length === 0)) && (
+          <p className="text-center font-bold text-gray-500 dark:text-zinc-400 uppercase text-sm py-8">
+            No requests in this category.
+          </p>
+        )}
     </div>
   );
 }
