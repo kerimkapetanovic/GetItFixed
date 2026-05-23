@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Booking
+from .models import Booking, Quote, QuoteLineItem, EscrowHold
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -13,6 +13,8 @@ class BookingSerializer(serializers.ModelSerializer):
     handyman_phone = serializers.SerializerMethodField()
     handyman_id = serializers.SerializerMethodField()
     estimated_price = serializers.ReadOnlyField(source='get_estimated_price')
+    latest_quote = serializers.SerializerMethodField()
+    latest_escrow_hold = serializers.SerializerMethodField()
     
     handyman = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
@@ -49,10 +51,20 @@ class BookingSerializer(serializers.ModelSerializer):
             'duration_minutes',
             'agreed_price',
             'estimated_price',
+            'visit_fee_amount',
+            'visit_fee_paid_at',
+            'continue_job_requested',
+            'continue_job_confirmed',
+            'job_continued_at',
+            'quote_status',
+            'quote_locked_amount',
+            'funds_locked_at',
             'payment_amount',
             'paid_at',
             'last_action_by',
             'knows_fix',
+            'latest_quote',
+            'latest_escrow_hold',
             
         ]
         read_only_fields = [
@@ -106,3 +118,90 @@ class BookingSerializer(serializers.ModelSerializer):
         if obj.client:
             return obj.client.phone
         return None
+
+    def get_latest_quote(self, obj):
+        quote = obj.quotes.order_by('-version', '-created_at').first()
+        if not quote:
+            return None
+        return QuoteSerializer(quote).data
+
+    def get_latest_escrow_hold(self, obj):
+        hold = obj.escrow_holds.order_by('-created_at').first()
+        if not hold:
+            return None
+        return EscrowHoldSerializer(hold).data
+
+
+class QuoteLineItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuoteLineItem
+        fields = [
+            'id',
+            'category',
+            'description',
+            'quantity',
+            'unit_price',
+            'line_total',
+            'sort_order',
+        ]
+        read_only_fields = ['id', 'line_total']
+
+
+class QuoteSerializer(serializers.ModelSerializer):
+    line_items = QuoteLineItemSerializer(many=True)
+
+    class Meta:
+        model = Quote
+        fields = [
+            'id',
+            'booking',
+            'handyman',
+            'version',
+            'status',
+            'subtotal_materials',
+            'subtotal_labor',
+            'subtotal_other',
+            'total_amount',
+            'notes',
+            'submitted_at',
+            'client_decision_at',
+            'is_active',
+            'created_at',
+            'updated_at',
+            'line_items',
+        ]
+        read_only_fields = [
+            'id',
+            'booking',
+            'handyman',
+            'version',
+            'subtotal_materials',
+            'subtotal_labor',
+            'subtotal_other',
+            'total_amount',
+            'submitted_at',
+            'client_decision_at',
+            'created_at',
+            'updated_at',
+        ]
+
+
+class EscrowHoldSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EscrowHold
+        fields = [
+            'id',
+            'booking',
+            'quote',
+            'client',
+            'handyman',
+            'amount',
+            'status',
+            'reason',
+            'locked_at',
+            'released_at',
+            'refunded_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields

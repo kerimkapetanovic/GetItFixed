@@ -6,7 +6,7 @@ import React, { useState, useEffect } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../../../../lib/axios";
-import { ArrowUpRight, Timer } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
 import { BookingDetail } from "@/types/booking"; // Uvezi svoj centralni tip
 import { JobTimer } from "@/components/JobTimer";
@@ -39,6 +39,30 @@ function getRequestState(request: BookingDetail) {
       label: "In Progress",
       badgeClass: "bg-violet-400 text-black",
       message: "Handyman is currently working on your request.",
+    };
+  }
+
+  if (request.status === "visit_fee_paid") {
+    return {
+      label: "Visit Fee Paid",
+      badgeClass: "bg-sky-300 text-black",
+      message: "Initial visit fee step is done. Continue-job decision is active.",
+    };
+  }
+
+  if (request.status === "quote_pending_client") {
+    return {
+      label: "Quote Pending",
+      badgeClass: "bg-indigo-300 text-black",
+      message: "Handyman sent an itemized quote. Open details to accept or reject.",
+    };
+  }
+
+  if (request.status === "funds_locked") {
+    return {
+      label: "Funds Locked",
+      badgeClass: "bg-cyan-300 text-black",
+      message: "Quote accepted and funds are reserved in escrow.",
     };
   }
 
@@ -120,6 +144,9 @@ function getRequestCategory(request: BookingDetail): Exclude<RequestFilterId, "a
   if (
     request.status === "accepted" ||
     request.status === "in_progress" ||
+    request.status === "visit_fee_paid" ||
+    request.status === "quote_pending_client" ||
+    request.status === "funds_locked" ||
     request.status === "handyman_done" ||
     request.status === "not_completed" ||
     request.status === "awaiting_payment" ||
@@ -141,7 +168,6 @@ export default function MyRequestsPage() {
   const [requests, setRequests] = useState<BookingDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<RequestFilterId>("all");
-  const [now, setNow] = useState(new Date());
 
   const filterCounts = REQUEST_FILTERS.reduce(
     (acc, filter) => {
@@ -160,20 +186,6 @@ export default function MyRequestsPage() {
       ? requests
       : requests.filter((req) => getRequestCategory(req) === activeFilter);
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getTimeLeft = (expiresAt: string | null) => {
-    if (!expiresAt) return null;
-    const diff = new Date(expiresAt).getTime() - now.getTime();
-    if (diff <= 0) return null;
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
-  };
   const handleExpire = async (bookingId: number) => {
     try {
       // 1. Opcionalno: Pozovi backend da klijent automatski "decline-uje" jer je isteklo
@@ -181,7 +193,11 @@ export default function MyRequestsPage() {
       setRequests((prev) =>
         prev.map((req) =>
           req.id === bookingId
-            ? { ...req, status: "cancelled" as any, negotiation_status: "declined" as any }
+            ? {
+              ...req,
+              status: "cancelled" as BookingDetail["status"],
+              negotiation_status: "declined" as BookingDetail["negotiation_status"],
+            }
             : req
         )
       );
@@ -311,7 +327,14 @@ export default function MyRequestsPage() {
                             </span>
                           )}
                           <span>
-                            {req.status !== 'accepted' && req.status !== 'completed' && req.status !== 'cancelled' && req.status !== 'handyman_done' && req.status !== 'not_completed' && (
+                            {req.status !== 'accepted' &&
+                              req.status !== 'completed' &&
+                              req.status !== 'cancelled' &&
+                              req.status !== 'handyman_done' &&
+                              req.status !== 'not_completed' &&
+                              req.status !== 'visit_fee_paid' &&
+                              req.status !== 'quote_pending_client' &&
+                              req.status !== 'funds_locked' && (
                               <JobTimer
                                 expiresAt={req.expires_at}
                                 onExpire={() => handleExpire(req.id)}

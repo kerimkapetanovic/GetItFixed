@@ -17,13 +17,14 @@ from django.shortcuts import get_object_or_404 # Dodaj ovo ako fali
 from django.db import transaction
 from decimal import Decimal
 
-from .models import Booking
-from .serializers import BookingSerializer
+from .models import Booking, Quote, QuoteLineItem, EscrowHold
+from .serializers import BookingSerializer, QuoteSerializer, EscrowHoldSerializer
 from .deadline_utils import (
     set_handyman_response_deadline,
     process_handyman_negotiation_expiry,
     repair_stale_handyman_deadline,
 )
+from .escrow_service import lock_client_funds, release_funds_to_handyman
 from accounts.authentication import CookieTokenAuthentication 
 
 User = get_user_model()
@@ -70,6 +71,11 @@ class HandymanDashboardView(generics.ListAPIView):
             | Q(handyman=user, negotiation_status='awaiting_client')
             | Q(handyman=user, status='accepted')
             | Q(handyman=user, status='in_progress')
+            | Q(handyman=user, status='visit_completed')
+            | Q(handyman=user, status='visit_fee_pending')
+            | Q(handyman=user, status='visit_fee_paid')
+            | Q(handyman=user, status='quote_pending_client')
+            | Q(handyman=user, status='funds_locked')
             | Q(handyman=user, status='handyman_done')
             | Q(handyman=user, status='awaiting_payment')
             | Q(handyman=user, status='paid')
@@ -472,7 +478,211 @@ class ExpireBookingView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-        
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ContinueJobView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        if request.user != booking.client:
+            return Response({"error": "Only the client can decide to continue."}, status=403)
+
+        continue_job = request.data.get("continue_job")
+        if continue_job is None:
+            return Response({"error": "continue_job is required."}, status=400)
+
+        continue_job = str(continue_job).lower() in {"1", "true", "yes", "on"}
+        booking.continue_job_requested = True
+        booking.continue_job_confirmed = continue_job
+        if continue_job:
+            booking.job_continued_at = timezone.now()
+            booking.quote_status = "draft"
+            booking.status = "visit_fee_paid"
+        else:
+            booking.status = "closed"
+        booking.save(
+            update_fields=[
+                "continue_job_requested",
+                "continue_job_confirmed",
+                "job_continued_at",
+                "quote_status",
+                "status",
+                "updated_at",
+            ]
+        )
+        return Response(BookingSerializer(booking).data, status=200)
+
+
+def _normalize_line_items(items):
+    totals = {
+        "materials": Decimal("0.00"),
+        "labor": Decimal("0.00"),
+        "other": Decimal("0.00"),
+        "total": Decimal("0.00"),
+    }
+    normalized = []
+    for idx, item in enumerate(items):
+        category = (item.get("category") or "other").strip().lower()
+        if category not in {"materials", "labor", "other"}:
+            raise ValueError(f"Invalid category for line item {idx + 1}.")
+        description = (item.get("description") or "").strip()
+        if not description:
+            raise ValueError(f"Description is required for line item {idx + 1}.")
+        quantity = Decimal(str(item.get("quantity", "1"))).quantize(Decimal("0.01"))
+        unit_price = Decimal(str(item.get("unit_price", "0"))).quantize(Decimal("0.01"))
+        if quantity <= 0 or unit_price < 0:
+            raise ValueError(f"Invalid quantity/unit_price for line item {idx + 1}.")
+        line_total = (quantity * unit_price).quantize(Decimal("0.01"))
+        totals[category] += line_total
+        totals["total"] += line_total
+        normalized.append(
+            {
+                "category": category,
+                "description": description,
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "line_total": line_total,
+                "sort_order": int(item.get("sort_order", idx)),
+            }
+        )
+    return normalized, totals
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CreateQuoteView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        if request.user != booking.handyman:
+            return Response({"error": "Only assigned handyman can create quote."}, status=403)
+        if booking.continue_job_confirmed is not True:
+            return Response({"error": "Client has not approved continue-job flow yet."}, status=400)
+
+        line_items = request.data.get("line_items")
+        if not isinstance(line_items, list) or not line_items:
+            return Response({"error": "line_items must be a non-empty list."}, status=400)
+
+        try:
+            normalized_items, totals = _normalize_line_items(line_items)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=400)
+
+        with transaction.atomic():
+            Quote.objects.filter(booking=booking, is_active=True).update(is_active=False)
+            latest = Quote.objects.filter(booking=booking).order_by("-version").first()
+            version = (latest.version + 1) if latest else 1
+
+            quote = Quote.objects.create(
+                booking=booking,
+                handyman=request.user,
+                version=version,
+                status="pending_client",
+                subtotal_materials=totals["materials"],
+                subtotal_labor=totals["labor"],
+                subtotal_other=totals["other"],
+                total_amount=totals["total"],
+                notes=(request.data.get("notes") or "").strip() or None,
+                submitted_at=timezone.now(),
+                is_active=True,
+            )
+            QuoteLineItem.objects.bulk_create(
+                [
+                    QuoteLineItem(
+                        quote=quote,
+                        category=item["category"],
+                        description=item["description"],
+                        quantity=item["quantity"],
+                        unit_price=item["unit_price"],
+                        line_total=item["line_total"],
+                        sort_order=item["sort_order"],
+                    )
+                    for item in normalized_items
+                ]
+            )
+            booking.quote_status = "pending_client"
+            booking.status = "quote_pending_client"
+            booking.save(update_fields=["quote_status", "status", "updated_at"])
+
+        return Response(QuoteSerializer(quote).data, status=201)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class LatestQuoteView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        if request.user not in (booking.client, booking.handyman):
+            return Response({"error": "Forbidden."}, status=403)
+        quote = booking.quotes.order_by("-version", "-created_at").first()
+        if not quote:
+            return Response({"error": "No quote found for this booking."}, status=404)
+        return Response(QuoteSerializer(quote).data, status=200)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class QuoteClientActionView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id, quote_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        if request.user != booking.client:
+            return Response({"error": "Only client can act on quote."}, status=403)
+
+        quote = get_object_or_404(Quote, id=quote_id, booking=booking)
+        action = (request.data.get("action") or "").strip().lower()
+        if action not in {"accept", "reject", "counter"}:
+            return Response({"error": "Action must be accept, reject, or counter."}, status=400)
+
+        if action == "accept":
+            try:
+                hold = lock_client_funds(booking=booking, quote=quote, actor=request.user)
+            except Exception as exc:
+                return Response({"error": str(exc)}, status=400)
+            return Response(
+                {
+                    "booking": BookingSerializer(booking).data,
+                    "quote": QuoteSerializer(quote).data,
+                    "escrow": EscrowHoldSerializer(hold).data,
+                },
+                status=200,
+            )
+
+        quote.status = "rejected" if action == "reject" else "countered"
+        quote.client_decision_at = timezone.now()
+        quote.is_active = action == "counter"
+        quote.save(update_fields=["status", "client_decision_at", "is_active", "updated_at"])
+
+        booking.quote_status = quote.status
+        if action == "reject":
+            booking.status = "visit_fee_paid"
+        booking.save(update_fields=["quote_status", "status", "updated_at"])
+        return Response(QuoteSerializer(quote).data, status=200)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class EscrowStatusView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        if request.user not in (booking.client, booking.handyman):
+            return Response({"error": "Forbidden."}, status=403)
+
+        hold = booking.escrow_holds.order_by("-created_at").first()
+        if not hold:
+            return Response({"booking_id": booking.id, "escrow": None}, status=200)
+        return Response({"booking_id": booking.id, "escrow": EscrowHoldSerializer(hold).data}, status=200)
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CompleteBookingView(APIView):
     authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
@@ -491,10 +701,21 @@ class CompleteBookingView(APIView):
         if action == 'pay':
             if user != booking.client:
                 return Response({"error": "Only the client can pay."}, status=403)
-            if booking.status != 'awaiting_payment':
+            if booking.status not in {'awaiting_payment', 'funds_locked'}:
                 return Response({"error": "Payment is not pending for this booking."}, status=400)
             if not booking.handyman_id:
                 return Response({"error": "No handyman assigned."}, status=400)
+
+            if booking.status == "funds_locked":
+                hold = booking.escrow_holds.filter(status="locked").order_by("-created_at").first()
+                if not hold:
+                    return Response({"error": "No active escrow hold found."}, status=400)
+                try:
+                    release_funds_to_handyman(hold=hold)
+                except Exception as exc:
+                    return Response({"error": str(exc)}, status=400)
+                booking.refresh_from_db()
+                return Response(BookingSerializer(booking).data, status=200)
 
             amount = booking.get_payment_amount_decimal()
             client_preview = booking.client.wallet_balance or Decimal("0")

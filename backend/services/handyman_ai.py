@@ -224,6 +224,11 @@ def _call_gemini(user_message: str, service_types: list[str], api_key: str) -> d
         f"{_build_system_prompt(service_types)}\n\n"
         f"User Problem: {user_message}\n"
     )
+    logger.warning(
+        "Initializing Gemini client (GEMINI_API_KEY present=%s, length=%s)",
+        bool(api_key),
+        len(api_key),
+    )
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=GEMINI_MODEL_NAME,
@@ -273,6 +278,11 @@ def classify_problem_to_service(user_message: str) -> dict[str, str]:
         return build_no_match_response()
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    logger.warning(
+        "GEMINI_API_KEY resolved at classification time (present=%s, length=%s)",
+        bool(api_key),
+        len(api_key),
+    )
     if not api_key:
         logger.warning("GEMINI_API_KEY is missing. Returning no-match fallback.")
         return build_no_match_response()
@@ -287,6 +297,7 @@ def classify_problem_to_service(user_message: str) -> dict[str, str]:
             )
             return _validate_ai_payload(payload, service_types)
         except Exception as exc:
+            logger.error("GEMINI ERROR: %s: %s", type(exc).__name__, exc)
             status_code = getattr(exc, "status_code", None)
             is_quota_error = status_code == 429 or "429" in str(exc)
             if is_quota_error and (GeminiClientError is None or isinstance(exc, GeminiClientError)):

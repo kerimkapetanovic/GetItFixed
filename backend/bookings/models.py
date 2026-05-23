@@ -9,6 +9,11 @@ class Booking(models.Model):
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
         ('in_progress', 'In Progress'),   # NOVO — termin je počeo
+        ('visit_completed', 'Visit Completed'),
+        ('visit_fee_pending', 'Visit Fee Pending'),
+        ('visit_fee_paid', 'Visit Fee Paid'),
+        ('quote_pending_client', 'Quote Pending Client'),
+        ('funds_locked', 'Funds Locked'),
         ('handyman_done', 'Handyman Done'), # NOVO — majstor kliknuo "Job Finished"
         ('not_completed', 'Not Completed'),
         ('awaiting_payment', 'Awaiting Payment'),
@@ -16,6 +21,15 @@ class Booking(models.Model):
         ('closed', 'Closed'),
         ('completed', 'Completed'),  # legacy terminal state
         ('cancelled', 'Cancelled'),
+    )
+    QUOTE_STATUS_CHOICES = (
+        ('none', 'None'),
+        ('draft', 'Draft'),
+        ('pending_client', 'Pending Client Decision'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+        ('countered', 'Countered'),
+        ('expired', 'Expired'),
     )
     NEGOTIATION_STATUS_CHOICES = (
         ('none', 'None'),
@@ -82,6 +96,18 @@ class Booking(models.Model):
     )
     knows_fix = models.BooleanField(null=True, blank=True) 
     handyman_marked_done_at = models.DateTimeField(null=True, blank=True)
+    visit_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    visit_fee_paid_at = models.DateTimeField(null=True, blank=True)
+    continue_job_requested = models.BooleanField(default=False)
+    continue_job_confirmed = models.BooleanField(null=True, blank=True)
+    job_continued_at = models.DateTimeField(null=True, blank=True)
+    quote_status = models.CharField(
+        max_length=20,
+        choices=QUOTE_STATUS_CHOICES,
+        default='none',
+    )
+    quote_locked_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    funds_locked_at = models.DateTimeField(null=True, blank=True)
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     negotiation_status = models.CharField(
@@ -169,3 +195,132 @@ class Booking(models.Model):
                 return False 
                 
         return True
+
+
+class Quote(models.Model):
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('pending_client', 'Pending Client Decision'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+        ('countered', 'Countered'),
+        ('expired', 'Expired'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='quotes')
+    handyman = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='created_quotes',
+    )
+    version = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    subtotal_materials = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    subtotal_labor = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    subtotal_other = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    notes = models.TextField(blank=True, null=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    client_decision_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('booking', 'version')
+
+    def __str__(self):
+        return f"Quote v{self.version} for booking {self.booking_id}"
+
+
+class QuoteLineItem(models.Model):
+    CATEGORY_CHOICES = (
+        ('materials', 'Materials'),
+        ('labor', 'Labor/Handiwork'),
+        ('other', 'Other'),
+    )
+
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name='line_items')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other')
+    description = models.CharField(max_length=255)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    line_total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    def save(self, *args, **kwargs):
+        self.line_total = (self.quantity or Decimal("0.00")) * (self.unit_price or Decimal("0.00"))
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.category}: {self.description}"
+
+
+class EscrowHold(models.Model):
+    STATUS_CHOICES = (
+        ('locked', 'Locked'),
+        ('released', 'Released'),
+        ('refunded', 'Refunded'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='escrow_holds')
+    quote = models.ForeignKey(Quote, on_delete=models.SET_NULL, null=True, blank=True, related_name='escrow_holds')
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='escrow_locks_made',
+    )
+    handyman = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='escrow_locks_received',
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='locked')
+    reason = models.CharField(max_length=255, blank=True, null=True)
+    locked_at = models.DateTimeField(default=timezone.now)
+    released_at = models.DateTimeField(null=True, blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Escrow {self.id} for booking {self.booking_id} ({self.status})"
+
+
+class WalletTransaction(models.Model):
+    TX_TYPE_CHOICES = (
+        ('credit', 'Credit'),
+        ('debit', 'Debit'),
+        ('lock', 'Lock'),
+        ('unlock', 'Unlock'),
+        ('release', 'Release'),
+        ('refund', 'Refund'),
+    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wallet_transactions')
+    booking = models.ForeignKey(Booking, on_delete=models.SET_NULL, null=True, blank=True, related_name='wallet_transactions')
+    escrow_hold = models.ForeignKey(EscrowHold, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    tx_type = models.CharField(max_length=20, choices=TX_TYPE_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    balance_before = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    balance_after = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    note = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.tx_type} {self.amount} for user {self.user_id}"

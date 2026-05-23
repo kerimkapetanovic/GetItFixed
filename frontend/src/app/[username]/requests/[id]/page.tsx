@@ -12,6 +12,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
 import { addMinutes } from "date-fns";
 import { BookingDetail } from "@/types/booking";
+import { continueJob, getLatestQuote, submitQuoteClientAction } from "@/lib/quoteEscrowApi";
 
 export const formatDateTime = (value: string | Date | null) => {
   if (!value) return "Not set";
@@ -58,6 +59,30 @@ export function getStatusInfo(booking: BookingDetail) {
       badgeClass: "bg-amber-400 text-black",
       helperText: "Work is confirmed. Pay from your profile balance to finish.",
       icon: <Wallet className="text-amber-400 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "visit_fee_paid") {
+    return {
+      label: "Visit Paid",
+      badgeClass: "bg-sky-300 text-black",
+      helperText: "Initial visit fee is handled. Decide whether to continue the job.",
+      icon: <Wallet className="text-sky-600 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "quote_pending_client") {
+    return {
+      label: "Quote Review",
+      badgeClass: "bg-indigo-300 text-black",
+      helperText: "Review itemized quote and accept to lock funds.",
+      icon: <AlertCircle className="text-indigo-600 shrink-0" size={18} strokeWidth={3} />
+    };
+  }
+  if (booking.status === "funds_locked") {
+    return {
+      label: "Funds Locked",
+      badgeClass: "bg-cyan-300 text-black",
+      helperText: "Quote accepted. Funds are reserved in escrow until completion.",
+      icon: <Wallet className="text-cyan-700 shrink-0" size={18} strokeWidth={3} />
     };
   }
   if (booking.status === "paid") {
@@ -144,6 +169,11 @@ const formatMs = (ms: number) => {
   return `${minutes}m ${seconds}s`;
 };
 
+type BusySlotResponse = {
+  scheduled_time: string;
+  duration_minutes?: number | null;
+};
+
 type AutoCompleteCheckResponse =
   | BookingDetail
   | {
@@ -169,6 +199,8 @@ export default function RequestDetailsPage() {
   const [completionTimeLeftSeconds, setCompletionTimeLeftSeconds] = useState<number | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [payLoading, setPayLoading] = useState(false);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteActionLoading, setQuoteActionLoading] = useState(false);
 
   const toUtcIso = (localDateTime: string) => {
     const parsed = new Date(localDateTime);
@@ -272,7 +304,8 @@ export default function RequestDetailsPage() {
     if (!booking?.handyman_id) return;
     api.get(`/api/bookings/busy-slots/${booking.handyman_id}/`)
       .then(res => {
-        setBusySlots(res.data.map((slot: any) => ({
+        const slots = res.data as BusySlotResponse[];
+        setBusySlots(slots.map((slot) => ({
           start: new Date(slot.scheduled_time),
           end: addMinutes(new Date(slot.scheduled_time), (slot.duration_minutes || 60) + 25),
         })));
@@ -371,6 +404,66 @@ export default function RequestDetailsPage() {
     }
   };
 
+  const handleContinueJobDecision = async (shouldContinue: boolean) => {
+    if (!booking) return;
+    setActionError("");
+    setActionSuccess("");
+    try {
+      setActionLoading(true);
+      const updated = await continueJob(booking.id, shouldContinue);
+      setBooking(updated);
+      setActionSuccess(
+        shouldContinue
+          ? "You chose to continue. Waiting for the handyman's itemized quote."
+          : "You chose not to continue. This request is now closed.",
+      );
+    } catch (error: unknown) {
+      setActionError(getBackendErrorMessage(error));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const refreshLatestQuote = async () => {
+    if (!booking) return;
+    try {
+      setQuoteLoading(true);
+      const latestQuote = await getLatestQuote(booking.id);
+      setBooking((prev) => (prev ? { ...prev, latest_quote: latestQuote } : prev));
+    } catch {
+      // keep silent if quote does not exist yet
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  const handleQuoteAction = async (action: "accept" | "reject" | "counter") => {
+    if (!booking?.latest_quote) return;
+    setActionError("");
+    setActionSuccess("");
+    try {
+      setQuoteActionLoading(true);
+      const response = await submitQuoteClientAction(booking.id, booking.latest_quote.id, action);
+      if ("booking" in response) {
+        setBooking(response.booking);
+        setActionSuccess("Quote accepted. Funds are now locked in escrow.");
+      } else {
+        await refreshLatestQuote();
+        const refreshed = await api.get(`/api/bookings/${booking.id}/`);
+        setBooking(refreshed.data);
+        setActionSuccess(
+          action === "reject"
+            ? "Quote rejected. Handyman can submit a revised quote."
+            : "Counter note saved. Waiting for handyman revision.",
+        );
+      }
+    } catch (error: unknown) {
+      setActionError(getBackendErrorMessage(error));
+    } finally {
+      setQuoteActionLoading(false);
+    }
+  };
+
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center font-black uppercase text-xl dark:text-white">
@@ -385,6 +478,16 @@ export default function RequestDetailsPage() {
     );
 
   const statusInfo = getStatusInfo(booking);
+  const offerPriceText =
+    booking.agreed_price != null ? Number(booking.agreed_price).toFixed(2) : "—";
+  const offerPriceClass =
+    offerPriceText.length > 12
+      ? "text-lg md:text-xl"
+      : offerPriceText.length > 10
+        ? "text-xl md:text-2xl"
+        : offerPriceText.length > 8
+          ? "text-2xl md:text-3xl"
+          : "text-3xl md:text-4xl";
 
   return (
     <div className="page-gradient flex flex-col min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950">
@@ -650,6 +753,115 @@ export default function RequestDetailsPage() {
               </div>
             )}
 
+            {booking.status === "visit_fee_paid" && !booking.continue_job_requested && (
+              <div className="p-6 bg-sky-50 dark:bg-sky-950/20 border-2 border-sky-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#0ea5e9]">
+                <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                  Continue the Job?
+                </h3>
+                <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">
+                  The initial visit is done. Choose whether to continue with a formal itemized quote.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    disabled={actionLoading}
+                    onClick={() => handleContinueJobDecision(true)}
+                    className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#22c55e] disabled:opacity-60"
+                  >
+                    Continue Job
+                  </button>
+                  <button
+                    disabled={actionLoading}
+                    onClick={() => handleContinueJobDecision(false)}
+                    className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] disabled:opacity-60"
+                  >
+                    Close After Visit
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {(booking.status === "quote_pending_client" || booking.status === "funds_locked") && (
+              <div className="p-6 bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#6366f1]">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                    Itemized Quote
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={refreshLatestQuote}
+                    disabled={quoteLoading}
+                    className="text-[10px] font-black uppercase border-2 border-black px-3 py-1 rounded-lg bg-white dark:bg-zinc-900"
+                  >
+                    {quoteLoading ? "Loading..." : "Refresh"}
+                  </button>
+                </div>
+
+                {booking.latest_quote ? (
+                  <>
+                    <div className="border-2 border-black rounded-xl bg-white dark:bg-zinc-900 overflow-hidden">
+                      <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-black text-[#EF9D39] text-[10px] font-black uppercase tracking-widest">
+                        <div className="col-span-5">Description</div>
+                        <div className="col-span-2">Category</div>
+                        <div className="col-span-2 text-right">Qty</div>
+                        <div className="col-span-3 text-right">Line total</div>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        {booking.latest_quote.line_items.map((item) => (
+                          <div key={item.id} className="grid grid-cols-12 gap-2 text-sm font-bold">
+                            <div className="col-span-5">{item.description}</div>
+                            <div className="col-span-2 uppercase text-xs">{item.category}</div>
+                            <div className="col-span-2 text-right tabular-nums">{Number(item.quantity).toFixed(2)}</div>
+                            <div className="col-span-3 text-right tabular-nums">
+                              {Number(item.line_total).toFixed(2)} KM
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl flex justify-between items-center">
+                      <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">Quote total</span>
+                      <span className="text-xl font-black text-[#EF9D39] tabular-nums">
+                        {Number(booking.latest_quote.total_amount).toFixed(2)} KM
+                      </span>
+                    </div>
+
+                    {booking.status === "quote_pending_client" && (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            disabled={quoteActionLoading}
+                            onClick={() => handleQuoteAction("accept")}
+                            className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#22c55e] disabled:opacity-60"
+                          >
+                            Accept & Lock Funds
+                          </button>
+                          <button
+                            disabled={quoteActionLoading}
+                            onClick={() => handleQuoteAction("reject")}
+                            className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] disabled:opacity-60"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                        {actionError && <p className="text-sm font-black text-red-600">{actionError}</p>}
+                        {actionSuccess && <p className="text-sm font-black text-green-700 dark:text-green-400">{actionSuccess}</p>}
+                      </div>
+                    )}
+
+                    {booking.status === "funds_locked" && (
+                      <p className="text-sm font-black text-cyan-800 dark:text-cyan-300">
+                        Escrow locked: {Number(booking.quote_locked_amount ?? booking.latest_quote.total_amount).toFixed(2)} KM
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm font-bold text-gray-600 dark:text-zinc-300">
+                    Quote is not available yet.
+                  </p>
+                )}
+              </div>
+            )}
+
             {booking.status === "awaiting_payment" && (
               <div className="p-6 bg-amber-50 dark:bg-amber-950/25 border-2 border-amber-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#f59e0b]">
                 <div className="flex items-start gap-3">
@@ -745,10 +957,14 @@ export default function RequestDetailsPage() {
                   </div>
                   <div className="bg-white dark:bg-zinc-900 border-[3px] border-black rounded-2xl p-5 min-h-[120px] flex flex-col justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Total job price</p>
-                    <p className="font-black text-3xl md:text-4xl text-[#EF9D39] tabular-nums">
-                      {booking.agreed_price != null ? Number(booking.agreed_price).toFixed(2) : "—"}
-                      <span className="text-sm font-black text-black dark:text-white ml-1">KM</span>
-                    </p>
+                    <div className="min-w-0">
+                      <p className={`font-black text-[#EF9D39] tabular-nums leading-none whitespace-nowrap ${offerPriceClass}`}>
+                        {offerPriceText}
+                      </p>
+                      <p className="text-[11px] font-black text-black dark:text-white uppercase tracking-wider mt-1">
+                        KM
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -842,7 +1058,7 @@ export default function RequestDetailsPage() {
                   </button>
                   <div className="text-center mb-8">
                     <h2 className="text-3xl font-black uppercase dark:text-white tracking-tighter">Pick a new time</h2>
-                    <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Counter to expert's offer</p>
+                    <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">Counter to expert&apos;s offer</p>
                   </div>
                   <div className="flex justify-center w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 dark:border-white/10 pt-4">
                     <DatePicker

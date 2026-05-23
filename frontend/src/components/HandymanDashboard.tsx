@@ -42,6 +42,11 @@ function isActiveJob(job: BookingDetail) {
     [
       "accepted",
       "in_progress",
+      "visit_completed",
+      "visit_fee_pending",
+      "visit_fee_paid",
+      "quote_pending_client",
+      "funds_locked",
       "handyman_done",
       "not_completed",
       "awaiting_payment",
@@ -74,7 +79,7 @@ export default function HandymanDashboard() {
   const [actionError, setActionError] = useState<string>("");
   const [activeFilter, setActiveFilter] = useState<DashboardFilterId>("all");
 
-  const updateJobValue = (jobId: number, field: string, value: any) => {
+  const updateJobValue = (jobId: number, field: string, value: unknown) => {
     setCounterValues((prev) => ({
       ...prev,
       [jobId]: {
@@ -417,6 +422,16 @@ export default function HandymanDashboard() {
                         ? "Confirmed"
                         : job.status === "in_progress"
                           ? "In Progress"
+                          : job.status === "visit_completed"
+                            ? "Visit Completed"
+                            : job.status === "visit_fee_pending"
+                              ? "Visit Fee Pending"
+                              : job.status === "visit_fee_paid"
+                                ? "Visit Fee Paid"
+                                : job.status === "quote_pending_client"
+                                  ? "Quote Pending Client"
+                                  : job.status === "funds_locked"
+                                    ? "Funds Locked"
                           : job.status === "handyman_done"
                             ? "Awaiting Client"
                             : job.status === "awaiting_payment"

@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from decimal import Decimal
 
 class User(AbstractUser):
     # Defining roles
@@ -26,11 +27,22 @@ class User(AbstractUser):
     avatar = models.TextField(blank=True, null=True)  # čuva Supabase URL kao string
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
     wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    wallet_locked_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     # Email as primary identifier
     email = models.EmailField(unique=True)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
+
+    @property
+    def wallet_available_balance(self) -> Decimal:
+        """Amount that can be spent right now (total minus locked)."""
+        total = self.wallet_balance or Decimal("0.00")
+        locked = self.wallet_locked_balance or Decimal("0.00")
+        available = total - locked
+        if available < Decimal("0.00"):
+            return Decimal("0.00")
+        return available
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.role})"

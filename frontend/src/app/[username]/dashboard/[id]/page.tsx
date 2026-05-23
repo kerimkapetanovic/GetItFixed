@@ -16,11 +16,13 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
 import { addMinutes } from "date-fns";
 import { BookingDetail } from "@/types/booking";
+import type { QuoteLineItemInput } from "@/types/booking";
 import {
     canHandymanSendOffer,
     getPhaseHint,
     getResponseDeadlineLabel,
 } from "@/lib/handymanDeadline";
+import { createQuote, getLatestQuote } from "@/lib/quoteEscrowApi";
 
 export const formatDateTime = (value: string | Date | null) => {
     if (!value) return "Not set";
@@ -67,6 +69,30 @@ export function getStatusInfo(booking: BookingDetail) {
             badgeClass: "bg-amber-400 text-black",
             helperText: "Client must pay from their wallet to release funds to you.",
             icon: <Wallet className="text-amber-400 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "visit_fee_paid") {
+        return {
+            label: "Visit Paid",
+            badgeClass: "bg-sky-300 text-black",
+            helperText: "Client can decide whether to continue into quote flow.",
+            icon: <Wallet className="text-sky-700 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "quote_pending_client") {
+        return {
+            label: "Quote Pending",
+            badgeClass: "bg-indigo-300 text-black",
+            helperText: "Itemized quote sent. Waiting for client decision.",
+            icon: <AlertCircle className="text-indigo-700 shrink-0" size={18} strokeWidth={3} />
+        };
+    }
+    if (booking.status === "funds_locked") {
+        return {
+            label: "Escrow Locked",
+            badgeClass: "bg-cyan-300 text-black",
+            helperText: "Funds are reserved. Complete work, then release escrow via payment step.",
+            icon: <Wallet className="text-cyan-700 shrink-0" size={18} strokeWidth={3} />
         };
     }
     if (booking.status === "paid") {
@@ -148,7 +174,7 @@ function getBackendErrorMessage(error: unknown) {
 
 /** Allows digits and one decimal point with up to 2 fractional digits (KM). */
 function sanitizeKmPriceInput(raw: string): string {
-    let v = raw.replace(",", ".").replace(/[^\d.]/g, "");
+    const v = raw.replace(",", ".").replace(/[^\d.]/g, "");
     const parts = v.split(".");
     if (parts.length === 1) return parts[0];
     const head = parts[0];
@@ -169,6 +195,11 @@ const formatMs = (ms: number) => {
     const seconds = Math.floor(totalSeconds % 60);
     if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
     return `${minutes}m ${seconds}s`;
+};
+
+type BusySlotResponse = {
+    scheduled_time: string;
+    duration_minutes?: number | null;
 };
 
 function shouldShowHandymanActions(booking: BookingDetail) {
@@ -217,6 +248,12 @@ export default function HandymanRequestDetailsPage() {
 
     const [knowsFix, setKnowsFix] = useState(false);
     const [busySlots, setBusySlots] = useState<{ start: Date; end: Date }[]>([]);
+    const [quoteItems, setQuoteItems] = useState<QuoteLineItemInput[]>([
+        { category: "materials", description: "", quantity: 1, unit_price: 0, sort_order: 0 },
+        { category: "labor", description: "", quantity: 1, unit_price: 0, sort_order: 1 },
+    ]);
+    const [quoteNotes, setQuoteNotes] = useState("");
+    const [quoteLoading, setQuoteLoading] = useState(false);
 
     const toUtcIso = (date: Date | null) => date ? date.toISOString() : "";
 
@@ -398,7 +435,8 @@ export default function HandymanRequestDetailsPage() {
         if (!booking?.handyman_id) return;
         api.get(`/api/bookings/busy-slots/${booking.handyman_id}/`)
             .then(res => {
-                setBusySlots(res.data.map((slot: any) => ({
+                const slots = res.data as BusySlotResponse[];
+                setBusySlots(slots.map((slot) => ({
                     start: new Date(slot.scheduled_time),
                     end: addMinutes(new Date(slot.scheduled_time), (slot.duration_minutes || 60) + 25),
                 })));
@@ -520,6 +558,56 @@ export default function HandymanRequestDetailsPage() {
             setActionError(getBackendErrorMessage(e));
         } finally {
             setThanksLoading(false);
+        }
+    };
+
+    const updateQuoteItem = (index: number, patch: Partial<QuoteLineItemInput>) => {
+        setQuoteItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+    };
+
+    const addQuoteItem = () => {
+        setQuoteItems((prev) => [
+            ...prev,
+            { category: "other", description: "", quantity: 1, unit_price: 0, sort_order: prev.length },
+        ]);
+    };
+
+    const removeQuoteItem = (index: number) => {
+        setQuoteItems((prev) => prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, sort_order: i })));
+    };
+
+    const submitItemizedQuote = async () => {
+        if (!booking) return;
+        clearActionMessages();
+        const sanitized = quoteItems
+            .map((item, idx) => ({
+                ...item,
+                description: item.description.trim(),
+                quantity: Number(item.quantity),
+                unit_price: Number(item.unit_price),
+                sort_order: idx,
+            }))
+            .filter((item) => item.description.length > 0);
+
+        if (!sanitized.length) {
+            setActionError("Add at least one quote line item with description.");
+            return;
+        }
+
+        try {
+            setQuoteLoading(true);
+            await createQuote(booking.id, {
+                line_items: sanitized,
+                notes: quoteNotes.trim() || undefined,
+            });
+            const latestQuote = await getLatestQuote(booking.id);
+            const refreshed = await api.get(`/api/bookings/${booking.id}/`);
+            setBooking({ ...refreshed.data, latest_quote: latestQuote });
+            setActionSuccess("Itemized quote sent to client. Waiting for their decision.");
+        } catch (e) {
+            setActionError(getBackendErrorMessage(e));
+        } finally {
+            setQuoteLoading(false);
         }
     };
 
@@ -843,6 +931,140 @@ export default function HandymanRequestDetailsPage() {
                                         </p>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {(booking.status === "visit_fee_paid" || booking.status === "quote_pending_client" || booking.status === "funds_locked") && (
+                            <div className="p-6 bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#6366f1]">
+                                <h3 className="font-black uppercase text-base text-black dark:text-white tracking-tight">
+                                    Itemized Quote
+                                </h3>
+
+                                {booking.continue_job_confirmed !== true ? (
+                                    <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">
+                                        Waiting for client to choose <span className="font-black">Continue the Job</span>.
+                                    </p>
+                                ) : (
+                                    <>
+                                        {booking.status === "visit_fee_paid" && (
+                                            <div className="space-y-3">
+                                                <div className="grid grid-cols-12 gap-2 px-2 text-[9px] font-black uppercase tracking-widest text-gray-500">
+                                                    <p className="col-span-5">Description</p>
+                                                    <p className="col-span-2">Category</p>
+                                                    <p className="col-span-2 text-right">Qty</p>
+                                                    <p className="col-span-2 text-right">Unit price (KM)</p>
+                                                    <p className="col-span-1 text-center">Remove</p>
+                                                </div>
+                                                {quoteItems.map((item, idx) => (
+                                                    <div key={idx} className="grid grid-cols-12 gap-2 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl p-3">
+                                                        <input
+                                                            value={item.description}
+                                                            onChange={(e) => updateQuoteItem(idx, { description: e.target.value })}
+                                                            placeholder="Line item description"
+                                                            className="col-span-5 border-2 border-black rounded px-2 py-2 text-xs font-bold bg-white dark:bg-zinc-800"
+                                                        />
+                                                        <select
+                                                            value={item.category}
+                                                            onChange={(e) => updateQuoteItem(idx, { category: e.target.value as QuoteLineItemInput["category"] })}
+                                                            className="col-span-2 border-2 border-black rounded px-2 py-2 text-xs font-bold bg-white dark:bg-zinc-800"
+                                                        >
+                                                            <option value="materials">Materials</option>
+                                                            <option value="labor">Labor</option>
+                                                            <option value="other">Other</option>
+                                                        </select>
+                                                        <input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            placeholder="0"
+                                                            value={item.quantity === 0 ? "" : String(item.quantity)}
+                                                            onChange={(e) => {
+                                                                const raw = e.target.value.replace(",", ".").trim();
+                                                                if (raw === "") {
+                                                                    updateQuoteItem(idx, { quantity: 0 });
+                                                                    return;
+                                                                }
+                                                                const parsed = Number(raw);
+                                                                if (!Number.isNaN(parsed)) {
+                                                                    updateQuoteItem(idx, { quantity: parsed });
+                                                                }
+                                                            }}
+                                                            className="col-span-2 border-2 border-black rounded px-2 py-2 text-xs font-bold bg-white dark:bg-zinc-800 text-right"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            placeholder="0"
+                                                            value={item.unit_price === 0 ? "" : String(item.unit_price)}
+                                                            onChange={(e) => {
+                                                                const raw = e.target.value.replace(",", ".").trim();
+                                                                if (raw === "") {
+                                                                    updateQuoteItem(idx, { unit_price: 0 });
+                                                                    return;
+                                                                }
+                                                                const parsed = Number(raw);
+                                                                if (!Number.isNaN(parsed)) {
+                                                                    updateQuoteItem(idx, { unit_price: parsed });
+                                                                }
+                                                            }}
+                                                            className="col-span-2 border-2 border-black rounded px-2 py-2 text-xs font-bold bg-white dark:bg-zinc-800 text-right"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeQuoteItem(idx)}
+                                                            className="col-span-1 border-2 border-black rounded px-2 py-2 text-xs font-black uppercase bg-red-100 dark:bg-red-950/30"
+                                                        >
+                                                            X
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={addQuoteItem}
+                                                        className="border-2 border-black rounded px-3 py-2 text-[10px] font-black uppercase bg-white dark:bg-zinc-900"
+                                                    >
+                                                        Add Item
+                                                    </button>
+                                                </div>
+                                                <textarea
+                                                    value={quoteNotes}
+                                                    onChange={(e) => setQuoteNotes(e.target.value)}
+                                                    rows={3}
+                                                    placeholder="Optional quote notes"
+                                                    className="w-full border-2 border-black rounded-xl p-3 text-sm font-bold bg-white dark:bg-zinc-900"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    disabled={quoteLoading}
+                                                    onClick={submitItemizedQuote}
+                                                    className="w-full bg-white dark:bg-black text-black dark:text-white border-2 border-black py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#6366f1] disabled:opacity-60"
+                                                >
+                                                    {quoteLoading ? "Sending..." : "Send Itemized Quote"}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {booking.latest_quote && (
+                                            <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                                    Latest quote summary
+                                                </p>
+                                                <p className="text-sm font-bold">
+                                                    Version #{booking.latest_quote.version} - {booking.latest_quote.status}
+                                                </p>
+                                                <p className="text-lg font-black text-[#EF9D39] mt-1">
+                                                    {Number(booking.latest_quote.total_amount).toFixed(2)} KM
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {booking.status === "funds_locked" && (
+                                            <p className="text-sm font-black text-cyan-800 dark:text-cyan-300">
+                                                Escrow locked: {Number(booking.quote_locked_amount ?? 0).toFixed(2)} KM
+                                            </p>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         )}
 

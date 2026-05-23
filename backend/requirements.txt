@@ -1,0 +1,18 @@
+# Core
+Django==5.2.10
+djangorestframework==3.17.1
+django-cors-headers==4.9.0
+django-environ==0.13.0
+
+# Database
+psycopg2-binary==2.9.11
+
+# Storage (Supabase S3)
+django-storages==1.14.6
+boto3==1.42.96
+
+# Background tasks
+celery==5.6.3
+
+# AI helper (Gemini)
+google-genai==2.6.0
