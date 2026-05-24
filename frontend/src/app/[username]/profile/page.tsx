@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import HandymanDashboard from "@/components/HandymanDashboard"; // Import the new component
+import HandymanDashboard from "@/components/HandymanDashboard";
 import api from "../../../../lib/axios";
-import countryList from 'react-select-country-list';
-import 'react-phone-number-input/style.css';
-import PhoneInput from 'react-phone-number-input';
+import countryList from "react-select-country-list";
+import "react-phone-number-input/style.css";
+import PhoneInput from "react-phone-number-input";
 import {
   User,
   Mail,
@@ -16,12 +16,10 @@ import {
   Save,
   ShieldCheck,
   Loader2,
-  Globe,
   CreditCard,
 } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
 
-// POBOLJŠAN CSS - Da PhoneInput izgleda 1:1 kao tvoji ostali inputi
 const phoneInputCustomStyles = `
   .PhoneInput {
     width: 100%;
@@ -36,7 +34,7 @@ const phoneInputCustomStyles = `
     box-sizing: border-box;
   }
   .PhoneInput:focus-within {
-    background-color: #fefce8; /* yellow-50 */
+    background-color: #fefce8;
   }
   .PhoneInputInput {
     border: none !important;
@@ -78,7 +76,6 @@ const phoneInputCustomStyles = `
   .dark .PhoneInput:focus-within {
     background-color: #27272a;
   }
-  
   .dark .PhoneInputInput {
     color: #f4f4f5;
     background: transparent !important;
@@ -110,6 +107,7 @@ type ProfileResponse = {
   city: string;
   zip_code: string;
   wallet_balance: number;
+  locked_balance?: number;
 };
 
 type ApiErrorResponse = {
@@ -137,7 +135,8 @@ export default function ProfilePage() {
     county: "",
     city: "",
     zipCode: "",
-    walletBalance: 0.00,
+    walletBalance: 0.0,
+    lockedBalance: 0.0, // Integrated into local states
   });
   const [hasCustomAvatar, setHasCustomAvatar] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -175,7 +174,7 @@ export default function ProfilePage() {
   const [addBalanceAmount, setAddBalanceAmount] = useState("");
   const [addBalanceLoading, setAddBalanceLoading] = useState(false);
   const [addBalanceError, setAddBalanceError] = useState<string | null>(null);
-  /** Dummy card fields — UI only until real payments */
+
   const [dummyCardName, setDummyCardName] = useState("");
   const [dummyCardNumber, setDummyCardNumber] = useState("");
   const [dummyCardExpiry, setDummyCardExpiry] = useState("");
@@ -201,7 +200,8 @@ export default function ProfilePage() {
           county: data.county || "",
           city: data.city || "",
           zipCode: data.zip_code || "",
-          walletBalance: data.wallet_balance || 0.00,
+          walletBalance: data.wallet_balance || 0.0,
+          lockedBalance: data.locked_balance || 0.0,
         };
 
         setFormData(newProfile);
@@ -210,13 +210,11 @@ export default function ProfilePage() {
 
         if (typeof window !== "undefined") {
           Object.entries(data).forEach(([key, value]) => {
-            if (value) localStorage.setItem(key, value.toString());
+            if (value !== undefined && value !== null)
+              localStorage.setItem(key, value.toString());
           });
         }
       } catch (err: unknown) {
-        // Fallback na localStorage ako API ne radi
-        // Unutar catch bloka u useEffect
-        // U catch bloku unutar useEffect
         if (typeof window !== "undefined") {
           setFormData({
             firstName: localStorage.getItem("first_name") || "",
@@ -224,12 +222,14 @@ export default function ProfilePage() {
             email: localStorage.getItem("email") || "",
             username: localStorage.getItem("username") || "",
             avatarUrl: localStorage.getItem("avatar_url") || "",
-            // DODAJ OVA POLJA DA NESTANE CRVENILO:
             phone: localStorage.getItem("phone") || "",
             city: localStorage.getItem("city") || "",
             county: localStorage.getItem("county") || "",
             zipCode: localStorage.getItem("zip_code") || "",
-            walletBalance: parseFloat(localStorage.getItem("wallet_balance") || "0") || 0.00,
+            walletBalance:
+              parseFloat(localStorage.getItem("wallet_balance") || "0") || 0.0,
+            lockedBalance:
+              parseFloat(localStorage.getItem("locked_balance") || "0") || 0.0,
           });
         }
       } finally {
@@ -254,7 +254,8 @@ export default function ProfilePage() {
 
   const getWalletErrorMessage = (err: unknown): string => {
     if (typeof err === "object" && err !== null && "response" in err) {
-      const data = (err as { response?: { data?: { error?: string } } }).response?.data;
+      const data = (err as { response?: { data?: { error?: string } } })
+        .response?.data;
       if (data?.error) return data.error;
     }
     return "Could not add balance. Try again.";
@@ -289,7 +290,7 @@ export default function ProfilePage() {
       setAddBalanceLoading(true);
       const res = await api.post<{ wallet_balance: number; message?: string }>(
         "/api/accounts/wallet/add/",
-        { amount: parsed.toFixed(2) }
+        { amount: parsed.toFixed(2) },
       );
       const wb = res.data.wallet_balance;
       setFormData((prev) => ({ ...prev, walletBalance: wb }));
@@ -322,12 +323,7 @@ export default function ProfilePage() {
       });
 
       const updated = response.data;
-      console.log('After upload, API returned:', {
-        avatar_url: updated.avatar_url,
-        has_custom_avatar: updated.has_custom_avatar,
-      });
 
-      // AŽURIRAJ SVA POLJA OVDJE:
       setFormData({
         firstName: updated.first_name || "",
         lastName: updated.last_name || "",
@@ -338,21 +334,19 @@ export default function ProfilePage() {
         county: updated.county || "",
         city: updated.city || "",
         zipCode: updated.zip_code || "",
-        walletBalance: updated.wallet_balance || 0.00,
+        walletBalance: updated.wallet_balance || 0.0,
+        lockedBalance: updated.locked_balance || 0.0,
       });
 
       setHasCustomAvatar(Boolean(updated.has_custom_avatar));
-      setIsEditing(false); // Automatski izađi iz edit moda nakon spremanja
+      setIsEditing(false);
 
-      // ... unutar persistNameChanges funkcije
       if (typeof window !== "undefined") {
         localStorage.setItem("first_name", updated.first_name || "");
         localStorage.setItem("last_name", updated.last_name || "");
         localStorage.setItem("username", updated.username || "");
         localStorage.setItem("email", updated.email || "");
         localStorage.setItem("avatar_url", updated.avatar_url || "");
-
-        // DODAJ OVE LINIJE KOJE SU NEDOSTAJALE:
         localStorage.setItem("phone", updated.phone || "");
         localStorage.setItem("city", updated.city || "");
         localStorage.setItem("county", updated.county || "");
@@ -381,9 +375,13 @@ export default function ProfilePage() {
       const data = new FormData();
       data.append("avatar", pendingAvatarFile);
 
-      const response = await api.patch<ProfileResponse>("/api/accounts/me/", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await api.patch<ProfileResponse>(
+        "/api/accounts/me/",
+        data,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
       const updated = response.data;
 
       setFormData((prev) => ({
@@ -397,6 +395,8 @@ export default function ProfilePage() {
         county: updated.county || prev.county,
         city: updated.city || prev.city,
         zipCode: updated.zip_code || prev.zipCode,
+        walletBalance: updated.wallet_balance || prev.walletBalance,
+        lockedBalance: updated.locked_balance || prev.lockedBalance,
       }));
       setHasCustomAvatar(Boolean(updated.has_custom_avatar));
 
@@ -439,7 +439,7 @@ export default function ProfilePage() {
 
       setFormData((prev) => ({
         ...prev,
-        avatarUrl: updated.avatar_url || "",  // ✅ NE koristi prev.avatarUrl kao fallback!
+        avatarUrl: updated.avatar_url || "",
         firstName: updated.first_name || prev.firstName,
         lastName: updated.last_name || prev.lastName,
         email: updated.email || prev.email,
@@ -448,12 +448,14 @@ export default function ProfilePage() {
         county: updated.county || prev.county,
         city: updated.city || prev.city,
         zipCode: updated.zip_code || prev.zipCode,
+        walletBalance: updated.wallet_balance || prev.walletBalance,
+        lockedBalance: updated.locked_balance || prev.lockedBalance,
       }));
 
-      setHasCustomAvatar(false);  // ✅ Eksplicitno postavi na false
+      setHasCustomAvatar(false);
 
       if (typeof window !== "undefined") {
-        localStorage.setItem("avatar_url", "");  // ✅ Obriši iz localStorage
+        localStorage.setItem("avatar_url", "");
         localStorage.setItem("username", updated.username || "");
         window.dispatchEvent(new Event("profile-updated"));
       }
@@ -497,18 +499,10 @@ export default function ProfilePage() {
     try {
       await api.post("/api/accounts/logout/");
     } catch {
-      // Continue with client-side logout even if backend logout fails.
+      // Continue client chain bypass safely
     } finally {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("is_logged_in");
-        localStorage.removeItem("user_role");
-        localStorage.removeItem("role");
-        localStorage.removeItem("first_name");
-        localStorage.removeItem("last_name");
-        localStorage.removeItem("username");
-        localStorage.removeItem("email");
-        localStorage.removeItem("avatar_url");
+        localStorage.clear();
       }
       window.location.href = "/login";
     }
@@ -537,7 +531,9 @@ export default function ProfilePage() {
     });
   };
 
-  const handleAvatarFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileSelected = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
 
@@ -559,62 +555,33 @@ export default function ProfilePage() {
   };
 
   const handleConfirmAction = async () => {
-    if (confirmModal.action === "names") {
-      await persistNameChanges();
-    }
-    if (confirmModal.action === "password") {
-      await persistPasswordChanges();
-    }
-    if (confirmModal.action === "avatar") {
-      await persistAvatarChange();
-    }
-    if (confirmModal.action === "removeAvatar") {
-      await removeCustomAvatar();
-    }
+    if (confirmModal.action === "names") await persistNameChanges();
+    if (confirmModal.action === "password") await persistPasswordChanges();
+    if (confirmModal.action === "avatar") await persistAvatarChange();
+    if (confirmModal.action === "removeAvatar") await removeCustomAvatar();
 
-    setConfirmModal({
-      open: false,
-      action: null,
-      title: "",
-      message: "",
-    });
+    setConfirmModal({ open: false, action: null, title: "", message: "" });
   };
 
   const handleCloseConfirmModal = () => {
-    if (confirmModal.action === "avatar") {
-      setPendingAvatarFile(null);
-    }
-    setConfirmModal({
-      open: false,
-      action: null,
-      title: "",
-      message: "",
-    });
+    if (confirmModal.action === "avatar") setPendingAvatarFile(null);
+    setConfirmModal({ open: false, action: null, title: "", message: "" });
   };
 
   const SUPABASE_STORAGE_URL = process.env.SUPABASE_URL;
 
   const avatarUrl = useMemo(() => {
-    console.log('avatarUrl raw value:', formData.avatarUrl);
-
     if (formData.avatarUrl) {
-      if (formData.avatarUrl.startsWith('http')) return formData.avatarUrl;
-
-      // Strip leading slashes from the stored path
-      const filePath = formData.avatarUrl.replace(/^\/+/, '');
-
-      // If the path already includes 'avatars/', don't add it again
-      if (filePath.startsWith('avatars/')) {
+      if (formData.avatarUrl.startsWith("http")) return formData.avatarUrl;
+      const filePath = formData.avatarUrl.replace(/^\/+/, "");
+      if (filePath.startsWith("avatars/")) {
         return `${SUPABASE_STORAGE_URL}/${filePath}`;
       }
-
-      // Otherwise, assume it's just the filename
       return `${SUPABASE_STORAGE_URL}/avatars/${filePath}`;
     }
-
-
     return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.username || "User")}`;
   }, [formData.avatarUrl, formData.username]);
+
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">
       <Header />
@@ -684,6 +651,63 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* LEFT COLUMN: INFO & DASHBOARD */}
           <div className="md:col-span-2 space-y-8">
+            {/* --- TASK C3: SPLIT WALLET INFRASTRUCTURE DISPLAY --- */}
+            <div className="bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(239,157,57,0.2)] rounded-[24px]">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-black rounded-xl text-[#EF9D39]">
+                  <CreditCard size={20} strokeWidth={2.5} />
+                </div>
+                <h2 className="text-xl font-black uppercase tracking-tight text-black dark:text-white">
+                  Wallet Balances
+                </h2>
+              </div>
+              <hr className="border-zinc-200 dark:border-zinc-800 my-4" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Available liquid funds */}
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 border-2 border-black p-4 rounded-xl flex flex-col justify-between shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                    Available Cash
+                  </span>
+                  <p className="text-3xl font-black text-green-600 dark:text-green-400 mt-2">
+                    {Number(formData.walletBalance).toFixed(2)}{" "}
+                    <span className="text-sm font-bold uppercase">KM</span>
+                  </p>
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight mt-2">
+                    Liquid Balance
+                  </p>
+                </div>
+                {/* Escrow locked funds */}
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 border-2 border-black p-4 rounded-xl flex flex-col justify-between shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+                  <div className="absolute top-2 right-2 text-[#EF9D39]/20">
+                    <Lock size={32} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                    Escrow Holds
+                  </span>
+                  <p className="text-3xl font-black text-[#EF9D39] mt-2">
+                    {Number(formData.lockedBalance).toFixed(2)}{" "}
+                    <span className="text-sm font-bold uppercase">KM</span>
+                  </p>
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-tight mt-2">
+                    Frozen Funds
+                  </p>
+                </div>
+              </div>
+              {userRole === "client" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddBalanceOpen(true);
+                    setAddBalanceError(null);
+                  }}
+                  className="mt-5 w-full border-[3px] border-black bg-[#EF9D39] text-black py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                >
+                  <CreditCard size={16} strokeWidth={2.5} />
+                  Top-up Cash Account
+                </button>
+              )}
+            </div>
+
             {/* Basic Info Box */}
             <div className="bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(239,157,57,0.2)] rounded-[24px]">
               <h2 className="text-xl font-black uppercase mb-6 flex items-center gap-2">
@@ -699,12 +723,20 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={formData.firstName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                    disabled={!isEditing || loadingProfile || savingNames} // DODATO !isEditing
-                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                      }`} />
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        firstName: e.target.value,
+                      }))
+                    }
+                    disabled={!isEditing || loadingProfile || savingNames}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
+                      !isEditing
+                        ? "opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950"
+                        : "focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                    }`}
+                  />
                 </div>
-                {/* Last Name */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
                     {t("profile.lastName")}
@@ -712,29 +744,43 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={formData.lastName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        lastName: e.target.value,
+                      }))
+                    }
                     disabled={!isEditing || loadingProfile || savingNames}
-                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                      }`}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
+                      !isEditing
+                        ? "opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950"
+                        : "focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                    }`}
                   />
                 </div>
-                {/* Phone Number */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                    {t("profile.phone") !== "profile.phone" ? t("profile.phone") : "Phone Number"}
+                    {t("profile.phone") !== "profile.phone"
+                      ? t("profile.phone")
+                      : "Phone Number"}
                   </label>
                   <style>{phoneInputCustomStyles}</style>
                   <PhoneInput
                     international
                     placeholder={t("profile.placeholders.phone")}
                     value={formData.phone}
-                    onChange={(value) => setFormData(prev => ({ ...prev, phone: value || "" }))}
+                    onChange={(value) =>
+                      setFormData((prev) => ({ ...prev, phone: value || "" }))
+                    }
                     disabled={!isEditing || loadingProfile || savingNames}
-                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                      }`} />
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
+                      !isEditing
+                        ? "opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950"
+                        : "focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                    }`}
+                  />
                 </div>
 
-                {/* City */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
                     {t("profile.city") || "City"}
@@ -742,14 +788,18 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={formData.city}
-                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, city: e.target.value }))
+                    }
                     disabled={!isEditing || loadingProfile || savingNames}
-                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                      }`}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
+                      !isEditing
+                        ? "opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-955"
+                        : "focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                    }`}
                   />
                 </div>
 
-                {/* County / Region */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
                     {t("profile.county") || "County / Region"}
@@ -757,10 +807,18 @@ export default function ProfilePage() {
                   <div className="relative">
                     <select
                       value={formData.county}
-                      onChange={(e) => setFormData(prev => ({ ...prev, county: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          county: e.target.value,
+                        }))
+                      }
                       disabled={!isEditing || loadingProfile || savingNames}
-                      className={`w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold text-gray-900 dark:text-white outline-none appearance-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                        }`}
+                      className={`w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold text-gray-900 dark:text-white outline-none appearance-none transition-all ${
+                        !isEditing
+                          ? "opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950"
+                          : "focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                      }`}
                     >
                       <option value="" disabled>
                         {t("register.select") || "Select country"}
@@ -772,12 +830,18 @@ export default function ProfilePage() {
                       ))}
                     </select>
                     <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="black" strokeWidth="2" strokeLinecap="round" /></svg>
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                        <path
+                          d="M1 1L5 5L9 1"
+                          stroke="black"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
                     </div>
                   </div>
                 </div>
 
-                {/* Zip Code */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
                     {t("profile.zipCode") || "Zip Code"}
@@ -785,10 +849,18 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={formData.zipCode}
-                    onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        zipCode: e.target.value,
+                      }))
+                    }
                     disabled={!isEditing || loadingProfile || savingNames}
-                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${!isEditing ? 'opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950' : 'focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                      }`}
+                    className={`w-full border-2 border-black dark:border-zinc-600 p-3 rounded-xl font-bold dark:bg-zinc-800 outline-none transition-all ${
+                      !isEditing
+                        ? "opacity-70 cursor-not-allowed bg-gray-100 dark:bg-zinc-950"
+                        : "focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                    }`}
                   />
                 </div>
               </div>
@@ -819,7 +891,11 @@ export default function ProfilePage() {
                       disabled={loadingProfile || savingNames}
                       className="px-8 py-3 border-[3px] border-black rounded-[20px] bg-green-500 text-white font-black uppercase text-xs tracking-[0.2em] shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
                     >
-                      {savingNames ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                      {savingNames ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Save size={16} />
+                      )}
                       {t("profile.saveChanges")}
                     </button>
 
@@ -845,36 +921,13 @@ export default function ProfilePage() {
           {/* RIGHT COLUMN: SECURITY & STATUS */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-zinc-900 border-[3px] border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(239,157,57,0.2)] rounded-[24px]">
-
-              {/* --- WALLET BALANCE BOX --- */}
-              <div className="mb-6 bg-white dark:bg-zinc-900 border-[3px] border-[#EF9D39] p-5 rounded-2xl shadow-[4px_4px_0px_0px_#EF9D39]">
-                <p className="text-[9px] font-black uppercase text-gray-500 dark:text-gray-400 tracking-widest mb-2">
-                  Your Balance
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-black dark:text-[#EF9D39]">
-                    {Number(formData.walletBalance).toFixed(2)}
-                  </span>
-                  <span className="text-sm font-black text-black dark:text-[#EF9D39] uppercase">KM</span>
-                </div>
-                {userRole === "client" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddBalanceOpen(true);
-                      setAddBalanceError(null);
-                    }}
-                    className="mt-4 w-full border-[3px] border-black dark:border-zinc-600 bg-[#EF9D39] text-black py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"
-                  >
-                    <CreditCard size={16} strokeWidth={2.5} />
-                    Add Balance
-                  </button>
-                )}
-              </div>
-
               {/* --- SECURITY & STATUS HEADER --- */}
               <div className="flex items-center gap-2 mb-6">
-                <ShieldCheck size={18} className="text-[#EF9D39]" strokeWidth={3} />
+                <ShieldCheck
+                  size={18}
+                  className="text-[#EF9D39]"
+                  strokeWidth={3}
+                />
                 <h2 className="text-sm font-black uppercase">
                   {t("profile.securityStatus")}
                 </h2>
@@ -888,8 +941,14 @@ export default function ProfilePage() {
                   </p>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <Mail size={16} className="text-[#EF9D39] flex-shrink-0" strokeWidth={2.5} />
-                      <p className="text-xs font-bold text-black dark:text-white truncate">{formData.email}</p>
+                      <Mail
+                        size={16}
+                        className="text-[#EF9D39] flex-shrink-0"
+                        strokeWidth={2.5}
+                      />
+                      <p className="text-xs font-bold text-black dark:text-white truncate">
+                        {formData.email}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 flex-shrink-0">
                       <Lock size={14} strokeWidth={2.5} />
@@ -961,7 +1020,11 @@ export default function ProfilePage() {
                     className="w-full border-[3px] border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-white p-3.5 rounded-2xl font-black text-[11px] uppercase tracking-[0.15em] shadow-[6px_6px_0px_0px_#000] dark:shadow-[6px_6px_0px_0px_rgba(239,157,57,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] dark:hover:bg-[#EF9D39] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[6px_6px_0px_0px_#000] dark:disabled:hover:shadow-[6px_6px_0px_0px_rgba(239,157,57,0.3)] disabled:hover:bg-white dark:disabled:hover:bg-zinc-900"
                   >
                     {savingPassword ? (
-                      <Loader2 size={16} className="animate-spin" strokeWidth={3} />
+                      <Loader2
+                        size={16}
+                        className="animate-spin"
+                        strokeWidth={3}
+                      />
                     ) : (
                       <Lock size={16} strokeWidth={3} />
                     )}
@@ -977,8 +1040,9 @@ export default function ProfilePage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2.5 h-2.5 rounded-full animate-pulse ${userRole === "handyman" ? "bg-green-500" : "bg-blue-500"
-                      }`}
+                    className={`w-2.5 h-2.5 rounded-full animate-pulse ${
+                      userRole === "handyman" ? "bg-green-500" : "bg-blue-500"
+                    }`}
                   ></div>
                   <span className="text-[10px] font-black uppercase text-black dark:text-white">
                     {userRole === "handyman"
@@ -1014,7 +1078,11 @@ export default function ProfilePage() {
           >
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="flex items-center gap-2">
-                <CreditCard className="text-[#EF9D39]" size={22} strokeWidth={2.5} />
+                <CreditCard
+                  className="text-[#EF9D39]"
+                  size={22}
+                  strokeWidth={2.5}
+                />
                 <h3
                   id="add-balance-title"
                   className="text-lg font-black uppercase text-black dark:text-white leading-tight"
@@ -1032,7 +1100,8 @@ export default function ProfilePage() {
               </button>
             </div>
             <p className="text-xs font-bold text-gray-600 dark:text-zinc-400 mb-4">
-              Demo top-up — no real payment. Amount is saved to your account and persists after logout.
+              Demo top-up — no real payment. Amount is saved to your account and
+              persists after logout.
             </p>
             <form onSubmit={handleSubmitAddBalance} className="space-y-4">
               <div>
@@ -1044,7 +1113,9 @@ export default function ProfilePage() {
                   inputMode="decimal"
                   placeholder="e.g. 50"
                   value={addBalanceAmount}
-                  onChange={(e) => setAddBalanceAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                  onChange={(e) =>
+                    setAddBalanceAmount(e.target.value.replace(/[^\d.,]/g, ""))
+                  }
                   disabled={addBalanceLoading}
                   className="w-full bg-white dark:bg-zinc-900 text-black dark:text-white border-[3px] border-black dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:opacity-60"
                 />
@@ -1074,7 +1145,9 @@ export default function ProfilePage() {
                     placeholder="4242 4242 4242 4242"
                     value={dummyCardNumber}
                     onChange={(e) =>
-                      setDummyCardNumber(e.target.value.replace(/[^\d\s]/g, "").slice(0, 19))
+                      setDummyCardNumber(
+                        e.target.value.replace(/[^\d\s]/g, "").slice(0, 19),
+                      )
                     }
                     disabled={addBalanceLoading}
                     className="w-full flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-950 text-black dark:text-white border-[3px] border-zinc-300 dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm outline-none disabled:opacity-60"
@@ -1086,7 +1159,9 @@ export default function ProfilePage() {
                       autoComplete="off"
                       placeholder="MM/YY"
                       value={dummyCardExpiry}
-                      onChange={(e) => setDummyCardExpiry(formatExpiryMmYy(e.target.value))}
+                      onChange={(e) =>
+                        setDummyCardExpiry(formatExpiryMmYy(e.target.value))
+                      }
                       disabled={addBalanceLoading}
                       className="w-full sm:w-[5.5rem] shrink-0 bg-zinc-50 dark:bg-zinc-950 text-black dark:text-white border-[3px] border-zinc-300 dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm tabular-nums outline-none disabled:opacity-60"
                       maxLength={5}
@@ -1098,7 +1173,9 @@ export default function ProfilePage() {
                       placeholder="CVC"
                       value={dummyCardCvv}
                       onChange={(e) =>
-                        setDummyCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))
+                        setDummyCardCvv(
+                          e.target.value.replace(/\D/g, "").slice(0, 3),
+                        )
                       }
                       disabled={addBalanceLoading}
                       className="w-full sm:w-[4.5rem] shrink-0 bg-zinc-50 dark:bg-zinc-950 text-black dark:text-white border-[3px] border-zinc-300 dark:border-zinc-700 p-3.5 rounded-2xl font-bold text-sm tabular-nums text-center outline-none disabled:opacity-60"
@@ -1107,11 +1184,14 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <p className="text-[10px] font-bold text-gray-500 dark:text-zinc-500 mt-2">
-                  Expiry <span className="font-black">MM/YY</span> · Last 3 digits on the back (CVC)
+                  Expiry <span className="font-black">MM/YY</span> · Last 3
+                  digits on the back (CVC)
                 </p>
               </div>
               {addBalanceError && (
-                <p className="text-sm font-black text-red-600">{addBalanceError}</p>
+                <p className="text-sm font-black text-red-600">
+                  {addBalanceError}
+                </p>
               )}
               <div className="flex gap-3 pt-2">
                 <button
@@ -1127,7 +1207,9 @@ export default function ProfilePage() {
                   disabled={addBalanceLoading}
                   className="flex-1 bg-[#EF9D39] text-black border-[3px] border-black rounded-xl py-3 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                 >
-                  {addBalanceLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {addBalanceLoading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : null}
                   Add to wallet
                 </button>
               </div>
