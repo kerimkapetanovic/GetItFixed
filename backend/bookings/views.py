@@ -1,19 +1,16 @@
-from urllib import request
-
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.authentication import TokenAuthentication 
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.utils.dateparse import parse_datetime
-from django.contrib.auth import get_user_model # Required to link the Handyman
-from django.db.models import Q
-from rest_framework.permissions import IsAuthenticated # Dodaj ovo gore ako fali
-from rest_framework.permissions import AllowAny # Dodaj ovo gore ako fali
-from datetime import timedelta # Dodaj ovo
-from django.utils import timezone # Već bi trebalo da imaš od ranije
-from django.shortcuts import get_object_or_404 # Dodaj ovo ako fali
+from django.contrib.auth import get_user_model
+from django.db.models import Q, Count, Sum
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from datetime import timedelta
+from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from django.db import transaction
 from decimal import Decimal
 
@@ -93,6 +90,7 @@ class HandymanDashboardView(generics.ListAPIView):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+
 @method_decorator(csrf_exempt, name='dispatch')
 class AcceptJobView(APIView):
     """Allows a handyman to manually claim a 'pending' job."""
@@ -103,7 +101,6 @@ class AcceptJobView(APIView):
         try:
             booking = Booking.objects.get(id=booking_id, status='pending')
             
-            # 1. Hvatanje duration_minutes iz requesta
             duration = request.data.get('duration_minutes')
             if not duration:
                 return Response({"error": "Duration is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -119,7 +116,7 @@ class AcceptJobView(APIView):
             knows_fix = request.data.get('knows_fix')
             if knows_fix is not None:
                 booking.knows_fix = knows_fix
-            # 2. Spremanje trajanja
+                
             booking.duration_minutes = int(duration)
             booking.agreed_price = agreed
 
@@ -140,6 +137,7 @@ class AcceptJobView(APIView):
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
         except Booking.DoesNotExist:
             return Response({"error": "Job not available"}, status=status.HTTP_404_NOT_FOUND)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class HandymanNegotiationActionView(APIView):
@@ -167,7 +165,7 @@ class HandymanNegotiationActionView(APIView):
                 return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
 
         action = request.data.get('action')
-        duration = request.data.get('duration_minutes') # Hvatanje sati sa frontenda
+        duration = request.data.get('duration_minutes')
         knows_fix = request.data.get('knows_fix')
 
         if action not in {'accept', 'decline', 'counter'}:
@@ -184,7 +182,6 @@ class HandymanNegotiationActionView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 1. AKCIJA: ACCEPT (Prihvatanje ponude)
         if action == 'accept':
             if not duration:
                 return Response({"error": "Duration hours is required to accept a job."}, status=status.HTTP_400_BAD_REQUEST)
@@ -193,7 +190,6 @@ class HandymanNegotiationActionView(APIView):
             if price_err:
                 return Response({"error": price_err}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Određujemo finalno vrijeme (ono oko kojeg su se zadnje složili)
             agreed_time = booking.handyman_proposed_time or booking.client_proposed_time or booking.scheduled_time
             if not agreed_time:
                 return Response(
@@ -206,9 +202,8 @@ class HandymanNegotiationActionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             booking.scheduled_time = agreed_time
-            # Expose the slot on handyman_proposed_time so the client UI matches the counter flow.
             booking.handyman_proposed_time = agreed_time
-            booking.duration_minutes = int(duration) # Spašavamo sate
+            booking.duration_minutes = int(duration)
             booking.agreed_price = agreed
             if knows_fix is not None:
                 booking.knows_fix = knows_fix
@@ -220,14 +215,12 @@ class HandymanNegotiationActionView(APIView):
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
-        # 2. AKCIJA: DECLINE (Odbijanje ponude)
         if action == 'decline':
             booking.status = 'cancelled'
             booking.negotiation_status = 'declined'
             booking.save()
-            return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
+            return Response(BookingSerializer(booking).data, status=timezone.HTTP_200_OK)
 
-        # 3. AKCIJA: COUNTER (Kontra-ponuda novog vremena i sati)
         if action == 'counter':
             proposed_time_raw = request.data.get('proposed_time')
             proposed_time = parse_datetime(proposed_time_raw) if proposed_time_raw else None
@@ -240,7 +233,6 @@ class HandymanNegotiationActionView(APIView):
 
             message = (request.data.get('message') or "").strip()
             
-            # Ako je majstor poslao i novi duration tokom kontra-ponude, spasi ga
             if duration:
                 booking.duration_minutes = int(duration)
 
@@ -255,7 +247,7 @@ class HandymanNegotiationActionView(APIView):
             if knows_fix is not None:
                 booking.knows_fix = knows_fix
             booking.status = 'pending'
-            booking.negotiation_status = 'awaiting_client' # Sada klijent mora odgovoriti
+            booking.negotiation_status = 'awaiting_client'
             _hr = 1 if booking.is_urgent else 3
             booking.expires_at = timezone.now() + timedelta(hours=_hr)
             booking.last_action_by = 'handyman'
@@ -273,9 +265,7 @@ class CreateBookingView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # 1. Check if a specific handyman was targeted via the 'Book This Expert' button
         handyman_id = self.request.data.get('handyman_id')
-        is_urgent = serializer.validated_data.get('is_urgent', False)
         handyman = None
         final_status = 'pending'
         negotiation_status = 'none'
@@ -283,7 +273,6 @@ class CreateBookingView(generics.CreateAPIView):
 
         if handyman_id:
             try:
-                # 2. Direct booking starts as awaiting handyman response.
                 handyman = User.objects.get(id=handyman_id, role='handyman')
                 negotiation_status = 'awaiting_handyman'
                 client_proposed_time = serializer.validated_data.get('scheduled_time')
@@ -291,7 +280,6 @@ class CreateBookingView(generics.CreateAPIView):
             except User.DoesNotExist:
                 print(f"--- WARNING: Handyman ID {handyman_id} not found, defaulting to pending ---")
 
-        # 3. Save the booking with the client and current status
         print(f"--- NEW JOB CREATED BY: {self.request.user.email} ---")
         booking = serializer.save(
             client=self.request.user, 
@@ -309,6 +297,7 @@ class CreateBookingView(generics.CreateAPIView):
             set_handyman_response_deadline(booking)
             booking.save(update_fields=['expires_at', 'handyman_response_phase', 'updated_at'])
 
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ClientRequestsView(generics.ListAPIView):
     """Shows the user all the jobs they have personally requested."""
@@ -318,6 +307,7 @@ class ClientRequestsView(generics.ListAPIView):
 
     def get_queryset(self):
         return Booking.objects.filter(client=self.request.user).order_by('-id')
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ClientNegotiationActionView(APIView):
@@ -339,7 +329,6 @@ class ClientNegotiationActionView(APIView):
                     {"error": "There is no expert offer waiting for your confirmation."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            # Klijent prihvata ono što je zadnje predloženo
             agreed_time = (
                 booking.handyman_proposed_time
                 or booking.scheduled_time
@@ -377,13 +366,13 @@ class ClientNegotiationActionView(APIView):
             message = (request.data.get('message') or "").strip()
             booking.client_counter_message = message or None
             
-            # BITNO: Ne diraj scheduled_time dok majstor ne prihvati!
             booking.status = 'pending'
             booking.negotiation_status = 'awaiting_handyman'
             booking.last_action_by = 'client'
             set_handyman_response_deadline(booking)
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
+
 
 class BookingDetailView(generics.RetrieveAPIView):
     """Fetches details for a single specific booking."""
@@ -410,6 +399,7 @@ class BookingDetailView(generics.RetrieveAPIView):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
     
+
 class TicketTrackingView(APIView):
     authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -432,12 +422,10 @@ class TicketTrackingView(APIView):
         
 
 class HandymanBusySlotsView(APIView):
-    # Dodaj ove dvije linije:
     authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
-    permission_classes = [AllowAny] # Dozvoli svima da vide zauzete termine kako bi kalendar radio
+    permission_classes = [AllowAny]
 
     def get(self, request, handyman_id):
-        # Uzimamo termine koji su potvrđeni ('accepted')
         busy_bookings = Booking.objects.filter(
             handyman_id=handyman_id, 
             status='accepted',
@@ -693,11 +681,9 @@ class CompleteBookingView(APIView):
         user = request.user
         action = request.data.get('action')
 
-        # Samo client ili handyman mogu pristupiti
         if user not in (booking.client, booking.handyman):
             return Response({"error": "Forbidden."}, status=403)
 
-        # ── CLIENT: plati iz novčanika (nakon što je posao potvrđen) ──
         if action == 'pay':
             if user != booking.client:
                 return Response({"error": "Only the client can pay."}, status=403)
@@ -746,7 +732,6 @@ class CompleteBookingView(APIView):
 
             return Response(BookingSerializer(booking).data, status=200)
 
-        # ── HANDYMAN: potvrdi primitak uplate / završi flow ──
         if action == 'acknowledge_payment':
             if user != booking.handyman:
                 return Response({"error": "Only the handyman can confirm payment receipt."}, status=403)
@@ -756,7 +741,6 @@ class CompleteBookingView(APIView):
             booking.save(update_fields=["status", "updated_at"])
             return Response(BookingSerializer(booking).data, status=200)
 
-        # ── KORAK 1: Handyman označava kraj ──
         if action == 'mark_done':
             if user != booking.handyman:
                 return Response({"error": "Only the handyman can mark job as done."}, status=403)
@@ -768,7 +752,6 @@ class CompleteBookingView(APIView):
             booking.save()
             return Response(BookingSerializer(booking).data, status=200)
 
-        # ── KORAK 2: Klijent potvrđuje ──
         if action == 'confirm_done':
             if user != booking.client:
                 return Response({"error": "Only the client can confirm completion."}, status=403)
@@ -780,7 +763,6 @@ class CompleteBookingView(APIView):
             booking.save()
             return Response(BookingSerializer(booking).data, status=200)
 
-        # ── KORAK 2b: Klijent prijavljuje da posao nije završen ──
         if action == 'mark_not_completed':
             if user != booking.client:
                 return Response({"error": "Only the client can mark job as not completed."}, status=403)
@@ -791,7 +773,6 @@ class CompleteBookingView(APIView):
             booking.save()
             return Response(BookingSerializer(booking).data, status=200)
 
-        # ── KORAK 3: Auto-complete provjera (polling) ──
         if action == 'check_auto_complete':
             if user != booking.client:
                 return Response({"error": "Only the client can trigger auto-complete check."}, status=403)
@@ -824,12 +805,9 @@ class CompleteBookingView(APIView):
             status=400,
         )
     
+
 @method_decorator(csrf_exempt, name='dispatch')
 class JobStatusCheckView(APIView):
-    """
-    Frontend polling — provjeri je li scheduled_time (početak termina) prošao.
-    Ako jeste, prebaci status accepted -> in_progress.
-    """
     authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -840,7 +818,6 @@ class JobStatusCheckView(APIView):
                 status='accepted'
             )
         except Booking.DoesNotExist:
-            # Možda je već in_progress/completed — vrati trenutni state
             booking = get_object_or_404(Booking, id=booking_id)
             return Response(BookingSerializer(booking).data, status=200)
 
@@ -862,3 +839,119 @@ class JobStatusCheckView(APIView):
             "status": "not_yet",
             "seconds_left": int(seconds_left)
         }, status=200)
+
+
+# =========================================================================
+# Task C1: Admin Backend APIs (Tracking, Verification, Services, Finances)
+# =========================================================================
+
+class AdminTrackingListView(generics.ListAPIView):
+    """
+    Tracking API: Monitors all system-wide lifecycles, calculates real-time
+    queue statistics, and supports administrative pipeline overrides.
+    """
+    serializer_class = BookingSerializer
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication, SessionAuthentication]
+    permission_classes = [permissions.IsAdminUser]
+
+    def get_queryset(self):
+        queryset = Booking.objects.all().order_by('-id')
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        stats = Booking.objects.aggregate(
+            total_jobs=Count('id'),
+            pending_jobs=Count('id', filter=Q(status='pending')),
+            escrow_locked=Count('id', filter=Q(status='funds_locked')),
+            in_progress=Count('id', filter=Q(status='in_progress')),
+        )
+        response.data = {
+            'metrics': stats,
+            'results': response.data
+        }
+        return response
+
+
+class AdminVerificationQueueView(generics.ListAPIView):
+    """
+    Verification API: Exposes all service provider onboarding fields
+    for validation audits.
+    """
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication, SessionAuthentication]
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get(self, request):
+        handymen = User.objects.filter(role__iexact='handyman').order_by('-id')
+        data = [{
+            "id": h.id,
+            "name": f"{h.first_name} {h.last_name}".strip() or h.username,
+            "email": h.email,
+            "service_type": getattr(h, 'service_type', 'N/A'),
+            "is_active": h.is_active,
+            "date_joined": h.date_joined
+        } for h in handymen]
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class AdminVerifyUserActionView(APIView):
+    """
+    Onboarding Actions: Supports instant status approval or systemic revocation.
+    """
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication, SessionAuthentication]
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, user_id):
+        action = request.data.get("action")
+        user = get_object_or_404(User, id=user_id)
+        
+        if action == "approve":
+            user.is_active = True
+            user.save()
+            return Response({"message": f"User {user.email} approved successfully."}, status=status.HTTP_200_OK)
+        elif action == "suspend":
+            user.is_active = False
+            user.save()
+            return Response({"message": f"User {user.email} suspended successfully."}, status=status.HTTP_200_OK)
+            
+        return Response({"error": "Invalid action parameter specified."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminServicesManagementView(APIView):
+    """
+    Services API: Aggregates real-time marketplace availability analytics.
+    """
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication, SessionAuthentication]
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        services_breakdown = User.objects.filter(
+            role__iexact='handyman'
+        ).values('service_type').annotate(
+            total_pros=Count('id'),
+            active_pros=Count('id', filter=Q(is_active=True))
+        ).order_by('-total_pros')
+        
+        return Response(list(services_breakdown), status=status.HTTP_200_OK)
+
+
+class AdminFinancesLedgerView(generics.ListAPIView):
+    """
+    Finances API: Reconciles total frozen assets across the ecosystem.
+    """
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication, SessionAuthentication]
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        total_escrow_volume = EscrowHold.objects.filter(status='locked').aggregate(Sum('amount'))['amount__sum'] or Decimal("0.00")
+        
+        recent_holds = EscrowHold.objects.all().order_by('-id')[:30]
+        serializer = EscrowHoldSerializer(recent_holds, many=True)
+
+        return Response({
+            "total_escrow_locked_systemwide": float(total_escrow_volume),
+            "ledger": serializer.data
+        }, status=status.HTTP_200_OK)

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "../../lib/axios";
 import { useLanguage } from "@/components/providers/language-provider";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Lock } from "lucide-react";
 import { useTheme } from "@/components/providers/theme-provider";
 
 export default function Header() {
@@ -16,7 +16,12 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isThemeMounted, setIsThemeMounted] = useState(false);
   const [userRole, setUserRole] = useState("client");
-  const [userData, setUserData] = useState({ firstName: "", lastName: "", walletBalance: 0.00 });
+  const [userData, setUserData] = useState({
+    firstName: "",
+    lastName: "",
+    walletBalance: 0.0,
+    lockedBalance: 0.0,
+  });
   const [username, setUsername] = useState("");
   const [storedAvatarUrl, setStoredAvatarUrl] = useState("");
   const avatarSeed =
@@ -33,8 +38,13 @@ export default function Header() {
     const fName = localStorage.getItem("first_name") || "";
     const lName = localStorage.getItem("last_name") || "";
 
-    // Parsiramo u broj jer localStorage vraća string
-    const walletBalance = parseFloat(localStorage.getItem("wallet_balance") || "0");
+    // Parse values safely into numbers from localStorage strings
+    const walletBalance = parseFloat(
+      localStorage.getItem("wallet_balance") || "0",
+    );
+    const lockedBalance = parseFloat(
+      localStorage.getItem("locked_balance") || "0",
+    );
 
     const storedUsername = localStorage.getItem("username") || "";
     const customAvatarUrl = localStorage.getItem("avatar_url") || "";
@@ -45,22 +55,27 @@ export default function Header() {
     if (loggedIn && role) {
       setIsLoggedIn(true);
       setUserRole(role);
-      // ISPRAVLJENO: Koristimo 'walletBalance' da se podudara sa definicijom u useState
       setUserData({
         firstName: fName,
         lastName: lName,
-        walletBalance: walletBalance
+        walletBalance: walletBalance,
+        lockedBalance: lockedBalance,
       });
     } else {
       setIsLoggedIn(false);
       setUserRole("client");
-      setUserData({ firstName: "", lastName: "", walletBalance: 0.00 });
+      setUserData({
+        firstName: "",
+        lastName: "",
+        walletBalance: 0.0,
+        lockedBalance: 0.0,
+      });
       setUsername("");
       setStoredAvatarUrl("");
     }
   };
 
-  // 1. UČITAVANJE SESIJE (UI DIO)
+  // 1. SESSION LOAD & LISTENER
   useEffect(() => {
     syncSessionFromStorage();
 
@@ -78,7 +93,7 @@ export default function Header() {
     setIsThemeMounted(true);
   }, []);
 
-  // 2. LOGOUT LOGIKA (ČISTI I KUKI I LOCALSTORAGE)
+  // 2. LOGOUT LOGIC
   const handleLogout = async () => {
     try {
       await api.post("/api/accounts/logout/");
@@ -108,8 +123,9 @@ export default function Header() {
   const visibleBaseLinks = allBaseLinks.filter(
     (link) => !isLoggedIn || userRole !== "admin" || !link.adminHide,
   );
+
   const getRoleLinks = (role: string) => {
-    if (!isLoggedIn || !username) return []; // Dodaj provjeru za username
+    if (!isLoggedIn || !username) return [];
 
     switch (role) {
       case "client":
@@ -127,7 +143,10 @@ export default function Header() {
           { name: t("header.users"), href: `/${username}/users` },
           { name: t("header.tracking"), href: `/${username}/tracking` },
           { name: t("header.verification"), href: `/${username}/verification` },
-          { name: t("header.services"), href: `/${username}/services` },
+          {
+            name: t("header.services"),
+            href: `/${username}/marketplace-services`,
+          },
           { name: t("header.finances"), href: `/${username}/finances` },
         ];
       default:
@@ -166,7 +185,7 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* NAV LINKOVI */}
+        {/* NAV LINKS */}
         <nav className="hidden lg:flex flex-grow justify-center items-center gap-x-8 px-4">
           {visibleBaseLinks.map((link) => (
             <Link
@@ -194,7 +213,7 @@ export default function Header() {
           )}
         </nav>
 
-        {/* DESNA STRANA (Login ili Profile) */}
+        {/* RIGHT CAP BUTTONS ROW */}
         <div className="flex items-center gap-4 shrink-0">
           <button
             type="button"
@@ -225,27 +244,45 @@ export default function Header() {
             </div>
           ) : (
             <div className="relative group">
-              {/* PROFILE BUTTON */}
+              {/* PROFILE CONTROL BADGE WITH DETAILED BALANCE METRICS */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={`flex items-center gap-3 border-2 border-black dark:border-white p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${isMenuOpen
-                  ? "rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1"
-                  : "rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
-                  }`}
+                className={`flex items-center gap-3 border-2 border-black dark:border-white p-2 pl-4 bg-white dark:bg-zinc-800 transition-all z-[60] relative ${
+                  isMenuOpen
+                    ? "rounded-t-[16px] border-b-0 shadow-none translate-x-1 translate-y-1"
+                    : "rounded-[16px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
+                }`}
               >
                 <div className="text-right hidden sm:block">
                   <p className="text-xs font-black leading-none uppercase tracking-tight dark:text-white">
                     {userData.firstName && userData.lastName
                       ? `${userData.firstName} ${userData.lastName}`
-                      : (username || translatedRole)}
+                      : username || translatedRole}
                   </p>
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <p className="text-[9px] font-bold text-gray-400 dark:text-zinc-400 uppercase leading-none">
-                      {translatedRole}
-                    </p>
-                    <p className="text-[10px] font-black text-[#EF9D39] leading-none">
-                      {Number(userData.walletBalance).toFixed(2)} <span className="text-[8px] ml-0.5">KM</span>
-                    </p>
+
+                  {/* SPLIT BALANCE MULTI-DISPLAY BLOCK */}
+                  <div className="flex flex-col items-end gap-1 mt-1.5 font-sans border-t border-dashed border-zinc-200 dark:border-zinc-700 pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[8px] font-black tracking-wider text-zinc-400">
+                        AVAIL:
+                      </span>
+                      <p className="text-[10px] font-black text-green-600 dark:text-green-400 leading-none">
+                        {Number(userData.walletBalance).toFixed(2)}{" "}
+                        <span className="text-[7px]">KM</span>
+                      </p>
+                    </div>
+                    {userData.lockedBalance > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <Lock size={8} className="text-[#EF9D39]" />
+                        <span className="text-[8px] font-black tracking-wider text-zinc-400">
+                          LOCK:
+                        </span>
+                        <p className="text-[10px] font-black text-[#EF9D39] leading-none">
+                          {Number(userData.lockedBalance).toFixed(2)}{" "}
+                          <span className="text-[7px]">KM</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <img
@@ -257,7 +294,7 @@ export default function Header() {
 
               {/* DROPDOWN MENU */}
               {isMenuOpen && (
-                <div className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white dark:bg-zinc-800 border-2 border-black dark:border-white z-50  rounded-b-[16px] overflow-hidden">
+                <div className="absolute left-1 right-0 mt-[4px] w-[calc(100%)] bg-white dark:bg-zinc-800 border-2 border-black dark:border-white z-50 rounded-b-[16px] overflow-hidden">
                   <ul className="flex flex-col text-[11px] font-black uppercase tracking-widest">
                     <Link
                       href={`/${username}/profile`}
