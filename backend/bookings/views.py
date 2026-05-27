@@ -64,8 +64,8 @@ class HandymanDashboardView(generics.ListAPIView):
         # Show open pending jobs in their category and direct jobs waiting on them.
         return Booking.objects.filter(
             Q(status='pending', handyman__isnull=True, service_type=user.service_type)
-            | Q(handyman=user, negotiation_status='awaiting_handyman')
             | Q(handyman=user, negotiation_status='awaiting_client')
+            | Q(handyman=user, negotiation_status='awaiting_handyman')
             | Q(handyman=user, status='accepted')
             | Q(handyman=user, status='in_progress')
             | Q(handyman=user, status='visit_completed')
@@ -219,7 +219,7 @@ class HandymanNegotiationActionView(APIView):
             booking.status = 'cancelled'
             booking.negotiation_status = 'declined'
             booking.save()
-            return Response(BookingSerializer(booking).data, status=timezone.HTTP_200_OK)
+            return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
         if action == 'counter':
             proposed_time_raw = request.data.get('proposed_time')
@@ -253,6 +253,47 @@ class HandymanNegotiationActionView(APIView):
             booking.last_action_by = 'handyman'
             booking.save()
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CompleteVisitView(APIView):
+    """
+    Allows the assigned Handyman to mark the initial visit as completed,
+    transitioning the booking to the 'visit_fee_paid' state so the Client 
+    can decide to continue the job.
+    """
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+
+        # Guardrail 1: Only the assigned Handyman can click this
+        if request.user != booking.handyman:
+            return Response(
+                {"error": "Only the assigned handyman can complete the initial visit."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Guardrail 2: Booking must actually be in progress
+        if booking.status != "in_progress":
+            return Response(
+                {"error": f"Cannot complete visit. Current status is {booking.status}."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Transition the State
+        booking.status = "visit_fee_paid"
+        booking.visit_fee_paid_at = timezone.now()
+        booking.save()
+
+        return Response(
+            {
+                "message": "Visit completed successfully. Waiting for client to continue job.",
+                "booking": BookingSerializer(booking).data
+            }, 
+            status=status.HTTP_200_OK
+        )
 
 
 # --- CLIENT VIEWS ---

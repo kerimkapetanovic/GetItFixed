@@ -49,3 +49,10 @@ export async function getEscrowStatus(bookingId: number): Promise<EscrowStatusRe
   const { data } = await api.get(`/api/bookings/${bookingId}/escrow/`);
   return data as EscrowStatusResponse;
 }
+
+// --- NEW PHASE 2 FUNCTIONS ---
+
+export async function completeInitialVisit(bookingId: number): Promise<{ message: string; booking: BookingDetail }> {
+  const { data } = await api.post(`/api/bookings/${bookingId}/visit-complete/`);
+  return data;
+}

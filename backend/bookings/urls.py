@@ -12,6 +12,7 @@ from .views import (
     TicketTrackingView,
     JobStatusCheckView,
     CompleteBookingView,
+    CompleteVisitView,  # <-- Added the new view here
     ContinueJobView,
     CreateQuoteView,
     LatestQuoteView,
@@ -34,8 +35,11 @@ urlpatterns = [
     path('<int:booking_id>/handyman-action/', HandymanNegotiationActionView.as_view(), name='handyman-negotiation-action'),
     path('<int:booking_id>/client-action/', ClientNegotiationActionView.as_view(), name='client-negotiation-action'),
     path('<int:booking_id>/status-check/', JobStatusCheckView.as_view(), name='job-status-check'),
+    
+    path('<int:booking_id>/visit-complete/', CompleteVisitView.as_view(), name='booking-visit-complete'), # <-- Added the new route here
     path('<int:booking_id>/complete/', CompleteBookingView.as_view(), name='job-complete'),
     path('<int:booking_id>/continue-job/', ContinueJobView.as_view(), name='continue-job'),
+    
     path('<int:booking_id>/quotes/', CreateQuoteView.as_view(), name='create-quote'),
     path('<int:booking_id>/quotes/latest/', LatestQuoteView.as_view(), name='latest-quote'),
     path('<int:booking_id>/quotes/<int:quote_id>/client-action/', QuoteClientActionView.as_view(), name='quote-client-action'),
