@@ -26,6 +26,7 @@ class User(AbstractUser):
     bio = models.TextField(max_length=500, blank=True, null=True)
     avatar = models.TextField(blank=True, null=True)  # čuva Supabase URL kao string
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
+    terms_accepted = models.BooleanField(default=False)
     wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     wallet_locked_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 

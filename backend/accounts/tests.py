@@ -85,3 +85,45 @@ class ProfileEndpointsTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class RegistrationTermsTests(APITestCase):
+    def _base_payload(self):
+        return {
+            "username": "new-user",
+            "email": "new-user@example.com",
+            "password": "StrongPass123!",
+            "first_name": "New",
+            "last_name": "User",
+            "role": "client",
+            "phone": "+38761123456",
+            "county": "HNK",
+            "city": "Mostar",
+            "zip_code": "88000",
+        }
+
+    def test_register_requires_terms_flag(self):
+        payload = self._base_payload()
+        response = self.client.post("/api/accounts/register/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("accepted_terms", response.data)
+        self.assertEqual(User.objects.filter(email=payload["email"]).count(), 0)
+
+    def test_register_rejects_when_terms_not_accepted(self):
+        payload = self._base_payload()
+        payload["accepted_terms"] = False
+        response = self.client.post("/api/accounts/register/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("accepted_terms", response.data)
+        self.assertEqual(User.objects.filter(email=payload["email"]).count(), 0)
+
+    def test_register_succeeds_when_terms_accepted(self):
+        payload = self._base_payload()
+        payload["accepted_terms"] = True
+        response = self.client.post("/api/accounts/register/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email=payload["email"])
+        self.assertTrue(user.terms_accepted)

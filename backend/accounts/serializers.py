@@ -31,13 +31,15 @@ def upload_avatar_to_supabase(file_obj):
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    accepted_terms = serializers.BooleanField(write_only=True)
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'password', 
             'first_name', 'last_name', 'role', 'phone',
-            'county', 'city', 'zip_code', 'service_type', 'wallet_balance'
+            'county', 'city', 'zip_code', 'service_type', 'wallet_balance',
+            'accepted_terms'
         )
 
     def validate(self, attrs):
@@ -45,9 +47,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"service_type": "Handyman must select a service type."}
             )
+        if not attrs.get('accepted_terms'):
+            raise serializers.ValidationError(
+                {"accepted_terms": "You must accept the Terms of Service before creating an account."}
+            )
         return attrs
 
     def create(self, validated_data):
+        validated_data.pop('accepted_terms', None)
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -60,7 +67,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             city=validated_data.get('city', ''),
             zip_code=validated_data.get('zip_code', ''),
             service_type=validated_data.get('service_type', None),
-            wallet_balance=validated_data.get('wallet_balance', 0.00)
+            wallet_balance=validated_data.get('wallet_balance', 0.00),
+            terms_accepted=True,
         )
         return user
 

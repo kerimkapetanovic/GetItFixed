@@ -172,6 +172,16 @@ export const translations = {
       errorPrefix: "Error:",
       alreadyHaveAccount: "Already have an account?",
       signInHere: "Sign in here",
+      termsModal: {
+        title: "Terms of Service Agreement",
+        description:
+          "Before creating your account, please review and accept our Terms of Service.",
+        readMore: "Read the full document:",
+        termsLink: "Terms of Service",
+        checkbox: "I have read and agree with the Terms of Service.",
+        cancel: "Cancel",
+        confirm: "Agree and Continue",
+      },
       placeholders: {
         firstName: "John",
         lastName: "Doe",
@@ -429,6 +439,16 @@ export const translations = {
       errorPrefix: "Greska:",
       alreadyHaveAccount: "Vec imate nalog?",
       signInHere: "Prijavite se ovdje",
+      termsModal: {
+        title: "Saglasnost o uslovima koristenja",
+        description:
+          "Prije kreiranja naloga, molimo procitajte i prihvatite nase uslove koristenja.",
+        readMore: "Procitajte cijeli dokument:",
+        termsLink: "Uslovi koristenja",
+        checkbox: "Procitao/la sam i slazem se sa uslovima koristenja.",
+        cancel: "Odustani",
+        confirm: "Prihvati i nastavi",
+      },
       placeholders: {
         firstName: "Ime",
         lastName: "Prezime",

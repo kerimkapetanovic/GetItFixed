@@ -105,6 +105,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [passwordError, setPasswordError] = useState(false); // State za error lozinke
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -138,15 +140,18 @@ export default function RegisterPage() {
   };
 
 
- const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const submitRegistration = async () => {
     // 1. VALIDACIJA LOZINKE (Prije nego što uopšte pokreneš loading)
     if (formData.password.length < 8) {
       setPasswordError(true);
-      return; // Ovdje izlazimo, loading još nije ni krenuo
+      return false;
     }
-    
+
+    if (!termsAccepted) {
+      setTermsModalOpen(true);
+      return false;
+    }
+
     setPasswordError(false);
     setLoading(true); // TEK SAD kreće loading jer su podaci validni
 
@@ -166,22 +171,27 @@ export default function RegisterPage() {
       city: formData.city,
       zip_code: formData.zipCode,
       service_type: role === 'handyman' ? formData.expertise : null,
+      accepted_terms: termsAccepted,
     };
 
     try {
       await api.post('/api/accounts/register/', dataToSubmit);
       alert(t('register.success', { name: formData.firstName }));
       router.push('/login'); 
+      return true;
     } catch (error: unknown) {
       const apiError = error as { response?: { data?: ApiErrorPayload } };
       console.error("Registration error:", apiError.response?.data);
-      // Ako server vrati grešku (npr. email već postoji), alert će iskočiti
-      // a finally blok će ugasiti loading
       alert(`${t('register.errorPrefix')} ${JSON.stringify(apiError.response?.data || t('register.genericError'))}`);
+      return false;
     } finally {
-      // OVO JE KLJUČNO: gasi loading i u slučaju uspjeha i u slučaju greške na serveru
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitRegistration();
   };
 
   return (
@@ -360,6 +370,69 @@ export default function RegisterPage() {
         </div>
       </main>
       <Footer />
+
+      {termsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div
+            className="w-full max-w-lg bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 p-6 md:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(239,157,57,0.2)]"
+            style={{ borderRadius: '24px' }}
+          >
+            <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
+              {t('register.termsModal.title')}
+            </h2>
+            <p className="mt-3 text-sm font-bold text-gray-600 dark:text-zinc-300">
+              {t('register.termsModal.description')}
+            </p>
+            <p className="mt-2 text-xs font-bold text-gray-500 dark:text-zinc-400">
+              {t('register.termsModal.readMore')}{' '}
+              <Link
+                href="/terms"
+                target="_blank"
+                className="text-gray-900 dark:text-zinc-100 border-b-2 border-yellow-300 hover:bg-yellow-300/40 transition-colors"
+              >
+                {t('register.termsModal.termsLink')}
+              </Link>
+            </p>
+
+            <label className="mt-5 flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-black dark:accent-yellow-400"
+              />
+              <span className="text-sm font-bold text-gray-800 dark:text-zinc-200">
+                {t('register.termsModal.checkbox')}
+              </span>
+            </label>
+
+            <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setTermsModalOpen(false)}
+                className="cursor-pointer border-2 border-black dark:border-zinc-600 py-3 text-xs font-black uppercase tracking-wide text-gray-900 dark:text-zinc-100 bg-white dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                style={inputRadius}
+              >
+                {t('register.termsModal.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={!termsAccepted || loading}
+                onClick={async () => {
+                  const registered = await submitRegistration();
+                  if (registered) {
+                    setTermsModalOpen(false);
+                  }
+                }}
+                className="cursor-pointer border-2 border-black py-3 text-xs font-black uppercase tracking-wide bg-black text-white shadow-[4px_4px_0px_0px_rgba(249,177,77,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                style={inputRadius}
+              >
+                {t('register.termsModal.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
