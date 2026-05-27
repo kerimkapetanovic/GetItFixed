@@ -72,7 +72,7 @@ export default function AdminTrackingPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-transparent font-bold text-xs uppercase outline-none cursor-pointer"
+              className="bg-transparent font-bold text-xs uppercase outline-none cursor-pointer dark:text-white dark:bg-zinc-900"
             >
               <option value="">All Pipeline States</option>
               <option value="pending">Pending</option>
