@@ -127,6 +127,13 @@ class ProfileSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)    
     avatar_url = serializers.SerializerMethodField()
     has_custom_avatar = serializers.SerializerMethodField()
+    locked_balance = serializers.DecimalField(
+        source="wallet_locked_balance",
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+    )
+    wallet_available_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -134,9 +141,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             "first_name", "last_name", "email", "role", "username",
             "avatar", "avatar_url", "has_custom_avatar",
             "phone", "county", "city", "zip_code",
-            "wallet_balance"
+            "wallet_balance", "locked_balance", "wallet_available_balance"
         )
-        read_only_fields = ("email", "role", "username", "avatar_url", "has_custom_avatar", "wallet_balance")
+        read_only_fields = (
+            "email",
+            "role",
+            "username",
+            "avatar_url",
+            "has_custom_avatar",
+            "wallet_balance",
+            "locked_balance",
+            "wallet_available_balance",
+        )
 
     def get_avatar_url(self, obj):
         if obj.avatar:
@@ -147,6 +163,9 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def get_has_custom_avatar(self, obj):
         return bool(obj.avatar)
+
+    def get_wallet_available_balance(self, obj):
+        return obj.wallet_available_balance
 
     def update(self, instance, validated_data):
         avatar_file = validated_data.pop('avatar', None)

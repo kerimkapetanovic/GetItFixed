@@ -220,6 +220,7 @@ class Quote(models.Model):
     subtotal_labor = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     subtotal_other = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    proposed_visit_time = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     client_decision_at = models.DateTimeField(null=True, blank=True)
@@ -264,6 +265,10 @@ class QuoteLineItem(models.Model):
 
 
 class EscrowHold(models.Model):
+    PURPOSE_CHOICES = (
+        ('visit_fee', 'Visit Fee'),
+        ('quote', 'Quote'),
+    )
     STATUS_CHOICES = (
         ('locked', 'Locked'),
         ('released', 'Released'),
@@ -283,6 +288,7 @@ class EscrowHold(models.Model):
         on_delete=models.CASCADE,
         related_name='escrow_locks_received',
     )
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default='quote')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='locked')
     reason = models.CharField(max_length=255, blank=True, null=True)

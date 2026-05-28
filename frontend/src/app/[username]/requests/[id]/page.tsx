@@ -265,6 +265,12 @@ type BusySlotResponse = {
   duration_minutes?: number | null;
 };
 
+type WalletMeResponse = {
+  wallet_balance?: number;
+  wallet_available_balance?: number;
+  locked_balance?: number;
+};
+
 type AutoCompleteCheckResponse =
   | BookingDetail
   | {
@@ -375,8 +381,12 @@ export default function RequestDetailsPage() {
       return;
     }
     api
-      .get<{ wallet_balance?: number }>("/api/accounts/me/")
-      .then((r) => setWalletBalance(Number(r.data.wallet_balance ?? 0)))
+      .get<WalletMeResponse>("/api/accounts/me/")
+      .then((r) =>
+        setWalletBalance(
+          Number(r.data.wallet_available_balance ?? r.data.wallet_balance ?? 0),
+        ),
+      )
       .catch(() => setWalletBalance(null));
   }, [booking?.status, booking?.id]);
 
@@ -407,6 +417,30 @@ export default function RequestDetailsPage() {
     };
     fetchBookingDetails();
   }, [bookingId]);
+
+  useEffect(() => {
+    if (!booking || (booking.status !== "accepted" && booking.status !== "funds_locked")) {
+      return;
+    }
+    let active = true;
+    const pollStatus = async () => {
+      try {
+        const res = await api.post(`/api/bookings/${booking.id}/status-check/`);
+        if (!active) return;
+        if (res.data?.status !== "not_yet") {
+          setBooking(res.data);
+        }
+      } catch {
+        // no-op
+      }
+    };
+    pollStatus();
+    const timer = setInterval(pollStatus, 30_000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [booking?.id, booking?.status]);
 
   useEffect(() => {
     if (!booking?.handyman_id) return;
@@ -456,6 +490,20 @@ export default function RequestDetailsPage() {
         payload,
       );
       setBooking(response.data);
+      if (action === "accept") {
+        const me = await api.get<WalletMeResponse>("/api/accounts/me/");
+        const availableBalance =
+          me.data.wallet_available_balance ?? me.data.wallet_balance;
+        if (typeof window !== "undefined" && availableBalance != null) {
+          localStorage.setItem("wallet_balance", String(availableBalance));
+          localStorage.setItem(
+            "locked_balance",
+            String(me.data.locked_balance ?? 0),
+          );
+          window.dispatchEvent(new Event("profile-updated"));
+        }
+        setWalletBalance(Number(availableBalance ?? 0));
+      }
       setActionSuccess(
         action === "accept"
           ? "Deal confirmed. Your appointment is locked in."
@@ -485,7 +533,9 @@ export default function RequestDetailsPage() {
       });
       setBooking(response.data);
       setActionSuccess(
-        "Work confirmed. Proceed to payment below using your profile balance.",
+        response.data.status === "visit_fee_paid"
+          ? "First visit confirmed and paid. You can now decide whether to continue."
+          : "Work confirmed and escrow was released successfully.",
       );
     } catch (error: unknown) {
       setActionError(getBackendErrorMessage(error));
@@ -504,15 +554,17 @@ export default function RequestDetailsPage() {
         action: "pay",
       });
       setBooking(response.data);
-      const me = await api.get<{ wallet_balance?: number }>(
+      const me = await api.get<WalletMeResponse>(
         "/api/accounts/me/",
       );
-      const wb = me.data.wallet_balance;
-      if (typeof window !== "undefined" && wb != null) {
-        localStorage.setItem("wallet_balance", String(wb));
+      const availableBalance =
+        me.data.wallet_available_balance ?? me.data.wallet_balance;
+      if (typeof window !== "undefined" && availableBalance != null) {
+        localStorage.setItem("wallet_balance", String(availableBalance));
+        localStorage.setItem("locked_balance", String(me.data.locked_balance ?? 0));
         window.dispatchEvent(new Event("profile-updated"));
       }
-      setWalletBalance(Number(wb ?? 0));
+      setWalletBalance(Number(availableBalance ?? 0));
       setActionSuccess(
         "Payment released from escrow successfully! Waiting for expert acknowledgement.",
       );
@@ -534,8 +586,26 @@ export default function RequestDetailsPage() {
       });
       setBooking(response.data);
       setActionSuccess(
-        "Marked as not completed. We'll keep this request open for follow-up.",
+        "Marked as not completed. Escrow was refunded and you can reopen if needed.",
       );
+    } catch (error: unknown) {
+      setActionError(getBackendErrorMessage(error));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const reopenAfterIssue = async () => {
+    if (!booking) return;
+    setActionError("");
+    setActionSuccess("");
+    try {
+      setActionLoading(true);
+      const response = await api.post(`/api/bookings/${booking.id}/complete/`, {
+        action: "reopen_after_issue",
+      });
+      setBooking(response.data);
+      setActionSuccess("Job reopened. Handyman can continue work.");
     } catch (error: unknown) {
       setActionError(getBackendErrorMessage(error));
     } finally {
@@ -591,7 +661,21 @@ export default function RequestDetailsPage() {
       );
       if ("escrow" in response) {
         setBooking(response.booking);
-        setActionSuccess("Quote accepted. Funds are now locked in escrow.");
+        const me = await api.get<WalletMeResponse>("/api/accounts/me/");
+        const availableBalance =
+          me.data.wallet_available_balance ?? me.data.wallet_balance;
+        if (typeof window !== "undefined" && availableBalance != null) {
+          localStorage.setItem("wallet_balance", String(availableBalance));
+          localStorage.setItem(
+            "locked_balance",
+            String(me.data.locked_balance ?? 0),
+          );
+          window.dispatchEvent(new Event("profile-updated"));
+        }
+        setWalletBalance(Number(availableBalance ?? 0));
+        setActionSuccess(
+          "Quote accepted. Funds are now locked and the second visit is scheduled.",
+        );
       } else {
         await refreshLatestQuote();
         const refreshed = await api.get(`/api/bookings/${booking.id}/`);
@@ -1060,6 +1144,16 @@ export default function RequestDetailsPage() {
                         KM
                       </span>
                     </div>
+                    {booking.latest_quote.proposed_visit_time && (
+                      <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl">
+                        <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">
+                          Proposed second visit
+                        </span>
+                        <p className="text-sm font-black mt-1">
+                          {formatDateTime(booking.latest_quote.proposed_visit_time)}
+                        </p>
+                      </div>
+                    )}
 
                     {booking.status === "quote_pending_client" && (
                       <div className="space-y-3">
@@ -1092,7 +1186,6 @@ export default function RequestDetailsPage() {
                       </div>
                     )}
 
-                    {/* NEW RELEASE ESCROW BUTTON ADDED HERE */}
                     {booking.status === "funds_locked" && (
                       <div className="mt-6 p-6 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#06b6d4]">
                         <div className="flex items-center gap-3">
@@ -1108,9 +1201,9 @@ export default function RequestDetailsPage() {
                                   booking.latest_quote?.total_amount ??
                                   0,
                               ).toFixed(2)}{" "}
-                              KM is safely held in escrow. Once the expert has
-                              completed the work, click below to release the
-                              payment.
+                              KM is safely held in escrow for the second visit.
+                              Payment is released only after completion is
+                              confirmed.
                             </p>
                           </div>
                         </div>
@@ -1126,19 +1219,10 @@ export default function RequestDetailsPage() {
                           </p>
                         )}
 
-                        <button
-                          type="button"
-                          disabled={payLoading}
-                          onClick={proceedToPayment}
-                          className="w-full bg-cyan-600 text-white border-[3px] border-black py-3.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-                        >
-                          {payLoading ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <CheckCircle2 size={14} />
-                          )}
-                          Job Completed - Release Escrow Payment
-                        </button>
+                        <p className="text-sm font-black text-cyan-900 dark:text-cyan-200">
+                          Waiting for handyman to complete the second visit.
+                          Then confirm done to release escrow.
+                        </p>
                       </div>
                     )}
                   </>
@@ -1240,6 +1324,31 @@ export default function RequestDetailsPage() {
               </div>
             )}
 
+            {booking.status === "not_completed" && (
+              <div className="p-6 bg-red-50 dark:bg-red-950/25 border-2 border-red-500 rounded-xl text-center shadow-[4px_4px_0px_0px_#ef4444]">
+                <AlertCircle
+                  className="mx-auto text-red-600 mb-2"
+                  size={40}
+                  strokeWidth={2.5}
+                />
+                <h3 className="font-black uppercase text-xl text-black dark:text-white">
+                  Job marked not completed
+                </h3>
+                <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-2">
+                  Escrow was refunded. You can reopen this booking if both sides
+                  agree to continue.
+                </p>
+                <button
+                  type="button"
+                  onClick={reopenAfterIssue}
+                  disabled={actionLoading}
+                  className="mt-4 bg-white dark:bg-black text-black dark:text-white border-[3px] border-black px-5 py-2.5 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] disabled:opacity-60"
+                >
+                  Reopen Job
+                </button>
+              </div>
+            )}
+
             {/* ─── CLIENT: expert offer — confirm or decline (no payment here) ─── */}
             {booking.negotiation_status === "awaiting_client" &&
               booking.status !== "cancelled" && (
@@ -1250,8 +1359,8 @@ export default function RequestDetailsPage() {
                     </h3>
                     <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-2 leading-relaxed">
                       Review the appointment, estimated exact time, and total
-                      price. Confirm to lock the deal — you do not pay here;
-                      payment happens later after the work step, as before.
+                      price. Confirm to lock first-visit funds in escrow.
+                      Payment releases only after completion confirmation.
                     </p>
                   </div>
 

@@ -16,16 +16,35 @@ def _to_decimal(amount) -> Decimal:
     return value
 
 
-def lock_client_funds(*, booking: Booking, quote: Quote, actor: User) -> EscrowHold:
-    """Locks quote funds from client's spendable balance into escrow hold."""
+def lock_client_funds(
+    *,
+    booking: Booking,
+    actor: User,
+    quote: Quote | None = None,
+    amount: Decimal | None = None,
+    purpose: str = "quote",
+) -> EscrowHold:
+    """Locks client funds into escrow for visit fee or quote."""
     if actor != booking.client:
         raise PermissionError("Only the booking client can lock escrow funds.")
-    if quote.booking_id != booking.id:
+    if purpose not in {"visit_fee", "quote"}:
+        raise ValueError("Invalid escrow purpose.")
+    if purpose == "quote":
+        if quote is None:
+            raise ValueError("Quote is required for quote escrow lock.")
+        if quote.booking_id != booking.id:
+            raise ValueError("Quote does not belong to this booking.")
+    elif quote is not None and quote.booking_id != booking.id:
         raise ValueError("Quote does not belong to this booking.")
     if not booking.handyman_id:
         raise ValueError("Booking has no assigned handyman.")
 
-    amount = _to_decimal(quote.total_amount)
+    if amount is None:
+        if quote is None:
+            raise ValueError("Amount is required when quote is missing.")
+        lock_amount = _to_decimal(quote.total_amount)
+    else:
+        lock_amount = _to_decimal(amount)
 
     with transaction.atomic():
         booking_locked = Booking.objects.select_for_update().get(pk=booking.pk)
@@ -34,11 +53,11 @@ def lock_client_funds(*, booking: Booking, quote: Quote, actor: User) -> EscrowH
         available = (client.wallet_balance or Decimal("0.00")) - (
             client.wallet_locked_balance or Decimal("0.00")
         )
-        if available < amount:
+        if available < lock_amount:
             raise ValueError("Insufficient available balance.")
 
         client_before = client.wallet_locked_balance or Decimal("0.00")
-        client.wallet_locked_balance = client_before + amount
+        client.wallet_locked_balance = client_before + lock_amount
         client.save(update_fields=["wallet_locked_balance"])
 
         hold = EscrowHold.objects.create(
@@ -46,7 +65,8 @@ def lock_client_funds(*, booking: Booking, quote: Quote, actor: User) -> EscrowH
             quote=quote,
             client=client,
             handyman=booking_locked.handyman,
-            amount=amount,
+            amount=lock_amount,
+            purpose=purpose,
             status="locked",
             locked_at=timezone.now(),
         )
@@ -56,35 +76,44 @@ def lock_client_funds(*, booking: Booking, quote: Quote, actor: User) -> EscrowH
             booking=booking_locked,
             escrow_hold=hold,
             tx_type="lock",
-            amount=amount,
+            amount=lock_amount,
             balance_before=client_before,
             balance_after=client.wallet_locked_balance,
             note=f"Escrow lock for booking #{booking_locked.id}",
         )
 
-        booking_locked.quote_locked_amount = amount
-        booking_locked.funds_locked_at = timezone.now()
-        booking_locked.quote_status = "accepted"
-        booking_locked.status = "funds_locked"
-        booking_locked.save(
-            update_fields=[
-                "quote_locked_amount",
-                "funds_locked_at",
-                "quote_status",
-                "status",
-                "updated_at",
-            ]
-        )
-
-        if quote.status != "accepted":
-            quote.status = "accepted"
-            quote.client_decision_at = timezone.now()
-            quote.save(update_fields=["status", "client_decision_at", "updated_at"])
+        if purpose == "quote":
+            booking_locked.quote_locked_amount = lock_amount
+            booking_locked.funds_locked_at = timezone.now()
+            booking_locked.quote_status = "accepted"
+            booking_locked.status = "funds_locked"
+            booking_locked.save(
+                update_fields=[
+                    "quote_locked_amount",
+                    "funds_locked_at",
+                    "quote_status",
+                    "status",
+                    "updated_at",
+                ]
+            )
+            if quote and quote.status != "accepted":
+                quote.status = "accepted"
+                quote.client_decision_at = timezone.now()
+                quote.save(update_fields=["status", "client_decision_at", "updated_at"])
+        else:
+            booking_locked.visit_fee_amount = lock_amount
+            booking_locked.save(update_fields=["visit_fee_amount", "updated_at"])
 
         return hold
 
 
-def release_funds_to_handyman(*, hold: EscrowHold, note: str = "") -> EscrowHold:
+def release_funds_to_handyman(
+    *,
+    hold: EscrowHold,
+    note: str = "",
+    set_booking_paid: bool = True,
+    booking_status: str | None = None,
+) -> EscrowHold:
     """Moves locked funds from client to handyman on successful completion."""
     with transaction.atomic():
         hold_locked = (
@@ -139,15 +168,26 @@ def release_funds_to_handyman(*, hold: EscrowHold, note: str = "") -> EscrowHold
             note=note or f"Escrow credit from booking #{booking.id}",
         )
 
-        booking.status = "paid"
-        booking.paid_at = timezone.now()
-        booking.payment_amount = amount
-        booking.save(update_fields=["status", "paid_at", "payment_amount", "updated_at"])
+        if set_booking_paid:
+            booking.status = booking_status or "paid"
+            booking.paid_at = timezone.now()
+            booking.payment_amount = amount
+            booking.save(update_fields=["status", "paid_at", "payment_amount", "updated_at"])
+        elif booking_status:
+            booking.status = booking_status
+            if booking_status == "visit_fee_paid":
+                booking.visit_fee_paid_at = timezone.now()
+            booking.save(update_fields=["status", "visit_fee_paid_at", "updated_at"])
 
         return hold_locked
 
 
-def refund_locked_funds(*, hold: EscrowHold, reason: str = "") -> EscrowHold:
+def refund_locked_funds(
+    *,
+    hold: EscrowHold,
+    reason: str = "",
+    booking_status: str = "not_completed",
+) -> EscrowHold:
     """Unlocks funds back to client spendable balance (no transfer to handyman)."""
     with transaction.atomic():
         hold_locked = (
@@ -185,9 +225,13 @@ def refund_locked_funds(*, hold: EscrowHold, reason: str = "") -> EscrowHold:
             note=reason or f"Escrow unlocked for booking #{booking.id}",
         )
 
-        booking.status = "in_progress"
-        booking.quote_locked_amount = Decimal("0.00")
-        booking.save(update_fields=["status", "quote_locked_amount", "updated_at"])
+        booking.status = booking_status
+        if hold_locked.purpose == "quote":
+            booking.quote_locked_amount = Decimal("0.00")
+            booking.funds_locked_at = None
+            booking.save(update_fields=["status", "quote_locked_amount", "funds_locked_at", "updated_at"])
+        else:
+            booking.save(update_fields=["status", "updated_at"])
 
         return hold_locked
 

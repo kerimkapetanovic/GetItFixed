@@ -21,7 +21,7 @@ from .deadline_utils import (
     process_handyman_negotiation_expiry,
     repair_stale_handyman_deadline,
 )
-from .escrow_service import lock_client_funds, release_funds_to_handyman
+from .escrow_service import lock_client_funds, release_funds_to_handyman, refund_locked_funds
 from accounts.authentication import CookieTokenAuthentication 
 
 User = get_user_model()
@@ -45,6 +45,13 @@ def _parse_agreed_price(data, *, required: bool):
     if d > Decimal("999999.99"):
         return None, "Agreed price is too large."
     return d.quantize(Decimal("0.01")), None
+
+
+def _latest_locked_hold(booking: Booking, *, purpose: str | None = None):
+    queryset = booking.escrow_holds.filter(status="locked")
+    if purpose:
+        queryset = queryset.filter(purpose=purpose)
+    return queryset.order_by("-created_at").first()
 
 
 # --- HANDYMAN VIEWS ---
@@ -258,9 +265,8 @@ class HandymanNegotiationActionView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class CompleteVisitView(APIView):
     """
-    Allows the assigned Handyman to mark the initial visit as completed,
-    transitioning the booking to the 'visit_fee_paid' state so the Client 
-    can decide to continue the job.
+    Allows the assigned handyman to mark current visit as finished.
+    Client must then confirm completion (release) or mark not completed (refund).
     """
     authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -282,14 +288,13 @@ class CompleteVisitView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Transition the State
-        booking.status = "visit_fee_paid"
-        booking.visit_fee_paid_at = timezone.now()
-        booking.save()
+        booking.status = "handyman_done"
+        booking.handyman_marked_done_at = timezone.now()
+        booking.save(update_fields=["status", "handyman_marked_done_at", "updated_at"])
 
         return Response(
             {
-                "message": "Visit completed successfully. Waiting for client to continue job.",
+                "message": "Visit marked as finished. Waiting for client confirmation.",
                 "booking": BookingSerializer(booking).data
             }, 
             status=status.HTTP_200_OK
@@ -375,10 +380,26 @@ class ClientNegotiationActionView(APIView):
                 or booking.scheduled_time
                 or booking.client_proposed_time
             )
-            booking.scheduled_time = agreed_time
-            booking.status = 'accepted'
-            booking.negotiation_status = 'agreed'
-            booking.save()
+            if booking.agreed_price is None or booking.agreed_price <= 0:
+                return Response(
+                    {"error": "Accepted offer is missing agreed price."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                with transaction.atomic():
+                    booking.scheduled_time = agreed_time
+                    booking.status = 'accepted'
+                    booking.negotiation_status = 'agreed'
+                    booking.last_action_by = 'client'
+                    booking.save(update_fields=["scheduled_time", "status", "negotiation_status", "last_action_by", "updated_at"])
+                    lock_client_funds(
+                        booking=booking,
+                        actor=request.user,
+                        amount=booking.agreed_price,
+                        purpose="visit_fee",
+                    )
+            except Exception as exc:
+                return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
             return Response(BookingSerializer(booking).data, status=status.HTTP_200_OK)
 
         if action == 'decline':
@@ -518,6 +539,8 @@ class ContinueJobView(APIView):
         booking = get_object_or_404(Booking, id=booking_id)
         if request.user != booking.client:
             return Response({"error": "Only the client can decide to continue."}, status=403)
+        if booking.status != "visit_fee_paid":
+            return Response({"error": "Continue decision is allowed only after first visit is paid."}, status=400)
 
         continue_job = request.data.get("continue_job")
         if continue_job is None:
@@ -589,8 +612,16 @@ class CreateQuoteView(APIView):
         booking = get_object_or_404(Booking, id=booking_id)
         if request.user != booking.handyman:
             return Response({"error": "Only assigned handyman can create quote."}, status=403)
+        if booking.status != "visit_fee_paid":
+            return Response({"error": "Quote can only be created after first visit is settled."}, status=400)
         if booking.continue_job_confirmed is not True:
             return Response({"error": "Client has not approved continue-job flow yet."}, status=400)
+        proposed_visit_time_raw = request.data.get("proposed_visit_time")
+        proposed_visit_time = parse_datetime(proposed_visit_time_raw) if proposed_visit_time_raw else None
+        if not proposed_visit_time:
+            return Response({"error": "proposed_visit_time is required."}, status=400)
+        if proposed_visit_time <= timezone.now():
+            return Response({"error": "proposed_visit_time must be in the future."}, status=400)
 
         line_items = request.data.get("line_items")
         if not isinstance(line_items, list) or not line_items:
@@ -615,6 +646,7 @@ class CreateQuoteView(APIView):
                 subtotal_labor=totals["labor"],
                 subtotal_other=totals["other"],
                 total_amount=totals["total"],
+                proposed_visit_time=proposed_visit_time,
                 notes=(request.data.get("notes") or "").strip() or None,
                 submitted_at=timezone.now(),
                 is_active=True,
@@ -671,10 +703,22 @@ class QuoteClientActionView(APIView):
             return Response({"error": "Action must be accept, reject, or counter."}, status=400)
 
         if action == "accept":
+            if not quote.proposed_visit_time:
+                return Response({"error": "Quote is missing proposed_visit_time."}, status=400)
             try:
-                hold = lock_client_funds(booking=booking, quote=quote, actor=request.user)
+                with transaction.atomic():
+                    hold = lock_client_funds(
+                        booking=booking,
+                        quote=quote,
+                        actor=request.user,
+                        purpose="quote",
+                    )
+                    booking.scheduled_time = quote.proposed_visit_time
+                    booking.save(update_fields=["scheduled_time", "updated_at"])
             except Exception as exc:
                 return Response({"error": str(exc)}, status=400)
+            booking.refresh_from_db()
+            quote.refresh_from_db()
             return Response(
                 {
                     "booking": BookingSerializer(booking).data,
@@ -728,49 +772,20 @@ class CompleteBookingView(APIView):
         if action == 'pay':
             if user != booking.client:
                 return Response({"error": "Only the client can pay."}, status=403)
-            if booking.status not in {'awaiting_payment', 'funds_locked'}:
-                return Response({"error": "Payment is not pending for this booking."}, status=400)
-            if not booking.handyman_id:
-                return Response({"error": "No handyman assigned."}, status=400)
-
-            if booking.status == "funds_locked":
-                hold = booking.escrow_holds.filter(status="locked").order_by("-created_at").first()
-                if not hold:
-                    return Response({"error": "No active escrow hold found."}, status=400)
-                try:
-                    release_funds_to_handyman(hold=hold)
-                except Exception as exc:
-                    return Response({"error": str(exc)}, status=400)
-                booking.refresh_from_db()
-                return Response(BookingSerializer(booking).data, status=200)
-
-            amount = booking.get_payment_amount_decimal()
-            client_preview = booking.client.wallet_balance or Decimal("0")
-            if client_preview < amount:
+            # Backward-compatible manual release endpoint for legacy UI.
+            if booking.status != "funds_locked":
                 return Response(
-                    {"error": "Insufficient balance. Add funds in your Profile."},
+                    {"error": "Direct pay is disabled in escrow-first flow. Confirm completion instead."},
                     status=400,
                 )
-
-            with transaction.atomic():
-                client_u = User.objects.select_for_update().get(pk=booking.client_id)
-                handyman_u = User.objects.select_for_update().get(pk=booking.handyman_id)
-                cur = client_u.wallet_balance or Decimal("0")
-                if cur < amount:
-                    return Response(
-                        {"error": "Insufficient balance. Add funds in your Profile."},
-                        status=400,
-                    )
-                client_u.wallet_balance = cur - amount
-                hm_bal = handyman_u.wallet_balance or Decimal("0")
-                handyman_u.wallet_balance = hm_bal + amount
-                client_u.save(update_fields=["wallet_balance"])
-                handyman_u.save(update_fields=["wallet_balance"])
-                booking.payment_amount = amount
-                booking.paid_at = timezone.now()
-                booking.status = "paid"
-                booking.save()
-
+            hold = _latest_locked_hold(booking, purpose="quote")
+            if not hold:
+                return Response({"error": "No active quote escrow hold found."}, status=400)
+            try:
+                release_funds_to_handyman(hold=hold, note="Legacy pay fallback")
+            except Exception as exc:
+                return Response({"error": str(exc)}, status=400)
+            booking.refresh_from_db()
             return Response(BookingSerializer(booking).data, status=200)
 
         if action == 'acknowledge_payment':
@@ -798,10 +813,31 @@ class CompleteBookingView(APIView):
                 return Response({"error": "Only the client can confirm completion."}, status=403)
             if booking.status != 'handyman_done':
                 return Response({"error": "Handyman hasn't marked job as done yet."}, status=400)
-
-            booking.status = 'awaiting_payment'
-            booking.client_confirmed_done_at = timezone.now()
-            booking.save()
+            hold = _latest_locked_hold(booking)
+            if not hold:
+                return Response({"error": "No active escrow hold found for completion."}, status=400)
+            try:
+                if hold.purpose == "visit_fee":
+                    release_funds_to_handyman(
+                        hold=hold,
+                        note="First visit confirmed by client.",
+                        set_booking_paid=False,
+                        booking_status="visit_fee_paid",
+                    )
+                    booking.refresh_from_db()
+                    booking.client_confirmed_done_at = timezone.now()
+                    booking.save(update_fields=["client_confirmed_done_at", "updated_at"])
+                else:
+                    release_funds_to_handyman(
+                        hold=hold,
+                        note="Quote visit confirmed by client.",
+                        set_booking_paid=True,
+                    )
+                    booking.refresh_from_db()
+                    booking.client_confirmed_done_at = timezone.now()
+                    booking.save(update_fields=["client_confirmed_done_at", "updated_at"])
+            except Exception as exc:
+                return Response({"error": str(exc)}, status=400)
             return Response(BookingSerializer(booking).data, status=200)
 
         if action == 'mark_not_completed':
@@ -809,9 +845,27 @@ class CompleteBookingView(APIView):
                 return Response({"error": "Only the client can mark job as not completed."}, status=403)
             if booking.status != 'handyman_done':
                 return Response({"error": "Handyman hasn't marked job as done yet."}, status=400)
+            hold = _latest_locked_hold(booking)
+            try:
+                if hold:
+                    refund_locked_funds(
+                        hold=hold,
+                        reason="Client marked job as not completed.",
+                        booking_status="not_completed",
+                    )
+                    booking.refresh_from_db()
+                else:
+                    booking.status = 'not_completed'
+                    booking.save(update_fields=["status", "updated_at"])
+            except Exception as exc:
+                return Response({"error": str(exc)}, status=400)
+            return Response(BookingSerializer(booking).data, status=200)
 
-            booking.status = 'not_completed'
-            booking.save()
+        if action == "reopen_after_issue":
+            if booking.status != "not_completed":
+                return Response({"error": "Booking is not in not_completed state."}, status=400)
+            booking.status = "in_progress"
+            booking.save(update_fields=["status", "updated_at"])
             return Response(BookingSerializer(booking).data, status=200)
 
         if action == 'check_auto_complete':
@@ -824,9 +878,28 @@ class CompleteBookingView(APIView):
 
             deadline = booking.handyman_marked_done_at + timedelta(hours=1)
             if timezone.now() >= deadline:
-                booking.status = 'awaiting_payment'
+                hold = _latest_locked_hold(booking)
+                if not hold:
+                    return Response({"error": "No active escrow hold found for auto-complete."}, status=400)
+                try:
+                    if hold.purpose == "visit_fee":
+                        release_funds_to_handyman(
+                            hold=hold,
+                            note="Auto-confirmed first visit.",
+                            set_booking_paid=False,
+                            booking_status="visit_fee_paid",
+                        )
+                    else:
+                        release_funds_to_handyman(
+                            hold=hold,
+                            note="Auto-confirmed quote visit.",
+                            set_booking_paid=True,
+                        )
+                except Exception as exc:
+                    return Response({"error": str(exc)}, status=400)
+                booking.refresh_from_db()
                 booking.client_confirmed_done_at = timezone.now()
-                booking.save()
+                booking.save(update_fields=["client_confirmed_done_at", "updated_at"])
                 return Response({
                     **BookingSerializer(booking).data,
                     "auto_completed": True
@@ -841,7 +914,7 @@ class CompleteBookingView(APIView):
         return Response(
             {
                 "error": "Invalid action. Use: mark_done, confirm_done, mark_not_completed, "
-                "check_auto_complete, pay, acknowledge_payment."
+                "check_auto_complete, reopen_after_issue, pay, acknowledge_payment."
             },
             status=400,
         )
@@ -856,7 +929,7 @@ class JobStatusCheckView(APIView):
         try:
             booking = Booking.objects.get(
                 id=booking_id,
-                status='accepted'
+                status__in=['accepted', 'funds_locked']
             )
         except Booking.DoesNotExist:
             booking = get_object_or_404(Booking, id=booking_id)

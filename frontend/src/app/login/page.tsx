@@ -54,8 +54,13 @@ export default function LoginPage() {
       localStorage.setItem("last_name", response.data.last_name || "");
       localStorage.setItem("username", response.data.username);
       localStorage.setItem("avatar_url", response.data.avatar_url || "");
-      if (response.data.wallet_balance != null) {
-        localStorage.setItem("wallet_balance", String(response.data.wallet_balance));
+      const availableBalance =
+        response.data.wallet_available_balance ?? response.data.wallet_balance;
+      if (availableBalance != null) {
+        localStorage.setItem("wallet_balance", String(availableBalance));
+      }
+      if (response.data.locked_balance != null) {
+        localStorage.setItem("locked_balance", String(response.data.locked_balance));
       }
 
       // 3. Redirect

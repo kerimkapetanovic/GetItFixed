@@ -29,6 +29,7 @@ export type QuoteStatus =
   | 'expired'
   | 'cancelled';
 export type EscrowStatus = 'locked' | 'released' | 'refunded' | 'cancelled';
+export type EscrowPurpose = 'visit_fee' | 'quote';
 export type QuoteLineItemCategory = 'materials' | 'labor' | 'other';
 
 export interface BookingDetail {
@@ -116,6 +117,7 @@ export interface Quote {
   subtotal_labor: number;
   subtotal_other: number;
   total_amount: number;
+  proposed_visit_time: string | null;
   notes: string | null;
   submitted_at: string | null;
   client_decision_at: string | null;
@@ -131,6 +133,7 @@ export interface EscrowHold {
   quote: number | null;
   client: number;
   handyman: number;
+  purpose: EscrowPurpose;
   amount: number;
   status: EscrowStatus;
   reason: string | null;

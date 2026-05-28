@@ -231,6 +231,7 @@ export default function HandymanRequestDetailsPage() {
     const [counterPrice, setCounterPrice] = useState("");
     const [counterMessage, setCounterMessage] = useState("");
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isQuoteCalendarOpen, setIsQuoteCalendarOpen] = useState(false);
 
     // Action state
     const [actionLoading, setActionLoading] = useState(false);
@@ -253,6 +254,7 @@ export default function HandymanRequestDetailsPage() {
         { category: "labor", description: "", quantity: 1, unit_price: 0, sort_order: 1 },
     ]);
     const [quoteNotes, setQuoteNotes] = useState("");
+    const [quoteProposedVisitTime, setQuoteProposedVisitTime] = useState<Date | null>(null);
     const [quoteLoading, setQuoteLoading] = useState(false);
 
     const toUtcIso = (date: Date | null) => date ? date.toISOString() : "";
@@ -322,7 +324,7 @@ export default function HandymanRequestDetailsPage() {
 
     // Live countdown until scheduled_time (same target as backend JobStatusCheckView)
     useEffect(() => {
-        if (!booking || booking.status !== "accepted" || !booking.scheduled_time) {
+        if (!booking || !["accepted", "funds_locked"].includes(booking.status) || !booking.scheduled_time) {
             setSecondsUntilUnlock(null);
             return;
         }
@@ -363,9 +365,9 @@ export default function HandymanRequestDetailsPage() {
         return () => clearInterval(id);
     }, [booking?.id, booking?.status, booking?.scheduled_time]);
 
-    // ── POLLING: status-check backup (accepted → in_progress) ──
+    // ── POLLING: status-check backup (accepted/funds_locked → in_progress) ──
     useEffect(() => {
-        if (!booking || booking.status !== "accepted") {
+        if (!booking || !["accepted", "funds_locked"].includes(booking.status)) {
             if (pollingRef.current) clearInterval(pollingRef.current);
             return;
         }
@@ -396,12 +398,16 @@ export default function HandymanRequestDetailsPage() {
                 const next = res.data;
                 setBooking((prev) => {
                     if (prev?.status === "awaiting_payment" && next.status === "paid") {
-                        api.get<{ wallet_balance?: number }>("/api/accounts/me/").then((me) => {
-                            if (typeof window !== "undefined" && me.data.wallet_balance != null) {
-                                localStorage.setItem("wallet_balance", String(me.data.wallet_balance));
-                                window.dispatchEvent(new Event("profile-updated"));
-                            }
-                        });
+                        api
+                            .get<{ wallet_balance?: number; wallet_available_balance?: number; locked_balance?: number }>("/api/accounts/me/")
+                            .then((me) => {
+                                const availableBalance = me.data.wallet_available_balance ?? me.data.wallet_balance;
+                                if (typeof window !== "undefined" && availableBalance != null) {
+                                    localStorage.setItem("wallet_balance", String(availableBalance));
+                                    localStorage.setItem("locked_balance", String(me.data.locked_balance ?? 0));
+                                    window.dispatchEvent(new Event("profile-updated"));
+                                }
+                            });
                     }
                     return next;
                 });
@@ -561,6 +567,21 @@ export default function HandymanRequestDetailsPage() {
         }
     };
 
+    const handleReopenAfterIssue = async () => {
+        if (!booking) return;
+        clearActionMessages();
+        try {
+            setActionLoading(true);
+            const res = await api.post(`/api/bookings/${booking.id}/complete/`, { action: "reopen_after_issue" });
+            setBooking(res.data);
+            setActionSuccess("Booking reopened and moved back to in-progress.");
+        } catch (e) {
+            setActionError(getBackendErrorMessage(e));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const updateQuoteItem = (index: number, patch: Partial<QuoteLineItemInput>) => {
         setQuoteItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
     };
@@ -579,6 +600,10 @@ export default function HandymanRequestDetailsPage() {
     const submitItemizedQuote = async () => {
         if (!booking) return;
         clearActionMessages();
+        if (!quoteProposedVisitTime) {
+            setActionError("Select the second-visit date and time before sending quote.");
+            return;
+        }
         const sanitized = quoteItems
             .map((item, idx) => ({
                 ...item,
@@ -599,6 +624,7 @@ export default function HandymanRequestDetailsPage() {
             await createQuote(booking.id, {
                 line_items: sanitized,
                 notes: quoteNotes.trim() || undefined,
+                proposed_visit_time: quoteProposedVisitTime.toISOString(),
             });
             const latestQuote = await getLatestQuote(booking.id);
             const refreshed = await api.get(`/api/bookings/${booking.id}/`);
@@ -816,12 +842,14 @@ export default function HandymanRequestDetailsPage() {
                         )}
 
                         {/* ── ACCEPTED: countdown do početka posla ── */}
-                        {booking.status === "accepted" && secondsUntilUnlock !== null && secondsUntilUnlock >= 0 && (
+                        {(booking.status === "accepted" || booking.status === "funds_locked") && secondsUntilUnlock !== null && secondsUntilUnlock >= 0 && (
                             <div className="p-4 bg-violet-50 dark:bg-violet-950/20 border-2 border-violet-500 rounded-2xl flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <Wrench className="text-violet-500 animate-pulse" size={24} />
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">Job unlocks in</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                                            {booking.status === "funds_locked" ? "Second visit unlocks in" : "Job unlocks in"}
+                                        </p>
                                         <p className="text-xl font-black text-black dark:text-white tabular-nums">{formatMs(secondsUntilUnlock * 1000)}</p>
                                     </div>
                                 </div>
@@ -1026,6 +1054,29 @@ export default function HandymanRequestDetailsPage() {
                                                         Add Item
                                                     </button>
                                                 </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400">
+                                                        Proposed second-visit time
+                                                    </label>
+                                                    <div
+                                                        onClick={() => setIsQuoteCalendarOpen(true)}
+                                                        className="relative cursor-pointer bg-white dark:bg-zinc-800 border-2 border-black rounded-xl p-4 pl-12 font-bold text-sm min-h-[56px] flex items-center hover:border-[#EF9D39] transition-colors"
+                                                    >
+                                                        <CalendarIcon
+                                                            className="absolute left-4 text-gray-400"
+                                                            size={16}
+                                                        />
+                                                        {quoteProposedVisitTime ? (
+                                                            <span className="text-black dark:text-white">
+                                                                {formatDateTime(quoteProposedVisitTime)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400 text-xs uppercase">
+                                                                Pick second visit date & time
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                                 <textarea
                                                     value={quoteNotes}
                                                     onChange={(e) => setQuoteNotes(e.target.value)}
@@ -1052,6 +1103,11 @@ export default function HandymanRequestDetailsPage() {
                                                 <p className="text-sm font-bold">
                                                     Version #{booking.latest_quote.version} - {booking.latest_quote.status}
                                                 </p>
+                                                {booking.latest_quote.proposed_visit_time && (
+                                                    <p className="text-xs font-black text-black dark:text-white mt-1">
+                                                        Visit: {formatDateTime(booking.latest_quote.proposed_visit_time)}
+                                                    </p>
+                                                )}
                                                 <p className="text-lg font-black text-[#EF9D39] mt-1">
                                                     {Number(booking.latest_quote.total_amount).toFixed(2)} KM
                                                 </p>
@@ -1123,12 +1179,22 @@ export default function HandymanRequestDetailsPage() {
                         )}
 
                         {booking.status === "not_completed" && (
-                            <div className="p-5 bg-red-50 dark:bg-zinc-800/60 border-2 border-red-400 rounded-xl flex items-center gap-3 shadow-[4px_4px_0px_0px_#ef4444]">
-                                <AlertCircle size={18} className="text-red-500 shrink-0" />
-                                <div>
-                                    <p className="font-black uppercase text-sm text-black dark:text-white">Client marked job as not completed</p>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Contact client and arrange follow-up before payment step.</p>
+                            <div className="p-5 bg-red-50 dark:bg-zinc-800/60 border-2 border-red-400 rounded-xl flex items-center justify-between gap-3 shadow-[4px_4px_0px_0px_#ef4444]">
+                                <div className="flex items-center gap-3">
+                                    <AlertCircle size={18} className="text-red-500 shrink-0" />
+                                    <div>
+                                        <p className="font-black uppercase text-sm text-black dark:text-white">Client marked job as not completed</p>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Escrow was refunded. Reopen after agreement with client.</p>
+                                    </div>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={handleReopenAfterIssue}
+                                    disabled={actionLoading}
+                                    className="border-2 border-black rounded-lg px-3 py-2 text-[10px] font-black uppercase bg-white dark:bg-black disabled:opacity-60"
+                                >
+                                    Reopen
+                                </button>
                             </div>
                         )}
 
@@ -1299,7 +1365,7 @@ export default function HandymanRequestDetailsPage() {
 
                         {/* Calendar Modal */}
                         {isCalendarOpen && (
-                            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200 p-4">
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200 p-4">
                                 <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-6 md:p-10 max-w-2xl w-full relative flex flex-col items-center">
                                     <button type="button" onClick={() => setIsCalendarOpen(false)} className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all">
                                         <X size={24} />
@@ -1320,6 +1386,52 @@ export default function HandymanRequestDetailsPage() {
                                         />
                                     </div>
                                     <button type="button" onClick={() => setIsCalendarOpen(false)} className="mt-8 bg-[#EF9D39] border-4 border-black px-12 py-3 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
+                                        Confirm Choice
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Quote Second Visit Calendar Modal */}
+                        {isQuoteCalendarOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200 p-4">
+                                <div className="bg-white dark:bg-zinc-900 border-4 border-black rounded-[40px] shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-6 md:p-10 max-w-2xl w-full relative flex flex-col items-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsQuoteCalendarOpen(false)}
+                                        className="absolute top-6 right-6 p-2 bg-black text-white rounded-full hover:bg-[#EF9D39] hover:text-black transition-all"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                    <div className="text-center mb-8">
+                                        <h2 className="text-2xl md:text-3xl font-black uppercase dark:text-white tracking-tighter">
+                                            Pick second visit
+                                        </h2>
+                                        <p className="text-[#EF9D39] font-black uppercase tracking-[0.2em] text-sm">
+                                            Select date and time
+                                        </p>
+                                    </div>
+                                    <div className="flex justify-center w-full bg-white dark:bg-zinc-900 rounded-3xl border-2 border-black/10 pt-4 overflow-hidden">
+                                        <DatePicker
+                                            selected={quoteProposedVisitTime}
+                                            onChange={(date: Date | null) => setQuoteProposedVisitTime(date)}
+                                            inline
+                                            showTimeSelect
+                                            timeIntervals={5}
+                                            timeFormat="HH:mm"
+                                            dateFormat="dd.MM.yyyy HH:mm"
+                                            minDate={new Date()}
+                                            filterTime={filterPassedTime}
+                                            calendarClassName="popup-brutalist-calendar-final"
+                                            nextMonthButtonLabel=">"
+                                            previousMonthButtonLabel="<"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsQuoteCalendarOpen(false)}
+                                        className="mt-8 bg-[#EF9D39] border-4 border-black px-12 py-3 rounded-2xl font-black uppercase text-lg shadow-[8px_8px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                                    >
                                         Confirm Choice
                                     </button>
                                 </div>

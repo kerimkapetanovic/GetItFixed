@@ -108,6 +108,7 @@ type ProfileResponse = {
   zip_code: string;
   wallet_balance: number;
   locked_balance?: number;
+  wallet_available_balance?: number;
 };
 
 type ApiErrorResponse = {
@@ -200,7 +201,8 @@ export default function ProfilePage() {
           county: data.county || "",
           city: data.city || "",
           zipCode: data.zip_code || "",
-          walletBalance: data.wallet_balance || 0.0,
+          walletBalance:
+            data.wallet_available_balance ?? data.wallet_balance ?? 0.0,
           lockedBalance: data.locked_balance || 0.0,
         };
 
@@ -213,6 +215,11 @@ export default function ProfilePage() {
             if (value !== undefined && value !== null)
               localStorage.setItem(key, value.toString());
           });
+          localStorage.setItem(
+            "wallet_balance",
+            String(data.wallet_available_balance ?? data.wallet_balance ?? 0),
+          );
+          localStorage.setItem("locked_balance", String(data.locked_balance ?? 0));
         }
       } catch (err: unknown) {
         if (typeof window !== "undefined") {
@@ -292,10 +299,11 @@ export default function ProfilePage() {
         "/api/accounts/wallet/add/",
         { amount: parsed.toFixed(2) },
       );
-      const wb = res.data.wallet_balance;
+      const wb = (res.data as { wallet_available_balance?: number; wallet_balance: number }).wallet_available_balance ?? res.data.wallet_balance;
       setFormData((prev) => ({ ...prev, walletBalance: wb }));
       if (typeof window !== "undefined") {
         localStorage.setItem("wallet_balance", String(wb));
+        localStorage.setItem("locked_balance", String(formData.lockedBalance ?? 0));
         window.dispatchEvent(new Event("profile-updated"));
       }
       setProfileMessage(res.data.message || "Balance updated.");
@@ -334,7 +342,8 @@ export default function ProfilePage() {
         county: updated.county || "",
         city: updated.city || "",
         zipCode: updated.zip_code || "",
-        walletBalance: updated.wallet_balance || 0.0,
+        walletBalance:
+          updated.wallet_available_balance ?? updated.wallet_balance ?? 0.0,
         lockedBalance: updated.locked_balance || 0.0,
       });
 
@@ -395,7 +404,10 @@ export default function ProfilePage() {
         county: updated.county || prev.county,
         city: updated.city || prev.city,
         zipCode: updated.zip_code || prev.zipCode,
-        walletBalance: updated.wallet_balance || prev.walletBalance,
+        walletBalance:
+          updated.wallet_available_balance ??
+          updated.wallet_balance ??
+          prev.walletBalance,
         lockedBalance: updated.locked_balance || prev.lockedBalance,
       }));
       setHasCustomAvatar(Boolean(updated.has_custom_avatar));
@@ -448,7 +460,10 @@ export default function ProfilePage() {
         county: updated.county || prev.county,
         city: updated.city || prev.city,
         zipCode: updated.zip_code || prev.zipCode,
-        walletBalance: updated.wallet_balance || prev.walletBalance,
+        walletBalance:
+          updated.wallet_available_balance ??
+          updated.wallet_balance ??
+          prev.walletBalance,
         lockedBalance: updated.locked_balance || prev.lockedBalance,
       }));
 

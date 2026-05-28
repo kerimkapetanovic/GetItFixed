@@ -547,7 +547,7 @@ export default function HandymanDashboard() {
                           <span className="text-black">
                             {actionLoadingId === job.id
                               ? "Loading..."
-                              : "Complete Visit"}
+                              : "Mark Job Finished"}
                           </span>
                         </button>
                       )}

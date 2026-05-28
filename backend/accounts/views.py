@@ -177,6 +177,8 @@ class CustomLoginView(ObtainAuthToken):
             'is_staff': user.is_staff,
             'avatar_url': self._build_avatar_url(request, user),
             'wallet_balance': float(user.wallet_balance or 0),
+            'locked_balance': float(user.wallet_locked_balance or 0),
+            'wallet_available_balance': float(user.wallet_available_balance or 0),
         }
         
         response = Response(response_data, status=status.HTTP_200_OK)
@@ -280,6 +282,8 @@ class WalletAddBalanceView(APIView):
         return Response(
             {
                 "wallet_balance": float(user.wallet_balance),
+                "locked_balance": float(user.wallet_locked_balance or 0),
+                "wallet_available_balance": float(user.wallet_available_balance or 0),
                 "message": "Balance updated successfully.",
             },
             status=status.HTTP_200_OK,

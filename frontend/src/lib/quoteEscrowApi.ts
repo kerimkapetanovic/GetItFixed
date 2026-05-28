@@ -23,7 +23,7 @@ export async function continueJob(bookingId: number, continueJobFlow: boolean): 
 
 export async function createQuote(
   bookingId: number,
-  payload: { line_items: QuoteLineItemInput[]; notes?: string }
+  payload: { line_items: QuoteLineItemInput[]; notes?: string; proposed_visit_time: string }
 ): Promise<Quote> {
   const { data } = await api.post(`/api/bookings/${bookingId}/quotes/`, payload);
   return data as Quote;
