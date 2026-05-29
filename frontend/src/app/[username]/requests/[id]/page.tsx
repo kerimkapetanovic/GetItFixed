@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/header";
@@ -15,10 +15,8 @@ import {
   Timer,
   CheckCircle2,
   Calendar as CalendarIcon,
-  CheckCircle,
   Wrench,
   Flag,
-  User,
   Wallet,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
@@ -26,7 +24,6 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
 import { addMinutes } from "date-fns";
 import { BookingDetail } from "@/types/booking";
-import type { QuoteLineItemInput } from "@/types/booking";
 import {
   continueJob,
   getLatestQuote,
@@ -419,7 +416,10 @@ export default function RequestDetailsPage() {
   }, [bookingId]);
 
   useEffect(() => {
-    if (!booking || (booking.status !== "accepted" && booking.status !== "funds_locked")) {
+    if (
+      !booking ||
+      (booking.status !== "accepted" && booking.status !== "funds_locked")
+    ) {
       return;
     }
     let active = true;
@@ -554,14 +554,15 @@ export default function RequestDetailsPage() {
         action: "pay",
       });
       setBooking(response.data);
-      const me = await api.get<WalletMeResponse>(
-        "/api/accounts/me/",
-      );
+      const me = await api.get<WalletMeResponse>("/api/accounts/me/");
       const availableBalance =
         me.data.wallet_available_balance ?? me.data.wallet_balance;
       if (typeof window !== "undefined" && availableBalance != null) {
         localStorage.setItem("wallet_balance", String(availableBalance));
-        localStorage.setItem("locked_balance", String(me.data.locked_balance ?? 0));
+        localStorage.setItem(
+          "locked_balance",
+          String(me.data.locked_balance ?? 0),
+        );
         window.dispatchEvent(new Event("profile-updated"));
       }
       setWalletBalance(Number(availableBalance ?? 0));
@@ -939,36 +940,28 @@ export default function RequestDetailsPage() {
                 </div>
               </div>
             </div>
+
             {/* Timer */}
-            {timeLeft > 0 &&
-              booking.status !== "accepted" &&
-              booking.status !== "completed" &&
-              booking.status !== "handyman_done" &&
-              booking.status !== "awaiting_payment" &&
-              booking.status !== "paid" &&
-              booking.status !== "closed" && (
-                <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-500 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Timer
-                      className="text-orange-500 animate-pulse"
-                      size={24}
-                    />
-                    <div>
-                      <p className="text-[12px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">
-                        Response Deadline
-                      </p>
-                      <p className="text-xl font-black text-black dark:text-white tabular-nums">
-                        {formatMs(timeLeft)}
-                      </p>
-                    </div>
+            {timeLeft > 0 && booking.status === "pending" && (
+              <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-500 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Timer className="text-orange-500 animate-pulse" size={24} />
+                  <div>
+                    <p className="text-[12px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">
+                      Response Deadline
+                    </p>
+                    <p className="text-xl font-black text-black dark:text-white tabular-nums">
+                      {formatMs(timeLeft)}
+                    </p>
                   </div>
-                  {timeLeft < 15 * 60 * 1000 && (
-                    <span className="text-[12px] bg-red-500 text-white px-2 py-1 rounded font-black uppercase animate-bounce">
-                      Expiring soon!
-                    </span>
-                  )}
                 </div>
-              )}
+                {timeLeft < 15 * 60 * 1000 && (
+                  <span className="text-[12px] bg-red-500 text-white px-2 py-1 rounded font-black uppercase animate-bounce">
+                    Expiring soon!
+                  </span>
+                )}
+              </div>
+            )}
 
             {booking.status === "in_progress" && (
               <div className="p-5 bg-violet-50 dark:bg-violet-950/25 border-2 border-violet-500 rounded-xl shadow-[4px_4px_0px_0px_#7c3aed]">
@@ -1150,7 +1143,9 @@ export default function RequestDetailsPage() {
                           Proposed second visit
                         </span>
                         <p className="text-sm font-black mt-1">
-                          {formatDateTime(booking.latest_quote.proposed_visit_time)}
+                          {formatDateTime(
+                            booking.latest_quote.proposed_visit_time,
+                          )}
                         </p>
                       </div>
                     )}
@@ -1186,6 +1181,7 @@ export default function RequestDetailsPage() {
                       </div>
                     )}
 
+                    {/* RELEASE ESCROW BUTTON */}
                     {booking.status === "funds_locked" && (
                       <div className="mt-6 p-6 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#06b6d4]">
                         <div className="flex items-center gap-3">
@@ -1565,6 +1561,9 @@ export default function RequestDetailsPage() {
             {([
               "accepted",
               "in_progress",
+              "visit_fee_paid",
+              "quote_pending_client",
+              "funds_locked",
               "handyman_done",
               "awaiting_payment",
               "paid",

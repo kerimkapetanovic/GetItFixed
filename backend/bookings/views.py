@@ -388,10 +388,24 @@ class ClientNegotiationActionView(APIView):
             try:
                 with transaction.atomic():
                     booking.scheduled_time = agreed_time
-                    booking.status = 'accepted'
+                    
+                    # --- NOVO: SKIP INSPECTION LOGIKA ---
+                    if booking.knows_fix:
+                        booking.status = 'visit_fee_paid'
+                        booking.continue_job_requested = True
+                        booking.continue_job_confirmed = True
+                        booking.job_continued_at = timezone.now()
+                        fields_to_update = ["scheduled_time", "status", "negotiation_status", "last_action_by", "updated_at", "continue_job_requested", "continue_job_confirmed", "job_continued_at"]
+                    else:
+                        booking.status = 'accepted'
+                        fields_to_update = ["scheduled_time", "status", "negotiation_status", "last_action_by", "updated_at"]
+                    # ------------------------------------
+                    
                     booking.negotiation_status = 'agreed'
                     booking.last_action_by = 'client'
-                    booking.save(update_fields=["scheduled_time", "status", "negotiation_status", "last_action_by", "updated_at"])
+                    
+                    booking.save(update_fields=fields_to_update)
+                    
                     lock_client_funds(
                         booking=booking,
                         actor=request.user,
@@ -800,8 +814,10 @@ class CompleteBookingView(APIView):
         if action == 'mark_done':
             if user != booking.handyman:
                 return Response({"error": "Only the handyman can mark job as done."}, status=403)
-            if booking.status != 'in_progress':
-                return Response({"error": "Job must be in_progress to mark as done."}, status=400)
+            
+            # --- NOVO: Dodan 'funds_locked' ---
+            if booking.status not in ['in_progress', 'funds_locked']:
+                return Response({"error": "Job must be in_progress or funds_locked to mark as done."}, status=400)
 
             booking.status = 'handyman_done'
             booking.handyman_marked_done_at = timezone.now()
