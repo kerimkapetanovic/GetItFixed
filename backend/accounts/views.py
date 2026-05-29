@@ -144,7 +144,18 @@ class RegisterView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
+            
+            # --- TASK 2: Handyman Verification Logic ---
+            if user.role == 'handyman':
+                user.is_active = False
+                user.save(update_fields=['is_active'])
+                return Response(
+                    {"message": "Registration successful! Your account is pending admin approval."}, 
+                    status=status.HTTP_201_CREATED
+                )
+            # -------------------------------------------
+            
             return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
