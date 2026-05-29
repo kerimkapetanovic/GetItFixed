@@ -12,47 +12,51 @@ from .views import (
     TicketTrackingView,
     JobStatusCheckView,
     CompleteBookingView,
-    CompleteVisitView,  # <-- Added the new view here
+    CompleteVisitView,
     ContinueJobView,
     CreateQuoteView,
     LatestQuoteView,
     QuoteClientActionView,
     EscrowStatusView,
-    # Task C1: Admin View Imports
+    # Admin View Imports
     AdminTrackingListView,
     AdminVerificationQueueView,
     AdminVerifyUserActionView,
     AdminServicesManagementView,
     AdminFinancesLedgerView,
+    SubmitReviewView,
 )
 
 urlpatterns = [
-    # --- HANDYMAN/CLIENT WORKFLOW ENDPOINTS ---
+    # --- 1. Dashboard i Osnovni Servisi ---
     path('dashboard/', HandymanDashboardView.as_view(), name='handyman-dashboard'),
-    path('accept/<int:booking_id>/', AcceptJobView.as_view(), name='accept-job'),
-    
-    path('<int:booking_id>/expire/', ExpireBookingView.as_view(), name='expire-booking'),
-    path('<int:booking_id>/handyman-action/', HandymanNegotiationActionView.as_view(), name='handyman-negotiation-action'),
-    path('<int:booking_id>/client-action/', ClientNegotiationActionView.as_view(), name='client-negotiation-action'),
-    path('<int:booking_id>/status-check/', JobStatusCheckView.as_view(), name='job-status-check'),
-    
-    path('<int:booking_id>/visit-complete/', CompleteVisitView.as_view(), name='booking-visit-complete'), # <-- Added the new route here
-    path('<int:booking_id>/complete/', CompleteBookingView.as_view(), name='job-complete'),
-    path('<int:booking_id>/continue-job/', ContinueJobView.as_view(), name='continue-job'),
-    
-    path('<int:booking_id>/quotes/', CreateQuoteView.as_view(), name='create-quote'),
-    path('<int:booking_id>/quotes/latest/', LatestQuoteView.as_view(), name='latest-quote'),
-    path('<int:booking_id>/quotes/<int:quote_id>/client-action/', QuoteClientActionView.as_view(), name='quote-client-action'),
-    path('<int:booking_id>/escrow/', EscrowStatusView.as_view(), name='escrow-status'),
-    
     path('create/', CreateBookingView.as_view(), name='create-booking'),
     path('my-requests/', ClientRequestsView.as_view(), name='my-requests'),
     path('tickets/<str:ticket_id>/', TicketTrackingView.as_view(), name='ticket-detail'),
     path('busy-slots/<int:handyman_id>/', HandymanBusySlotsView.as_view()),
 
+    # --- 2. Booking operacije (Specifične akcije moraju biti IZNAD ID rute) ---
+    path('<int:booking_id>/expire/', ExpireBookingView.as_view(), name='expire-booking'),
+    path('<int:booking_id>/handyman-action/', HandymanNegotiationActionView.as_view(), name='handyman-negotiation-action'),
+    path('<int:booking_id>/client-action/', ClientNegotiationActionView.as_view(), name='client-negotiation-action'),
+    path('<int:booking_id>/status-check/', JobStatusCheckView.as_view(), name='job-status-check'),
+    path('<int:booking_id>/visit-complete/', CompleteVisitView.as_view(), name='booking-visit-complete'),
+    path('<int:booking_id>/complete/', CompleteBookingView.as_view(), name='job-complete'),
+    path('<int:booking_id>/continue-job/', ContinueJobView.as_view(), name='continue-job'),
+    
+    # --- 3. Quote i Escrow akcije ---
+    path('<int:booking_id>/quotes/', CreateQuoteView.as_view(), name='create-quote'),
+    path('<int:booking_id>/quotes/latest/', LatestQuoteView.as_view(), name='latest-quote'),
+    path('<int:booking_id>/quotes/<int:quote_id>/client-action/', QuoteClientActionView.as_view(), name='quote-client-action'),
+    path('<int:booking_id>/escrow/', EscrowStatusView.as_view(), name='escrow-status'),
+    
+    # --- 4. Review sistem ---
+    path('<int:booking_id>/review/', SubmitReviewView.as_view(), name='submit-review'),
+    
+    # --- 5. Univerzalna ruta za detalje (Ovo ide skoro na kraj) ---
     path('<int:pk>/', BookingDetailView.as_view(), name='booking-detail'),
 
-    # --- TASK C1: ADMIN MANAGEMENT CORE ENDPOINTS ---
+    # --- 6. Admin Management ---
     path('admin/tracking/', AdminTrackingListView.as_view(), name='admin-tracking'),
     path('admin/verification/', AdminVerificationQueueView.as_view(), name='admin-verification'),
     path('admin/verification/<int:user_id>/action/', AdminVerifyUserActionView.as_view(), name='admin-verify-action'),

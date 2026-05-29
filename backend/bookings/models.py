@@ -330,3 +330,32 @@ class WalletTransaction(models.Model):
 
     def __str__(self):
         return f"{self.tx_type} {self.amount} for user {self.user_id}"
+
+class Review(models.Model):
+    booking = models.OneToOneField(
+        Booking, 
+        on_delete=models.CASCADE, 
+        related_name='review'
+    )
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='reviews_given'
+    )
+    handyman = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='reviews_received'
+    )
+    rating = models.PositiveIntegerField(
+        choices=[(i, i) for i in range(1, 6)],
+        help_text="Ocjena od 1 do 5"
+    )
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review for {self.handyman.username} by {self.client.username} ({self.rating}/5)"

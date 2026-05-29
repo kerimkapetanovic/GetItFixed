@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from decimal import Decimal
+from .models import Booking, Review
 
 from .models import Booking, Quote, QuoteLineItem, EscrowHold
 from .serializers import BookingSerializer, QuoteSerializer, EscrowHoldSerializer
@@ -1085,3 +1086,37 @@ class AdminFinancesLedgerView(generics.ListAPIView):
             "total_escrow_locked_systemwide": float(total_escrow_volume),
             "ledger": serializer.data
         }, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SubmitReviewView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        try:
+            booking = Booking.objects.get(id=booking_id, client=request.user)
+            
+            if booking.status not in ['closed', 'completed']:
+                return Response({"error": "Posao nije završen."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if Review.objects.filter(booking=booking).exists():
+                return Response({"error": "Recenzija je već ostavljena."}, status=status.HTTP_400_BAD_REQUEST)
+
+            rating = request.data.get('rating')
+            comment = request.data.get('comment')
+
+            if not rating or not (1 <= int(rating) <= 5):
+                return Response({"error": "Ocjena mora biti od 1 do 5."}, status=status.HTTP_400_BAD_REQUEST)
+
+            Review.objects.create(
+                booking=booking,
+                handyman=booking.handyman,
+                client=request.user,
+                rating=int(rating),
+                comment=comment
+            )
+            
+            return Response({"message": "Hvala na recenziji!"}, status=status.HTTP_201_CREATED)
+            
+        except Booking.DoesNotExist:
+            return Response({"error": "Rezervacija nije pronađena."}, status=status.HTTP_404_NOT_FOUND)

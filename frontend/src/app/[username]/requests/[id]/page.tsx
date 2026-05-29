@@ -18,6 +18,7 @@ import {
   Wrench,
   Flag,
   Wallet,
+  Star,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -274,6 +275,62 @@ type AutoCompleteCheckResponse =
       status: "awaiting_client";
       seconds_left: number;
     };
+
+const ReviewSection = ({
+  bookingId,
+  onReviewSubmit,
+}: {
+  bookingId: string;
+  onReviewSubmit: () => void;
+}) => {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submitReview = async () => {
+    if (rating === 0) return alert("Molimo odaberite ocjenu.");
+    setSubmitting(true);
+    try {
+      await api.post(`/api/bookings/${bookingId}/review/`, { rating, comment });
+      onReviewSubmit();
+    } catch (e) {
+      alert("Došlo je do greške pri slanju recenzije.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="p-6 bg-white dark:bg-zinc-800 border-2 border-black rounded-xl mt-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <h3 className="font-black uppercase text-sm mb-4">Ocijeni majstora</h3>
+      <div className="flex gap-2 mb-4">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            onClick={() => setRating(star)}
+            className={rating >= star ? "text-yellow-400" : "text-gray-300"}
+          >
+            <Star size={32} fill="currentColor" />
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="Opišite vaše iskustvo..."
+        className="w-full p-3 border-2 border-black rounded-lg mb-4 text-sm font-bold bg-gray-50 dark:bg-zinc-900"
+        rows={3}
+      />
+      <button
+        onClick={submitReview}
+        disabled={submitting}
+        className="bg-black text-white px-6 py-2 rounded-xl font-black uppercase text-xs"
+      >
+        {submitting ? "Slanje..." : "Pošalji recenziju"}
+      </button>
+    </div>
+  );
+};
 
 export default function RequestDetailsPage() {
   const params = useParams() as { id: string; username: string };
@@ -1305,19 +1362,27 @@ export default function RequestDetailsPage() {
             )}
 
             {booking.status === "closed" && (
-              <div className="p-6 bg-green-50 dark:bg-green-950/25 border-2 border-green-500 rounded-xl text-center shadow-[4px_4px_0px_0px_#22c55e]">
-                <CheckCircle2
-                  className="mx-auto text-green-600 mb-2"
-                  size={40}
-                  strokeWidth={2.5}
+              <>
+                <div className="p-6 bg-green-50 dark:bg-green-950/25 border-2 border-green-500 rounded-xl text-center shadow-[4px_4px_0px_0px_#22c55e]">
+                  <CheckCircle2
+                    className="mx-auto text-green-600 mb-2"
+                    size={40}
+                    strokeWidth={2.5}
+                  />
+                  <h3 className="font-black uppercase text-xl text-black dark:text-white">
+                    Job finished
+                  </h3>
+                  <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-2">
+                    Thank you for choosing GetItFixed.
+                  </p>
+                </div>
+
+                {/* Dodaj ovo: */}
+                <ReviewSection
+                  bookingId={String(booking.id)}
+                  onReviewSubmit={() => window.location.reload()}
                 />
-                <h3 className="font-black uppercase text-xl text-black dark:text-white">
-                  Job finished
-                </h3>
-                <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-2">
-                  Thank you for choosing GetItFixed.
-                </p>
-              </div>
+              </>
             )}
 
             {booking.status === "not_completed" && (
