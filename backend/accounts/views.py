@@ -84,22 +84,23 @@ class EmailAuthSerializer(serializers.Serializer):
         if not email or not password:
             raise serializers.ValidationError('Email and password are required.')
 
-        user = authenticate(
-            request=self.context.get('request'),
-            username=email,
-            password=password
-        )
-
-        if not user:
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
             raise serializers.ValidationError('Incorrect email or password.')
+
+        if not user.check_password(password):
+            raise serializers.ValidationError('Incorrect email or password.')
+
+        if not user.is_active:
+            raise serializers.ValidationError(
+                'User account is not verified or active.\nPlease wait until an admin approves your account.'
+            )
 
         is_privileged = user.is_superuser or user.is_staff or user.role == 'admin'
         if not is_privileged and selected_role:
             if user.role != selected_role:
                 raise serializers.ValidationError(f"This account is registered as {user.role}.")
-
-        if not user.is_active:
-            raise serializers.ValidationError('User account is disabled.')
 
         attrs['user'] = user
         return attrs
