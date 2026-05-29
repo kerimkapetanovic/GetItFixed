@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Booking, Quote, QuoteLineItem, EscrowHold
+from .models import Booking, Quote, QuoteLineItem, EscrowHold, Review
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -207,3 +207,16 @@ class EscrowHoldSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = fields
+
+class ReviewSerializer(serializers.ModelSerializer):
+    client_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = ['id', 'rating', 'comment', 'created_at', 'client_name']
+
+    def get_client_name(self, obj):
+        # Spajamo ime i prezime klijenta koji je ostavio recenziju
+        if obj.client:
+            return f"{obj.client.first_name} {obj.client.last_name}".strip() or obj.client.username
+        return "Anonymous"

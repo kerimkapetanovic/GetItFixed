@@ -1,11 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
+from django.db.models import Avg
 import boto3
 import uuid
 import os
 
 User = get_user_model()
+
 
 def upload_avatar_to_supabase(file_obj):
     s3 = boto3.client(
@@ -15,19 +17,20 @@ def upload_avatar_to_supabase(file_obj):
         endpoint_url=os.getenv('AWS_S3_ENDPOINT_URL'),
         region_name=os.getenv('AWS_S3_REGION_NAME'),
     )
-    
-    ext = os.path.splitext(file_obj.name)[1].lower()  # .jpg, .png...
+
+    ext = os.path.splitext(file_obj.name)[1].lower()
     filename = f"profile_{uuid.uuid4().hex[:8]}{ext}"
-    
+
     s3.upload_fileobj(
         file_obj,
-        os.getenv('AWS_STORAGE_BUCKET_NAME'),  # 'avatars'
+        os.getenv('AWS_STORAGE_BUCKET_NAME'),
         filename,
         ExtraArgs={'ContentType': file_obj.content_type}
     )
-    
+
     base_url = os.getenv('NEXT_PUBLIC_SUPABASE_STORAGE_URL')
     return f"{base_url}/avatars/{filename}"
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -36,7 +39,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'email', 'password', 
+            'id', 'username', 'email', 'password',
             'first_name', 'last_name', 'role', 'phone',
             'county', 'city', 'zip_code', 'service_type', 'wallet_balance',
             'accepted_terms'
@@ -84,49 +87,49 @@ class EmailAuthSerializer(serializers.Serializer):
         selected_role = attrs.get('role')
 
         if not email or not password:
-            raise serializers.ValidationError('You must provide an email and password.', code='authorization')
+            raise serializers.ValidationError(
+                'You must provide an email and password.', code='authorization'
+            )
 
         try:
             user_obj = User.objects.get(email=email)
-            is_privileged = user_obj.is_superuser or user_obj.is_staff or user_obj.role == 'admin'
-            
-            if not is_privileged:
-                if selected_role and user_obj.role != selected_role:
-                    raise serializers.ValidationError(
-                        f"This account is registered as {user_obj.role}.", 
-                        code='authorization'
-                    )
-
-            user = authenticate(
-                request=self.context.get('request'),
-                username=user_obj.username,
-                password=password
-            )
-            
-            if not user:
-                user = authenticate(
-                    request=self.context.get('request'),
-                    username=email,
-                    password=password
-                )
-
         except User.DoesNotExist:
-            user = None
+            raise serializers.ValidationError(
+                'Incorrect email or password.', code='authorization'
+            )
+
+        is_privileged = user_obj.is_superuser or user_obj.is_staff or user_obj.role == 'admin'
+
+        if not is_privileged and selected_role and user_obj.role != selected_role:
+            raise serializers.ValidationError(
+                f"This account is registered as {user_obj.role}.",
+                code='authorization'
+            )
+
+        user = authenticate(
+            request=self.context.get('request'),
+            username=user_obj.username,
+            password=password,
+        )
 
         if not user:
-            raise serializers.ValidationError('Incorrect email or password.', code='authorization')
+            raise serializers.ValidationError(
+                'Incorrect email or password.', code='authorization'
+            )
 
         attrs['user'] = user
         return attrs
 
 
-# ✅ SAMO JEDAN ProfileSerializer
 class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(read_only=True)
     username = serializers.CharField(read_only=True)
-    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)    
+
+    # Write-only upload field; stored avatar is a URL string, not a file
+    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
     avatar_url = serializers.SerializerMethodField()
     has_custom_avatar = serializers.SerializerMethodField()
+
     locked_balance = serializers.DecimalField(
         source="wallet_locked_balance",
         max_digits=10,
@@ -141,7 +144,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "first_name", "last_name", "email", "role", "username",
             "avatar", "avatar_url", "has_custom_avatar",
             "phone", "county", "city", "zip_code",
-            "wallet_balance", "locked_balance", "wallet_available_balance"
+            "wallet_balance", "locked_balance", "wallet_available_balance",
         )
         read_only_fields = (
             "email",
@@ -155,16 +158,17 @@ class ProfileSerializer(serializers.ModelSerializer):
         )
 
     def get_avatar_url(self, obj):
+        # obj.avatar is stored as a plain URL string, not a FieldFile
         if obj.avatar:
-            return obj.avatar  # već je puni URL string
+            return str(obj.avatar)
         return f"https://api.dicebear.com/7.x/avataaars/svg?seed={obj.username}"
-
-
 
     def get_has_custom_avatar(self, obj):
         return bool(obj.avatar)
 
     def get_wallet_available_balance(self, obj):
+        # Delegates to the model property; ensure wallet_available_balance
+        # is defined on the User model (e.g. wallet_balance - wallet_locked_balance)
         return obj.wallet_available_balance
 
     def update(self, instance, validated_data):
@@ -173,10 +177,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         if avatar_file is not None:
             if avatar_file:
                 try:
-                    instance.avatar = upload_avatar_to_supabase(avatar_file)  # ✅ ispravno
+                    instance.avatar = upload_avatar_to_supabase(avatar_file)
                 except Exception as e:
                     raise serializers.ValidationError({"avatar": f"Upload failed: {str(e)}"})
             else:
+                # Explicit null → clear the avatar
                 instance.avatar = None
 
         for attr, value in validated_data.items():
@@ -185,9 +190,17 @@ class ProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class UserSerializer(serializers.ModelSerializer):
     location = serializers.CharField(source='city', default="Sarajevo")
     phone_number = serializers.CharField(source='phone', read_only=True)
+    
+    # --- Dinamička polja koja su nedostajala ---
+    name = serializers.SerializerMethodField()
+    category = serializers.CharField(source='service_type', read_only=True)
+    price = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
+    jobs = serializers.SerializerMethodField()
     
     class Meta:
         model = User
@@ -197,12 +210,16 @@ class UserSerializer(serializers.ModelSerializer):
             'email',
             'first_name',
             'last_name',
+            'name',           
             'phone_number',
             'role',
             'location',
             'service_type',
+            'category',       
             'hourly_rate',
-            'rating',
+            'price',          
+            'rating',         
+            'jobs',           
             'wallet_balance',
             'date_joined',
             'is_active',
@@ -211,6 +228,28 @@ class UserSerializer(serializers.ModelSerializer):
             'zip_code',
         ]
         read_only_fields = ['id', 'date_joined']
+
+    def get_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip() or obj.username
+
+    def get_price(self, obj):
+        rate = getattr(obj, 'hourly_rate', 30) or 30
+        return f"{rate} BAM/hr"
+
+    def get_rating(self, obj):
+        if hasattr(obj, 'reviews_received'):
+            reviews = obj.reviews_received.all()
+            if reviews.exists():
+                avg_rating = reviews.aggregate(Avg('rating')).get('rating__avg')
+                if avg_rating is not None:
+                    return f"{avg_rating:.1f}"
+        return "5.0"
+
+    def get_jobs(self, obj):
+        if hasattr(obj, 'handyman_jobs'):
+            return obj.handyman_jobs.filter(status__in=['closed', 'completed']).count()
+        return 0
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True, min_length=8)

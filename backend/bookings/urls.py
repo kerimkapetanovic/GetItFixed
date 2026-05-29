@@ -25,6 +25,7 @@ from .views import (
     AdminServicesManagementView,
     AdminFinancesLedgerView,
     SubmitReviewView,
+    ExpertReviewsView,  # <-- DODANO OVDJE
 )
 
 urlpatterns = [
@@ -52,6 +53,7 @@ urlpatterns = [
     
     # --- 4. Review sistem ---
     path('<int:booking_id>/review/', SubmitReviewView.as_view(), name='submit-review'),
+    path('expert/<int:expert_id>/reviews/', ExpertReviewsView.as_view(), name='expert-reviews'), # <-- DODANO OVDJE
     
     # --- 5. Univerzalna ruta za detalje (Ovo ide skoro na kraj) ---
     path('<int:pk>/', BookingDetailView.as_view(), name='booking-detail'),

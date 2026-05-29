@@ -16,7 +16,7 @@ from decimal import Decimal
 from .models import Booking, Review
 
 from .models import Booking, Quote, QuoteLineItem, EscrowHold
-from .serializers import BookingSerializer, QuoteSerializer, EscrowHoldSerializer
+from .serializers import BookingSerializer, QuoteSerializer, EscrowHoldSerializer, ReviewSerializer
 from .deadline_utils import (
     set_handyman_response_deadline,
     process_handyman_negotiation_expiry,
@@ -1120,3 +1120,13 @@ class SubmitReviewView(APIView):
             
         except Booking.DoesNotExist:
             return Response({"error": "Rezervacija nije pronađena."}, status=status.HTTP_404_NOT_FOUND)
+
+class ExpertReviewsView(generics.ListAPIView):
+    serializer_class = ReviewSerializer
+    # OVO JE KLJUČNO: Dozvoljavamo pristup svima (javno)
+    permission_classes = [permissions.AllowAny] 
+    
+    def get_queryset(self):
+        expert_id = self.kwargs['expert_id']
+        # Za svaki slučaj koristimo booking__handyman_id ako je vezano preko Booking modela
+        return Review.objects.filter(booking__handyman_id=expert_id).order_by('-created_at')

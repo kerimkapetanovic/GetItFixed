@@ -36,7 +36,9 @@ export default function CategoryPage() {
     const fetchProviders = async () => {
       try {
         // Fetch from accounts endpoint (handyman users filtered by service_type).
-        const response = await api.get(`/api/accounts/handymen/?service_type=${encodeURIComponent(id)}`);
+        const response = await api.get(
+          `/api/accounts/handymen/?service_type=${encodeURIComponent(id)}`,
+        );
         setProviders(response.data);
       } catch (error) {
         console.error("Error fetching handymen:", error);
@@ -84,53 +86,59 @@ export default function CategoryPage() {
         ) : (
           <div className="space-y-6">
             {providers.length > 0 ? (
-              providers.map((pro) => (
+              providers.map((pro) =>
                 (() => {
-                  const fullName = `${pro.first_name || ""} ${pro.last_name || ""}`.trim() || pro.name;
+                  const fullName =
+                    `${pro.first_name || ""} ${pro.last_name || ""}`.trim() ||
+                    pro.name;
                   return (
-                <div
-                  key={pro.id}
-                  className="bg-white dark:bg-zinc-900 border-[4px] border-black dark:border-zinc-700 p-6 rounded-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
-                >
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-[#FFE8D6] text-black border-[3px] border-black rounded-xl flex items-center justify-center font-black text-3xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                      {fullName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h2 className="text-lg md:text-xl font-black text-black dark:text-white uppercase">
-                        {fullName}
-                      </h2>
-                      <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs font-bold text-gray-600 dark:text-zinc-400">
-                        <span className="flex items-center gap-1 text-[#EF9D39]">
-                          <Star size={16} className="fill-current" />{" "}
-                          {pro.rating}
+                    <div
+                      key={pro.id}
+                      className="bg-white dark:bg-zinc-900 border-[4px] border-black dark:border-zinc-700 p-6 rounded-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="w-20 h-20 bg-[#FFE8D6] text-black border-[3px] border-black rounded-xl flex items-center justify-center font-black text-3xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                          {fullName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h2 className="text-lg md:text-xl font-black text-black dark:text-white uppercase">
+                            {fullName}
+                          </h2>
+                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs font-bold text-gray-600 dark:text-zinc-400">
+                            <span className="flex items-center gap-1 text-[#EF9D39]">
+                              <Star size={16} className="fill-current" />{" "}
+                              {pro.rating}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin size={16} /> {pro.location}
+                            </span>
+                            <span>{pro.jobs} Jobs</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-3 w-full md:w-auto mt-4 md:mt-0">
+                        <span className="font-black text-lg text-black bg-gray-100 border-2 border-black px-3.5 py-1 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                          {pro.price}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin size={16} /> {pro.location}
-                        </span>
-                        <span>{pro.jobs} Jobs</span>
+                        <Link
+                          href={`/expert/${pro.id}`}
+                          className="bg-black text-white px-5 py-2.5 rounded-xl font-black uppercase text-[11px] hover:bg-[#EF9D39] hover:text-black border-2 border-black transition-colors flex items-center gap-1"
+                        >
+                          View Profile <ChevronRight size={16} />
+                        </Link>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-3 w-full md:w-auto mt-4 md:mt-0">
-                    <span className="font-black text-lg text-black bg-gray-100 border-2 border-black px-3.5 py-1 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                      {pro.price}
-                    </span>
-                    <button className="bg-black text-white px-5 py-2.5 rounded-xl font-black uppercase text-[11px] hover:bg-[#EF9D39] hover:text-black border-2 border-black transition-colors flex items-center gap-1">
-                      View Profile <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
                   );
-                })()
-              ))
+                })(),
+              )
             ) : (
               <div className="bg-white dark:bg-zinc-900 border-[4px] border-black dark:border-zinc-700 p-12 rounded-2xl text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
                 <h3 className="text-2xl font-black text-black dark:text-white uppercase mb-2">
                   No pros found
                 </h3>
                 <p className="font-bold text-gray-500 dark:text-zinc-400">
-                  Try checking the plumbing category where we added John!
+                  We are currently expanding our network. Check back soon for
+                  new experts in this category!
                 </p>
               </div>
             )}

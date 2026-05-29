@@ -14,13 +14,14 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
+# Ovdje uvozimo naš moćni UserSerializer
 from .serializers import RegisterSerializer, ProfileSerializer, ChangePasswordSerializer, UserSerializer
 from .authentication import CookieTokenAuthentication
 
 User = get_user_model()
 
-
-
+# Ostavljamo ove stare serializere ako si ih slučajno importovao negdje drugo, 
+# ali ih više ne koristimo za glavnu listu.
 class HandymanDirectorySerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     category = serializers.CharField(source="service_type", read_only=True)
@@ -116,7 +117,8 @@ class ListUsers(generics.ListAPIView):
 
 class HandymanListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny] 
-    serializer_class = HandymanDirectorySerializer
+    # OVDJE JE PROMJENA: Koristimo tvoj dinamički UserSerializer umjesto starog!
+    serializer_class = UserSerializer 
 
     def _normalize(self, value: str) -> str:
         return " ".join((value or "").strip().lower().replace("-", " ").replace("_", " ").split())
@@ -170,6 +172,7 @@ class CustomLoginView(ObtainAuthToken):
             return user.avatar
         
         return f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.username}"
+        
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
