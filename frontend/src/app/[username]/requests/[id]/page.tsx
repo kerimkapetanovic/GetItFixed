@@ -275,7 +275,6 @@ type AutoCompleteCheckResponse =
     status: "awaiting_client";
     seconds_left: number;
   };
-
 const ReviewSection = ({
   bookingId,
   onReviewSubmit,
@@ -286,12 +285,14 @@ const ReviewSection = ({
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const submitReview = async () => {
     if (rating === 0) return alert("Please select a rating.");
     setSubmitting(true);
     try {
       await api.post(`/api/bookings/${bookingId}/review/`, { rating, comment });
+      setSubmitted(true);
       onReviewSubmit();
     } catch (e) {
       alert("An error occurred while submitting the review.");
@@ -299,6 +300,20 @@ const ReviewSection = ({
       setSubmitting(false);
     }
   };
+
+  if (submitted) {
+    return (
+      <div className="p-6 bg-white dark:bg-zinc-800 border-2 border-black rounded-xl mt-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
+        <div className="text-4xl mb-3">🌟</div>
+        <h3 className="font-black uppercase text-sm text-black dark:text-white">
+          Thank you for your review!
+        </h3>
+        <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest mt-1">
+          Your feedback helps the community.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-white dark:bg-zinc-800 border-2 border-black rounded-xl mt-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -1376,10 +1391,9 @@ export default function RequestDetailsPage() {
                   </p>
                 </div>
 
-                {/* Dodaj ovo: */}
                 <ReviewSection
                   bookingId={String(booking.id)}
-                  onReviewSubmit={() => window.location.reload()}
+                  onReviewSubmit={() => { }}
                 />
               </>
             )}
