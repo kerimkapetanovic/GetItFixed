@@ -1097,16 +1097,16 @@ class SubmitReviewView(APIView):
             booking = Booking.objects.get(id=booking_id, client=request.user)
             
             if booking.status not in ['closed', 'completed']:
-                return Response({"error": "Posao nije završen."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Booking is not completed."}, status=status.HTTP_400_BAD_REQUEST)
             
             if Review.objects.filter(booking=booking).exists():
-                return Response({"error": "Recenzija je već ostavljena."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Review has already been submitted."}, status=status.HTTP_400_BAD_REQUEST)
 
             rating = request.data.get('rating')
             comment = request.data.get('comment')
 
             if not rating or not (1 <= int(rating) <= 5):
-                return Response({"error": "Ocjena mora biti od 1 do 5."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Rating must be between 1 and 5."}, status=status.HTTP_400_BAD_REQUEST)
 
             Review.objects.create(
                 booking=booking,
@@ -1116,17 +1116,15 @@ class SubmitReviewView(APIView):
                 comment=comment
             )
             
-            return Response({"message": "Hvala na recenziji!"}, status=status.HTTP_201_CREATED)
+            return Response({"message": "Thank you for your review!"}, status=status.HTTP_201_CREATED)
             
         except Booking.DoesNotExist:
-            return Response({"error": "Rezervacija nije pronađena."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
 
 class ExpertReviewsView(generics.ListAPIView):
     serializer_class = ReviewSerializer
-    # OVO JE KLJUČNO: Dozvoljavamo pristup svima (javno)
     permission_classes = [permissions.AllowAny] 
     
     def get_queryset(self):
         expert_id = self.kwargs['expert_id']
-        # Za svaki slučaj koristimo booking__handyman_id ako je vezano preko Booking modela
         return Review.objects.filter(booking__handyman_id=expert_id).order_by('-created_at')

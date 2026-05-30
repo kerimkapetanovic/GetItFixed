@@ -272,9 +272,9 @@ type WalletMeResponse = {
 type AutoCompleteCheckResponse =
   | BookingDetail
   | {
-      status: "awaiting_client";
-      seconds_left: number;
-    };
+    status: "awaiting_client";
+    seconds_left: number;
+  };
 
 const ReviewSection = ({
   bookingId,
@@ -288,13 +288,13 @@ const ReviewSection = ({
   const [submitting, setSubmitting] = useState(false);
 
   const submitReview = async () => {
-    if (rating === 0) return alert("Molimo odaberite ocjenu.");
+    if (rating === 0) return alert("Please select a rating.");
     setSubmitting(true);
     try {
       await api.post(`/api/bookings/${bookingId}/review/`, { rating, comment });
       onReviewSubmit();
     } catch (e) {
-      alert("Došlo je do greške pri slanju recenzije.");
+      alert("An error occurred while submitting the review.");
     } finally {
       setSubmitting(false);
     }
@@ -302,8 +302,8 @@ const ReviewSection = ({
 
   return (
     <div className="p-6 bg-white dark:bg-zinc-800 border-2 border-black rounded-xl mt-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-      <h3 className="font-black uppercase text-sm mb-4">Ocijeni majstora</h3>
-      <div className="flex gap-2 mb-4">
+      <h3 className="font-black uppercase text-sm mb-4 text-center">Rate your handyman</h3>
+      <div className="flex gap-2 mb-4 justify-center">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
@@ -317,16 +317,16 @@ const ReviewSection = ({
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Opišite vaše iskustvo..."
+        placeholder="Describe your experience..."
         className="w-full p-3 border-2 border-black rounded-lg mb-4 text-sm font-bold bg-gray-50 dark:bg-zinc-900"
         rows={3}
       />
       <button
         onClick={submitReview}
         disabled={submitting}
-        className="bg-black text-white px-6 py-2 rounded-xl font-black uppercase text-xs"
+        className="cursor-pointer bg-black text-white px-6 py-2 rounded-xl font-black uppercase text-xs justify-center flex mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {submitting ? "Slanje..." : "Pošalji recenziju"}
+        {submitting ? "Submitting..." : "Submit Review"}
       </button>
     </div>
   );
@@ -537,10 +537,10 @@ export default function RequestDetailsPage() {
       const payload =
         action === "counter"
           ? {
-              action,
-              proposed_time: toUtcIso(counterTime),
-              message: counterMessage,
-            }
+            action,
+            proposed_time: toUtcIso(counterTime),
+            message: counterMessage,
+          }
           : { action };
       const response = await api.post(
         `/api/bookings/${booking.id}/client-action/`,
@@ -794,11 +794,10 @@ export default function RequestDetailsPage() {
 
         <div
           className={`w-full bg-white dark:bg-zinc-900 border-2 p-8 md:p-12 rounded-[32px] transition-all
-                    ${
-                      booking.is_urgent
-                        ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]"
-                        : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-                    }`}
+                    ${booking.is_urgent
+              ? "border-red-600 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]"
+              : "border-black dark:border-zinc-700 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+            }`}
         >
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -1141,151 +1140,151 @@ export default function RequestDetailsPage() {
 
             {(booking.status === "quote_pending_client" ||
               booking.status === "funds_locked") && (
-              <div className="p-6 bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#6366f1]">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
-                    Itemized Quote
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={refreshLatestQuote}
-                    disabled={quoteLoading}
-                    className="text-[10px] font-black uppercase border-2 border-black px-3 py-1 rounded-lg bg-white dark:bg-zinc-900"
-                  >
-                    {quoteLoading ? "Loading..." : "Refresh"}
-                  </button>
-                </div>
+                <div className="p-6 bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#6366f1]">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                      Itemized Quote
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={refreshLatestQuote}
+                      disabled={quoteLoading}
+                      className="text-[10px] font-black uppercase border-2 border-black px-3 py-1 rounded-lg bg-white dark:bg-zinc-900"
+                    >
+                      {quoteLoading ? "Loading..." : "Refresh"}
+                    </button>
+                  </div>
 
-                {booking.latest_quote ? (
-                  <>
-                    <div className="border-2 border-black rounded-xl bg-white dark:bg-zinc-900 overflow-hidden">
-                      <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-black text-[#EF9D39] text-[10px] font-black uppercase tracking-widest">
-                        <div className="col-span-5">Description</div>
-                        <div className="col-span-2">Category</div>
-                        <div className="col-span-2 text-right">Qty</div>
-                        <div className="col-span-3 text-right">Line total</div>
-                      </div>
-                      <div className="p-3 space-y-2">
-                        {booking.latest_quote.line_items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="grid grid-cols-12 gap-2 text-sm font-bold"
-                          >
-                            <div className="col-span-5">{item.description}</div>
-                            <div className="col-span-2 uppercase text-xs">
-                              {item.category}
-                            </div>
-                            <div className="col-span-2 text-right tabular-nums">
-                              {Number(item.quantity).toFixed(2)}
-                            </div>
-                            <div className="col-span-3 text-right tabular-nums">
-                              {Number(item.line_total).toFixed(2)} KM
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl flex justify-between items-center">
-                      <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">
-                        Quote total
-                      </span>
-                      <span className="text-xl font-black text-[#EF9D39] tabular-nums">
-                        {Number(booking.latest_quote.total_amount).toFixed(2)}{" "}
-                        KM
-                      </span>
-                    </div>
-                    {booking.latest_quote.proposed_visit_time && (
-                      <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl">
-                        <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          Proposed second visit
-                        </span>
-                        <p className="text-sm font-black mt-1">
-                          {formatDateTime(
-                            booking.latest_quote.proposed_visit_time,
-                          )}
-                        </p>
-                      </div>
-                    )}
-
-                    {booking.status === "quote_pending_client" && (
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-3">
-                          <button
-                            disabled={quoteActionLoading}
-                            onClick={() => handleQuoteAction("accept")}
-                            className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#22c55e] disabled:opacity-60"
-                          >
-                            Accept & Lock Funds
-                          </button>
-                          <button
-                            disabled={quoteActionLoading}
-                            onClick={() => handleQuoteAction("reject")}
-                            className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] disabled:opacity-60"
-                          >
-                            Reject
-                          </button>
+                  {booking.latest_quote ? (
+                    <>
+                      <div className="border-2 border-black rounded-xl bg-white dark:bg-zinc-900 overflow-hidden">
+                        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-black text-[#EF9D39] text-[10px] font-black uppercase tracking-widest">
+                          <div className="col-span-5">Description</div>
+                          <div className="col-span-2">Category</div>
+                          <div className="col-span-2 text-right">Qty</div>
+                          <div className="col-span-3 text-right">Line total</div>
                         </div>
-                        {actionError && (
-                          <p className="text-sm font-black text-red-600">
-                            {actionError}
-                          </p>
-                        )}
-                        {actionSuccess && (
-                          <p className="text-sm font-black text-green-700 dark:text-green-400">
-                            {actionSuccess}
-                          </p>
-                        )}
+                        <div className="p-3 space-y-2">
+                          {booking.latest_quote.line_items.map((item) => (
+                            <div
+                              key={item.id}
+                              className="grid grid-cols-12 gap-2 text-sm font-bold"
+                            >
+                              <div className="col-span-5">{item.description}</div>
+                              <div className="col-span-2 uppercase text-xs">
+                                {item.category}
+                              </div>
+                              <div className="col-span-2 text-right tabular-nums">
+                                {Number(item.quantity).toFixed(2)}
+                              </div>
+                              <div className="col-span-3 text-right tabular-nums">
+                                {Number(item.line_total).toFixed(2)} KM
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    )}
+                      <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl flex justify-between items-center">
+                        <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">
+                          Quote total
+                        </span>
+                        <span className="text-xl font-black text-[#EF9D39] tabular-nums">
+                          {Number(booking.latest_quote.total_amount).toFixed(2)}{" "}
+                          KM
+                        </span>
+                      </div>
+                      {booking.latest_quote.proposed_visit_time && (
+                        <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl">
+                          <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">
+                            Proposed second visit
+                          </span>
+                          <p className="text-sm font-black mt-1">
+                            {formatDateTime(
+                              booking.latest_quote.proposed_visit_time,
+                            )}
+                          </p>
+                        </div>
+                      )}
 
-                    {/* RELEASE ESCROW BUTTON */}
-                    {booking.status === "funds_locked" && (
-                      <div className="mt-6 p-6 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#06b6d4]">
-                        <div className="flex items-center gap-3">
-                          <Wallet className="text-cyan-600" size={24} />
-                          <div>
-                            <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
-                              Funds Locked in Escrow
-                            </h3>
-                            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
-                              Your{" "}
-                              {Number(
-                                booking.quote_locked_amount ??
+                      {booking.status === "quote_pending_client" && (
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap gap-3">
+                            <button
+                              disabled={quoteActionLoading}
+                              onClick={() => handleQuoteAction("accept")}
+                              className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#22c55e] disabled:opacity-60"
+                            >
+                              Accept & Lock Funds
+                            </button>
+                            <button
+                              disabled={quoteActionLoading}
+                              onClick={() => handleQuoteAction("reject")}
+                              className="bg-white dark:bg-black text-black dark:text-white border-2 border-black px-5 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-[4px_4px_0px_0px_#ef4444] disabled:opacity-60"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                          {actionError && (
+                            <p className="text-sm font-black text-red-600">
+                              {actionError}
+                            </p>
+                          )}
+                          {actionSuccess && (
+                            <p className="text-sm font-black text-green-700 dark:text-green-400">
+                              {actionSuccess}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* RELEASE ESCROW BUTTON */}
+                      {booking.status === "funds_locked" && (
+                        <div className="mt-6 p-6 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#06b6d4]">
+                          <div className="flex items-center gap-3">
+                            <Wallet className="text-cyan-600" size={24} />
+                            <div>
+                              <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                                Funds Locked in Escrow
+                              </h3>
+                              <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
+                                Your{" "}
+                                {Number(
+                                  booking.quote_locked_amount ??
                                   booking.latest_quote?.total_amount ??
                                   0,
-                              ).toFixed(2)}{" "}
-                              KM is safely held in escrow for the second visit.
-                              Payment is released only after completion is
-                              confirmed.
-                            </p>
+                                ).toFixed(2)}{" "}
+                                KM is safely held in escrow for the second visit.
+                                Payment is released only after completion is
+                                confirmed.
+                              </p>
+                            </div>
                           </div>
+
+                          {actionError && (
+                            <p className="text-sm font-black text-red-600">
+                              {actionError}
+                            </p>
+                          )}
+                          {actionSuccess && (
+                            <p className="text-sm font-black text-green-700 dark:text-green-400">
+                              {actionSuccess}
+                            </p>
+                          )}
+
+                          <p className="text-sm font-black text-cyan-900 dark:text-cyan-200">
+                            Waiting for handyman to complete the second visit.
+                            Then confirm done to release escrow.
+                          </p>
                         </div>
-
-                        {actionError && (
-                          <p className="text-sm font-black text-red-600">
-                            {actionError}
-                          </p>
-                        )}
-                        {actionSuccess && (
-                          <p className="text-sm font-black text-green-700 dark:text-green-400">
-                            {actionSuccess}
-                          </p>
-                        )}
-
-                        <p className="text-sm font-black text-cyan-900 dark:text-cyan-200">
-                          Waiting for handyman to complete the second visit.
-                          Then confirm done to release escrow.
-                        </p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm font-bold text-gray-600 dark:text-zinc-300">
-                    Quote is not available yet.
-                  </p>
-                )}
-              </div>
-            )}
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm font-bold text-gray-600 dark:text-zinc-300">
+                      Quote is not available yet.
+                    </p>
+                  )}
+                </div>
+              )}
 
             {booking.status === "awaiting_payment" && (
               <div className="p-6 bg-amber-50 dark:bg-amber-950/25 border-2 border-amber-500 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#f59e0b]">
@@ -1433,7 +1432,7 @@ export default function RequestDetailsPage() {
                       <p className="font-black text-lg md:text-xl text-black dark:text-white leading-tight">
                         {formatDateTime(
                           booking.handyman_proposed_time ||
-                            booking.scheduled_time,
+                          booking.scheduled_time,
                         )}
                       </p>
                     </div>
@@ -1443,7 +1442,7 @@ export default function RequestDetailsPage() {
                       </p>
                       <p className="font-black text-3xl md:text-4xl text-black dark:text-white tabular-nums">
                         {booking.duration_minutes != null &&
-                        booking.duration_minutes > 0
+                          booking.duration_minutes > 0
                           ? `${booking.duration_minutes}`
                           : "—"}
                         <span className="text-sm font-black text-gray-400 ml-1">
@@ -1514,7 +1513,7 @@ export default function RequestDetailsPage() {
                         <div className="bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-black rounded-xl p-4 font-bold text-sm text-black dark:text-white min-h-[56px] flex items-center">
                           {formatDateTime(
                             booking.handyman_proposed_time ||
-                              booking.scheduled_time,
+                            booking.scheduled_time,
                           )}
                         </div>
                       </div>
@@ -1637,60 +1636,60 @@ export default function RequestDetailsPage() {
               "completed",
             ].includes(booking.status) ||
               booking.negotiation_status === "agreed") && (
-              <div className="p-6 bg-[#EF9D39] border-2 border-black rounded-xl mt-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2.5 h-2.5 bg-black rounded-full" />
-                  <h3 className="font-black text-black uppercase tracking-widest text-[11px]">
-                    Appointment Confirmed
-                  </h3>
-                </div>
-                <div className="bg-white border-2 border-black rounded-xl p-5 flex flex-col gap-3">
-                  <p className="font-black text-black text-2xl uppercase tracking-tight">
-                    {booking.handyman_name || "Handyman"}
-                  </p>
-                  <div className="h-0.5 bg-gray-100" />
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 shrink-0 rounded-lg border-2 border-black bg-gray-50 flex items-center justify-center">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#374151"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect x="2" y="4" width="20" height="16" rx="2" />
-                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                      </svg>
-                    </div>
-                    <span className="font-bold text-gray-800 text-sm">
-                      {booking.handyman_email || "Contact info unavailable"}
-                    </span>
+                <div className="p-6 bg-[#EF9D39] border-2 border-black rounded-xl mt-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-2.5 h-2.5 bg-black rounded-full" />
+                    <h3 className="font-black text-black uppercase tracking-widest text-[11px]">
+                      Appointment Confirmed
+                    </h3>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 shrink-0 rounded-lg border-2 border-black bg-gray-50 flex items-center justify-center">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#374151"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z" />
-                      </svg>
+                  <div className="bg-white border-2 border-black rounded-xl p-5 flex flex-col gap-3">
+                    <p className="font-black text-black text-2xl uppercase tracking-tight">
+                      {booking.handyman_name || "Handyman"}
+                    </p>
+                    <div className="h-0.5 bg-gray-100" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 shrink-0 rounded-lg border-2 border-black bg-gray-50 flex items-center justify-center">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#374151"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="2" y="4" width="20" height="16" rx="2" />
+                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                        </svg>
+                      </div>
+                      <span className="font-bold text-gray-800 text-sm">
+                        {booking.handyman_email || "Contact info unavailable"}
+                      </span>
                     </div>
-                    <span className="font-bold text-gray-800 text-sm">
-                      {booking.handyman_phone || "Contact info unavailable"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 shrink-0 rounded-lg border-2 border-black bg-gray-50 flex items-center justify-center">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#374151"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z" />
+                        </svg>
+                      </div>
+                      <span className="font-bold text-gray-800 text-sm">
+                        {booking.handyman_phone || "Contact info unavailable"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </main>

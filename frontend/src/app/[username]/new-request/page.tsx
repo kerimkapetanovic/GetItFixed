@@ -99,20 +99,23 @@ export default function NewRequestPage() {
               <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400">
                 Filter by service
               </p>
-              <div className="flex gap-3 overflow-x-auto">
+              <div
+                className="custom-scroll flex gap-3 overflow-x-auto pb-2 mt-1"
+                style={{
+                  scrollbarWidth: 'auto',
+                  scrollbarColor: '#EF9D39 transparent',
+                }}
+              >
                 {serviceOptions.map((service) => (
                   <button
                     key={service}
                     onClick={() => setSelectedService(service)}
-                    className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${
-                      selectedService === service
-                        ? "bg-[#EF9D39] text-black"
-                        : "bg-white dark:bg-zinc-800 text-black dark:text-white"
-                    }`}
+                    className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${selectedService === service
+                      ? "bg-[#EF9D39] text-black"
+                      : "bg-white dark:bg-zinc-800 text-black dark:text-white"
+                      }`}
                   >
-                    {service === "all"
-                      ? "All Services"
-                      : formatFilterLabel(service)}
+                    {service === "all" ? "All Services" : formatFilterLabel(service)}
                   </button>
                 ))}
               </div>
@@ -122,16 +125,21 @@ export default function NewRequestPage() {
               <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400">
                 Filter by city
               </p>
-              <div className="flex gap-3 overflow-x-auto">
+              <div
+                className="custom-scroll flex gap-3 overflow-x-auto pb-2 mt-1"
+                style={{
+                  scrollbarWidth: 'auto',
+                  scrollbarColor: '#EF9D39 transparent',
+                }}
+              >
                 {cityOptions.map((city) => (
                   <button
                     key={city.value}
                     onClick={() => setSelectedCity(city.value)}
-                    className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${
-                      selectedCity === city.value
-                        ? "bg-[#EF9D39] text-black"
-                        : "bg-white dark:bg-zinc-800 text-black dark:text-white"
-                    }`}
+                    className={`whitespace-nowrap px-5 py-2.5 border-2 border-black rounded-xl font-black uppercase text-xs transition-all ${selectedCity === city.value
+                      ? "bg-[#EF9D39] text-black"
+                      : "bg-white dark:bg-zinc-800 text-black dark:text-white"
+                      }`}
                   >
                     {city.label}
                   </button>
