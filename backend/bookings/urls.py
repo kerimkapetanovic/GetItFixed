@@ -18,6 +18,8 @@ from .views import (
     LatestQuoteView,
     QuoteClientActionView,
     EscrowStatusView,
+    BookingInvoiceView,
+    BookingInvoicePdfView,
     # Admin View Imports
     AdminTrackingListView,
     AdminVerificationQueueView,
@@ -50,6 +52,8 @@ urlpatterns = [
     path('<int:booking_id>/quotes/latest/', LatestQuoteView.as_view(), name='latest-quote'),
     path('<int:booking_id>/quotes/<int:quote_id>/client-action/', QuoteClientActionView.as_view(), name='quote-client-action'),
     path('<int:booking_id>/escrow/', EscrowStatusView.as_view(), name='escrow-status'),
+    path('<int:booking_id>/invoice/', BookingInvoiceView.as_view(), name='booking-invoice'),
+    path('<int:booking_id>/invoice/pdf/', BookingInvoicePdfView.as_view(), name='booking-invoice-pdf'),
     
     # --- 4. Review sistem ---
     path('<int:booking_id>/review/', SubmitReviewView.as_view(), name='submit-review'),

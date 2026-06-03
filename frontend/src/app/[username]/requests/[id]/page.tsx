@@ -19,14 +19,17 @@ import {
   Flag,
   Wallet,
   Star,
+  Download,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
 import { addMinutes } from "date-fns";
-import { BookingDetail } from "@/types/booking";
+import { BookingDetail, BookingInvoice } from "@/types/booking";
 import {
   continueJob,
+  downloadBookingInvoicePdf,
+  getBookingInvoice,
   getLatestQuote,
   submitQuoteClientAction,
 } from "@/lib/quoteEscrowApi";
@@ -229,6 +232,13 @@ export function getStatusInfo(booking: BookingDetail) {
   };
 }
 
+const prettyInvoiceCategory = (category: string) => {
+  if (category === "materials") return "Materials";
+  if (category === "labor") return "Labor";
+  if (category === "service") return "Service";
+  return "Other";
+};
+
 function getBackendErrorMessage(error: unknown) {
   if (
     typeof error === "object" &&
@@ -369,6 +379,21 @@ export default function RequestDetailsPage() {
   const [payLoading, setPayLoading] = useState(false);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteActionLoading, setQuoteActionLoading] = useState(false);
+  const [invoice, setInvoice] = useState<BookingInvoice | null>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceError, setInvoiceError] = useState("");
+  const [invoiceDownloadLoading, setInvoiceDownloadLoading] = useState(false);
+
+  const syncWalletFromApi = async () => {
+    const me = await api.get<WalletMeResponse>("/api/accounts/me/");
+    const availableBalance = me.data.wallet_available_balance ?? me.data.wallet_balance;
+    if (typeof window !== "undefined" && availableBalance != null) {
+      localStorage.setItem("wallet_balance", String(availableBalance));
+      localStorage.setItem("locked_balance", String(me.data.locked_balance ?? 0));
+      window.dispatchEvent(new Event("profile-updated"));
+    }
+    setWalletBalance(Number(availableBalance ?? 0));
+  };
 
   const toUtcIso = (localDateTime: string) => {
     const parsed = new Date(localDateTime);
@@ -442,6 +467,46 @@ export default function RequestDetailsPage() {
       isActive = false;
       clearInterval(poll);
     };
+  }, [booking?.id, booking?.status]);
+
+  useEffect(() => {
+    if (!booking || booking.status !== "closed") {
+      setInvoice(null);
+      setInvoiceError("");
+      return;
+    }
+    let isActive = true;
+    const loadInvoice = async () => {
+      try {
+        setInvoiceLoading(true);
+        setInvoiceError("");
+        const data = await getBookingInvoice(booking.id);
+        if (isActive) {
+          setInvoice(data);
+        }
+      } catch (error: unknown) {
+        if (isActive) {
+          setInvoiceError(getBackendErrorMessage(error));
+        }
+      } finally {
+        if (isActive) {
+          setInvoiceLoading(false);
+        }
+      }
+    };
+    loadInvoice();
+    return () => {
+      isActive = false;
+    };
+  }, [booking?.id, booking?.status]);
+
+  useEffect(() => {
+    if (!booking) return;
+    if (["visit_fee_paid", "paid", "closed", "not_completed"].includes(booking.status)) {
+      syncWalletFromApi().catch(() => {
+        // keep UI usable even if wallet refresh fails
+      });
+    }
   }, [booking?.id, booking?.status]);
 
   useEffect(() => {
@@ -563,18 +628,7 @@ export default function RequestDetailsPage() {
       );
       setBooking(response.data);
       if (action === "accept") {
-        const me = await api.get<WalletMeResponse>("/api/accounts/me/");
-        const availableBalance =
-          me.data.wallet_available_balance ?? me.data.wallet_balance;
-        if (typeof window !== "undefined" && availableBalance != null) {
-          localStorage.setItem("wallet_balance", String(availableBalance));
-          localStorage.setItem(
-            "locked_balance",
-            String(me.data.locked_balance ?? 0),
-          );
-          window.dispatchEvent(new Event("profile-updated"));
-        }
-        setWalletBalance(Number(availableBalance ?? 0));
+        await syncWalletFromApi();
       }
       setActionSuccess(
         action === "accept"
@@ -604,6 +658,7 @@ export default function RequestDetailsPage() {
         action: "confirm_done",
       });
       setBooking(response.data);
+      await syncWalletFromApi();
       setActionSuccess(
         response.data.status === "visit_fee_paid"
           ? "First visit confirmed and paid. You can now decide whether to continue."
@@ -626,18 +681,7 @@ export default function RequestDetailsPage() {
         action: "pay",
       });
       setBooking(response.data);
-      const me = await api.get<WalletMeResponse>("/api/accounts/me/");
-      const availableBalance =
-        me.data.wallet_available_balance ?? me.data.wallet_balance;
-      if (typeof window !== "undefined" && availableBalance != null) {
-        localStorage.setItem("wallet_balance", String(availableBalance));
-        localStorage.setItem(
-          "locked_balance",
-          String(me.data.locked_balance ?? 0),
-        );
-        window.dispatchEvent(new Event("profile-updated"));
-      }
-      setWalletBalance(Number(availableBalance ?? 0));
+      await syncWalletFromApi();
       setActionSuccess(
         "Payment released from escrow successfully! Waiting for expert acknowledgement.",
       );
@@ -658,6 +702,7 @@ export default function RequestDetailsPage() {
         action: "mark_not_completed",
       });
       setBooking(response.data);
+      await syncWalletFromApi();
       setActionSuccess(
         "Marked as not completed. Escrow was refunded and you can reopen if needed.",
       );
@@ -734,18 +779,7 @@ export default function RequestDetailsPage() {
       );
       if ("escrow" in response) {
         setBooking(response.booking);
-        const me = await api.get<WalletMeResponse>("/api/accounts/me/");
-        const availableBalance =
-          me.data.wallet_available_balance ?? me.data.wallet_balance;
-        if (typeof window !== "undefined" && availableBalance != null) {
-          localStorage.setItem("wallet_balance", String(availableBalance));
-          localStorage.setItem(
-            "locked_balance",
-            String(me.data.locked_balance ?? 0),
-          );
-          window.dispatchEvent(new Event("profile-updated"));
-        }
-        setWalletBalance(Number(availableBalance ?? 0));
+        await syncWalletFromApi();
         setActionSuccess(
           "Quote accepted. Funds are now locked and the second visit is scheduled.",
         );
@@ -763,6 +797,27 @@ export default function RequestDetailsPage() {
       setActionError(getBackendErrorMessage(error));
     } finally {
       setQuoteActionLoading(false);
+    }
+  };
+
+  const handleInvoicePdfDownload = async () => {
+    if (!booking) return;
+    try {
+      setInvoiceDownloadLoading(true);
+      setInvoiceError("");
+      const pdfBlob = await downloadBookingInvoicePdf(booking.id);
+      const url = window.URL.createObjectURL(pdfBlob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `invoice-${booking.ticket_id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: unknown) {
+      setInvoiceError(getBackendErrorMessage(error));
+    } finally {
+      setInvoiceDownloadLoading(false);
     }
   };
 
@@ -1389,6 +1444,131 @@ export default function RequestDetailsPage() {
                   <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-2">
                     Thank you for choosing GetItFixed.
                   </p>
+                </div>
+
+                <div className="p-6 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-black uppercase tracking-tight text-lg text-black dark:text-white">
+                        Invoice Bill
+                      </h3>
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-400 mt-1">
+                        First visit + additional costs (itemized)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleInvoicePdfDownload}
+                      disabled={invoiceDownloadLoading || invoiceLoading}
+                      className="bg-[#EF9D39] text-black border-[3px] border-black px-4 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-60 flex items-center gap-2"
+                    >
+                      {invoiceDownloadLoading ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Download size={14} />
+                      )}
+                      Download PDF
+                    </button>
+                  </div>
+
+                  {invoiceLoading && (
+                    <div className="p-4 border-2 border-black rounded-xl bg-gray-50 dark:bg-zinc-800 font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      Loading invoice...
+                    </div>
+                  )}
+
+                  {invoiceError && (
+                    <p className="text-sm font-black text-red-600">{invoiceError}</p>
+                  )}
+
+                  {invoice && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-bold">
+                        <div className="border-2 border-black rounded-xl p-3 bg-gray-50 dark:bg-zinc-800">
+                          <p className="uppercase tracking-widest text-gray-500 mb-1">
+                            Ticket
+                          </p>
+                          <p className="font-black text-sm">{invoice.ticket_id}</p>
+                        </div>
+                        <div className="border-2 border-black rounded-xl p-3 bg-gray-50 dark:bg-zinc-800">
+                          <p className="uppercase tracking-widest text-gray-500 mb-1">
+                            Closed Date
+                          </p>
+                          <p className="font-black text-sm">
+                            {formatDateTime(invoice.closed_at)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border-2 border-black rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-black text-[#EF9D39] text-[10px] font-black uppercase tracking-widest">
+                          <div className="col-span-4">Description</div>
+                          <div className="col-span-2">Category</div>
+                          <div className="col-span-2">Phase</div>
+                          <div className="col-span-2 text-right">Qty</div>
+                          <div className="col-span-2 text-right">Line total</div>
+                        </div>
+                        <div className="p-3 space-y-2">
+                          {[...invoice.phase1_items, ...invoice.phase2_items].map(
+                            (item, idx) => (
+                              <div
+                                key={`${item.source}-${idx}-${item.description}`}
+                                className="grid grid-cols-12 gap-2 text-sm font-bold"
+                              >
+                                <div className="col-span-4">{item.description}</div>
+                                <div className="col-span-2 uppercase text-xs">
+                                  {prettyInvoiceCategory(item.category)}
+                                </div>
+                                <div className="col-span-2 uppercase text-xs">
+                                  {item.source === "phase1"
+                                    ? "First Visit"
+                                    : "Additional"}
+                                </div>
+                                <div className="col-span-2 text-right tabular-nums">
+                                  {Number(item.quantity).toFixed(2)}
+                                </div>
+                                <div className="col-span-2 text-right tabular-nums">
+                                  {Number(item.line_total).toFixed(2)}{" "}
+                                  {invoice.currency}
+                                </div>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-gray-50 dark:bg-zinc-800 border-2 border-black rounded-xl space-y-2">
+                        <div className="flex justify-between text-sm font-black">
+                          <span className="uppercase tracking-widest text-gray-500">
+                            First Visit Subtotal
+                          </span>
+                          <span className="tabular-nums">
+                            {Number(invoice.subtotal_phase1).toFixed(2)}{" "}
+                            {invoice.currency}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-black">
+                          <span className="uppercase tracking-widest text-gray-500">
+                            Additional Costs Subtotal
+                          </span>
+                          <span className="tabular-nums">
+                            {Number(invoice.subtotal_phase2).toFixed(2)}{" "}
+                            {invoice.currency}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-base font-black pt-2 border-t-2 border-black">
+                          <span className="uppercase tracking-widest text-black dark:text-white">
+                            Grand Total
+                          </span>
+                          <span className="tabular-nums text-[#EF9D39]">
+                            {Number(invoice.grand_total).toFixed(2)}{" "}
+                            {invoice.currency}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <ReviewSection

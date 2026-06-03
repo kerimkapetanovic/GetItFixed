@@ -1,5 +1,11 @@
 import api from '../../lib/axios';
-import type { BookingDetail, EscrowHold, Quote, QuoteLineItemInput } from '@/types/booking';
+import type {
+  BookingDetail,
+  BookingInvoice,
+  EscrowHold,
+  Quote,
+  QuoteLineItemInput,
+} from '@/types/booking';
 
 type QuoteClientAction = 'accept' | 'reject' | 'counter';
 
@@ -55,4 +61,16 @@ export async function getEscrowStatus(bookingId: number): Promise<EscrowStatusRe
 export async function completeInitialVisit(bookingId: number): Promise<{ message: string; booking: BookingDetail }> {
   const { data } = await api.post(`/api/bookings/${bookingId}/visit-complete/`);
   return data;
+}
+
+export async function getBookingInvoice(bookingId: number): Promise<BookingInvoice> {
+  const { data } = await api.get(`/api/bookings/${bookingId}/invoice/`);
+  return data as BookingInvoice;
+}
+
+export async function downloadBookingInvoicePdf(bookingId: number): Promise<Blob> {
+  const { data } = await api.get(`/api/bookings/${bookingId}/invoice/pdf/`, {
+    responseType: 'blob',
+  });
+  return data as Blob;
 }

@@ -175,3 +175,124 @@ class EscrowFirstLifecycleTests(APITestCase):
         self.assertEqual(self.client_user.wallet_balance, Decimal("200.00"))
         self.assertEqual(self.client_user.wallet_locked_balance, Decimal("30.00"))
         self.assertEqual(self.handyman_user.wallet_balance, Decimal("100.00"))
+
+    def _close_booking_with_quote(self):
+        self.client.force_authenticate(user=self.client_user)
+        self.client.post(f"/api/bookings/{self.booking.id}/client-action/", {"action": "accept"}, format="json")
+
+        self.booking.status = "handyman_done"
+        self.booking.handyman_marked_done_at = timezone.now()
+        self.booking.save(update_fields=["status", "handyman_marked_done_at", "updated_at"])
+
+        self.client.post(
+            f"/api/bookings/{self.booking.id}/complete/",
+            {"action": "confirm_done"},
+            format="json",
+        )
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, "visit_fee_paid")
+
+        self.client.post(
+            f"/api/bookings/{self.booking.id}/continue-job/",
+            {"continue_job": True},
+            format="json",
+        )
+
+        self.client.force_authenticate(user=self.handyman_user)
+        quote_response = self.client.post(
+            f"/api/bookings/{self.booking.id}/quotes/",
+            {
+                "line_items": [
+                    {
+                        "category": "materials",
+                        "description": "Tiles (30 pieces)",
+                        "quantity": 30,
+                        "unit_price": 2,
+                    },
+                    {
+                        "category": "labor",
+                        "description": "Assistant",
+                        "quantity": 1,
+                        "unit_price": 50,
+                    },
+                ],
+                "proposed_visit_time": (timezone.now() + timedelta(days=1)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(quote_response.status_code, status.HTTP_201_CREATED)
+        quote = Quote.objects.get(id=quote_response.data["id"])
+
+        self.client.force_authenticate(user=self.client_user)
+        accept_quote = self.client.post(
+            f"/api/bookings/{self.booking.id}/quotes/{quote.id}/client-action/",
+            {"action": "accept"},
+            format="json",
+        )
+        self.assertEqual(accept_quote.status_code, status.HTTP_200_OK)
+
+        self.booking.refresh_from_db()
+        self.booking.status = "handyman_done"
+        self.booking.handyman_marked_done_at = timezone.now()
+        self.booking.save(update_fields=["status", "handyman_marked_done_at", "updated_at"])
+
+        confirm_second = self.client.post(
+            f"/api/bookings/{self.booking.id}/complete/",
+            {"action": "confirm_done"},
+            format="json",
+        )
+        self.assertEqual(confirm_second.status_code, status.HTTP_200_OK)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, "paid")
+
+        self.client.force_authenticate(user=self.handyman_user)
+        acknowledge = self.client.post(
+            f"/api/bookings/{self.booking.id}/complete/",
+            {"action": "acknowledge_payment"},
+            format="json",
+        )
+        self.assertEqual(acknowledge.status_code, status.HTTP_200_OK)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, "closed")
+
+    def test_closed_booking_invoice_json_has_phase1_and_phase2_items(self):
+        self._close_booking_with_quote()
+
+        self.client.force_authenticate(user=self.client_user)
+        response = self.client.get(f"/api/bookings/{self.booking.id}/invoice/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["ticket_id"], self.booking.ticket_id)
+        self.assertEqual(response.data["currency"], "KM")
+        self.assertEqual(response.data["status"], "closed")
+        self.assertEqual(len(response.data["phase1_items"]), 1)
+        self.assertEqual(len(response.data["phase2_items"]), 2)
+        self.assertEqual(Decimal(response.data["subtotal_phase1"]), Decimal("30.00"))
+        self.assertEqual(Decimal(response.data["subtotal_phase2"]), Decimal("110.00"))
+        self.assertEqual(Decimal(response.data["grand_total"]), Decimal("140.00"))
+
+    def test_closed_booking_invoice_pdf_and_access_guards(self):
+        self._close_booking_with_quote()
+
+        self.client.force_authenticate(user=self.handyman_user)
+        forbidden = self.client.get(f"/api/bookings/{self.booking.id}/invoice/")
+        self.assertEqual(forbidden.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(user=self.client_user)
+        pdf_response = self.client.get(f"/api/bookings/{self.booking.id}/invoice/pdf/")
+        self.assertEqual(pdf_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(pdf_response["Content-Type"], "application/pdf")
+        self.assertIn("attachment;", pdf_response["Content-Disposition"])
+        self.assertGreater(len(pdf_response.content), 200)
+
+        open_booking = Booking.objects.create(
+            client=self.client_user,
+            handyman=self.handyman_user,
+            service_type="electrical",
+            description="Light repair",
+            status="accepted",
+            negotiation_status="agreed",
+            agreed_price=Decimal("20.00"),
+            scheduled_time=timezone.now() + timedelta(hours=1),
+        )
+        closed_only = self.client.get(f"/api/bookings/{open_booking.id}/invoice/")
+        self.assertEqual(closed_only.status_code, status.HTTP_400_BAD_REQUEST)

@@ -143,3 +143,33 @@ export interface EscrowHold {
   created_at: string;
   updated_at: string;
 }
+
+export interface InvoiceLineItem {
+  source: "phase1" | "phase2";
+  category: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface BookingInvoice {
+  booking_id: number;
+  ticket_id: string;
+  status: BookingStatus;
+  issued_at: string | null;
+  closed_at: string | null;
+  currency: string;
+  client_name: string;
+  client_email: string | null;
+  handyman_name: string | null;
+  handyman_email: string | null;
+  service_type: string;
+  description: string;
+  visit_date: string | null;
+  phase1_items: InvoiceLineItem[];
+  phase2_items: InvoiceLineItem[];
+  subtotal_phase1: number;
+  subtotal_phase2: number;
+  grand_total: number;
+}

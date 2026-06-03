@@ -284,6 +284,12 @@ type BusySlotResponse = {
   duration_minutes?: number | null;
 };
 
+type WalletMeResponse = {
+  wallet_balance?: number;
+  wallet_available_balance?: number;
+  locked_balance?: number;
+};
+
 function shouldShowHandymanActions(booking: BookingDetail) {
   if (
     [
@@ -373,6 +379,16 @@ export default function HandymanRequestDetailsPage() {
   const [quoteProposedVisitTime, setQuoteProposedVisitTime] =
     useState<Date | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+
+  const syncWalletFromApi = async () => {
+    const me = await api.get<WalletMeResponse>("/api/accounts/me/");
+    const availableBalance = me.data.wallet_available_balance ?? me.data.wallet_balance;
+    if (typeof window !== "undefined" && availableBalance != null) {
+      localStorage.setItem("wallet_balance", String(availableBalance));
+      localStorage.setItem("locked_balance", String(me.data.locked_balance ?? 0));
+      window.dispatchEvent(new Event("profile-updated"));
+    }
+  };
 
   const toUtcIso = (date: Date | null) => (date ? date.toISOString() : "");
 
@@ -532,27 +548,9 @@ export default function HandymanRequestDetailsPage() {
         const next = res.data;
         setBooking((prev) => {
           if (prev?.status === "awaiting_payment" && next.status === "paid") {
-            api
-              .get<{
-                wallet_balance?: number;
-                wallet_available_balance?: number;
-                locked_balance?: number;
-              }>("/api/accounts/me/")
-              .then((me) => {
-                const availableBalance =
-                  me.data.wallet_available_balance ?? me.data.wallet_balance;
-                if (typeof window !== "undefined" && availableBalance != null) {
-                  localStorage.setItem(
-                    "wallet_balance",
-                    String(availableBalance),
-                  );
-                  localStorage.setItem(
-                    "locked_balance",
-                    String(me.data.locked_balance ?? 0),
-                  );
-                  window.dispatchEvent(new Event("profile-updated"));
-                }
-              });
+            syncWalletFromApi().catch(() => {
+              // no-op
+            });
           }
           return next;
         });
@@ -563,6 +561,15 @@ export default function HandymanRequestDetailsPage() {
     poll();
     const id = setInterval(poll, 8000);
     return () => clearInterval(id);
+  }, [booking?.id, booking?.status]);
+
+  useEffect(() => {
+    if (!booking) return;
+    if (["visit_fee_paid", "paid", "closed"].includes(booking.status)) {
+      syncWalletFromApi().catch(() => {
+        // keep page functional even if refresh fails
+      });
+    }
   }, [booking?.id, booking?.status]);
 
   // Fetch booking
@@ -739,6 +746,7 @@ export default function HandymanRequestDetailsPage() {
         action: "acknowledge_payment",
       });
       setBooking(res.data);
+      await syncWalletFromApi();
       setJobFinishedModalOpen(true);
     } catch (e) {
       setActionError(getBackendErrorMessage(e));

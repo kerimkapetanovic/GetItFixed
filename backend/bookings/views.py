@@ -1,4 +1,4 @@
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
@@ -12,7 +12,9 @@ from datetime import timedelta
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.http import HttpResponse
 from decimal import Decimal
+from io import BytesIO
 from .models import Booking, Review
 
 from .models import Booking, Quote, QuoteLineItem, EscrowHold
@@ -26,6 +28,36 @@ from .escrow_service import lock_client_funds, release_funds_to_handyman, refund
 from accounts.authentication import CookieTokenAuthentication 
 
 User = get_user_model()
+
+
+class InvoiceLineItemSerializer(serializers.Serializer):
+    source = serializers.CharField()
+    category = serializers.CharField()
+    description = serializers.CharField()
+    quantity = serializers.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    line_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class BookingInvoiceSerializer(serializers.Serializer):
+    booking_id = serializers.IntegerField()
+    ticket_id = serializers.CharField()
+    status = serializers.CharField()
+    issued_at = serializers.DateTimeField(allow_null=True)
+    closed_at = serializers.DateTimeField(allow_null=True)
+    currency = serializers.CharField()
+    client_name = serializers.CharField()
+    client_email = serializers.CharField(allow_blank=True, allow_null=True)
+    handyman_name = serializers.CharField(allow_blank=True, allow_null=True)
+    handyman_email = serializers.CharField(allow_blank=True, allow_null=True)
+    service_type = serializers.CharField()
+    description = serializers.CharField()
+    visit_date = serializers.DateTimeField(allow_null=True)
+    phase1_items = InvoiceLineItemSerializer(many=True)
+    phase2_items = InvoiceLineItemSerializer(many=True)
+    subtotal_phase1 = serializers.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_phase2 = serializers.DecimalField(max_digits=10, decimal_places=2)
+    grand_total = serializers.DecimalField(max_digits=10, decimal_places=2)
 
 
 def _parse_agreed_price(data, *, required: bool):
@@ -53,6 +85,263 @@ def _latest_locked_hold(booking: Booking, *, purpose: str | None = None):
     if purpose:
         queryset = queryset.filter(purpose=purpose)
     return queryset.order_by("-created_at").first()
+
+
+def _decimal_to_money(value: Decimal) -> Decimal:
+    return Decimal(value).quantize(Decimal("0.01"))
+
+
+def _get_booking_closed_timestamp(booking: Booking):
+    return booking.updated_at if booking.status == "closed" else None
+
+
+def _build_booking_invoice_payload(booking: Booking) -> dict:
+    released_holds = list(
+        booking.escrow_holds.filter(status="released")
+        .select_related("quote")
+        .order_by("released_at", "created_at", "id")
+    )
+
+    phase1_items: list[dict] = []
+    phase2_items: list[dict] = []
+    subtotal_phase1 = Decimal("0.00")
+    subtotal_phase2 = Decimal("0.00")
+
+    for hold in released_holds:
+        hold_amount = _decimal_to_money(hold.amount or Decimal("0.00"))
+        if hold.purpose == "visit_fee":
+            phase1_items.append(
+                {
+                    "source": "phase1",
+                    "category": "service",
+                    "description": "First visit service fee",
+                    "quantity": Decimal("1.00"),
+                    "unit_price": hold_amount,
+                    "line_total": hold_amount,
+                }
+            )
+            subtotal_phase1 += hold_amount
+            continue
+
+        quote = hold.quote
+        if quote:
+            quote_items = list(quote.line_items.all())
+            if quote_items:
+                for quote_item in quote_items:
+                    line_total = _decimal_to_money(quote_item.line_total or Decimal("0.00"))
+                    phase2_items.append(
+                        {
+                            "source": "phase2",
+                            "category": quote_item.category,
+                            "description": quote_item.description,
+                            "quantity": _decimal_to_money(quote_item.quantity or Decimal("0.00")),
+                            "unit_price": _decimal_to_money(quote_item.unit_price or Decimal("0.00")),
+                            "line_total": line_total,
+                        }
+                    )
+                    subtotal_phase2 += line_total
+                continue
+
+        phase2_items.append(
+            {
+                "source": "phase2",
+                "category": "other",
+                "description": "Additional work payment",
+                "quantity": Decimal("1.00"),
+                "unit_price": hold_amount,
+                "line_total": hold_amount,
+            }
+        )
+        subtotal_phase2 += hold_amount
+
+    grand_total = _decimal_to_money(subtotal_phase1 + subtotal_phase2)
+
+    if not phase1_items and booking.visit_fee_amount:
+        visit_fee_amount = _decimal_to_money(booking.visit_fee_amount)
+        phase1_items.append(
+            {
+                "source": "phase1",
+                "category": "service",
+                "description": "First visit service fee",
+                "quantity": Decimal("1.00"),
+                "unit_price": visit_fee_amount,
+                "line_total": visit_fee_amount,
+            }
+        )
+        subtotal_phase1 += visit_fee_amount
+        grand_total = _decimal_to_money(subtotal_phase1 + subtotal_phase2)
+
+    return {
+        "booking_id": booking.id,
+        "ticket_id": booking.ticket_id,
+        "status": booking.status,
+        "issued_at": timezone.now(),
+        "closed_at": _get_booking_closed_timestamp(booking),
+        "currency": "KM",
+        "client_name": f"{booking.client.first_name} {booking.client.last_name}".strip() or booking.client.username,
+        "client_email": booking.client.email,
+        "handyman_name": (
+            f"{booking.handyman.first_name} {booking.handyman.last_name}".strip() or booking.handyman.username
+        )
+        if booking.handyman
+        else "",
+        "handyman_email": booking.handyman.email if booking.handyman else "",
+        "service_type": booking.service_type,
+        "description": booking.description,
+        "visit_date": booking.scheduled_time,
+        "phase1_items": phase1_items,
+        "phase2_items": phase2_items,
+        "subtotal_phase1": _decimal_to_money(subtotal_phase1),
+        "subtotal_phase2": _decimal_to_money(subtotal_phase2),
+        "grand_total": grand_total,
+    }
+
+
+def _format_money(amount: Decimal) -> str:
+    return f"{_decimal_to_money(amount):.2f} KM"
+
+
+def _escape_pdf_text(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace("(", "\\(")
+        .replace(")", "\\)")
+    )
+
+
+def _build_fallback_pdf(lines: list[str]) -> bytes:
+    stream_lines = ["BT", "/F1 11 Tf", "40 800 Td"]
+    for idx, line in enumerate(lines):
+        if idx > 0:
+            stream_lines.append("0 -16 Td")
+        stream_lines.append(f"({_escape_pdf_text(line)}) Tj")
+    stream_lines.append("ET")
+    stream = "\n".join(stream_lines).encode("latin-1", errors="replace")
+
+    objects = [
+        b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+        b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+        b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
+        b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
+        f"5 0 obj << /Length {len(stream)} >> stream\n".encode("latin-1")
+        + stream
+        + b"\nendstream endobj",
+    ]
+
+    output = b"%PDF-1.4\n"
+    offsets = []
+    for obj in objects:
+        offsets.append(len(output))
+        output += obj + b"\n"
+
+    xref_pos = len(output)
+    output += f"xref\n0 {len(objects) + 1}\n".encode("latin-1")
+    output += b"0000000000 65535 f \n"
+    for off in offsets:
+        output += f"{off:010d} 00000 n \n".encode("latin-1")
+    output += (
+        f"trailer << /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF".encode(
+            "latin-1"
+        )
+    )
+    return output
+
+
+def _draw_invoice_pdf(payload: dict) -> bytes:
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+    except Exception as exc:
+        fallback_lines = [
+            "GETITFIXED - INVOICE",
+            f"Ticket: {payload['ticket_id']}",
+            f"Client: {payload['client_name']}",
+            f"Handyman: {payload.get('handyman_name') or '-'}",
+            f"Phase 1 subtotal: {_format_money(payload['subtotal_phase1'])}",
+            f"Phase 2 subtotal: {_format_money(payload['subtotal_phase2'])}",
+            f"Grand total: {_format_money(payload['grand_total'])}",
+        ]
+        line_index = 1
+        for item in payload["phase1_items"]:
+            fallback_lines.append(
+                f"{line_index}. [P1] {item['description']} - {_format_money(item['line_total'])}"
+            )
+            line_index += 1
+        for item in payload["phase2_items"]:
+            fallback_lines.append(
+                f"{line_index}. [P2] {item['description']} - {_format_money(item['line_total'])}"
+            )
+            line_index += 1
+        return _build_fallback_pdf(fallback_lines)
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    x_left = 42
+    y = height - 50
+
+    def write_line(text: str, *, bold: bool = False, size: int = 10, step: int = 14):
+        nonlocal y
+        if y < 50:
+            pdf.showPage()
+            y = height - 50
+        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        pdf.setFont(font_name, size)
+        pdf.drawString(x_left, y, text)
+        y -= step
+
+    write_line("GETITFIXED - INVOICE", bold=True, size=16, step=22)
+    write_line(f"Ticket: {payload['ticket_id']}", bold=True)
+    write_line(f"Booking ID: {payload['booking_id']}")
+    write_line(f"Status: {payload['status']}")
+    if payload.get("closed_at"):
+        closed_value = payload["closed_at"].strftime("%Y-%m-%d %H:%M")
+        write_line(f"Closed at: {closed_value}")
+    write_line("", step=10)
+
+    write_line("Client", bold=True, size=11)
+    write_line(f"Name: {payload['client_name']}")
+    write_line(f"Email: {payload.get('client_email') or '-'}")
+    write_line("", step=8)
+
+    write_line("Handyman", bold=True, size=11)
+    write_line(f"Name: {payload.get('handyman_name') or '-'}")
+    write_line(f"Email: {payload.get('handyman_email') or '-'}")
+    write_line("", step=8)
+
+    write_line("Service", bold=True, size=11)
+    write_line(f"Type: {payload.get('service_type') or '-'}")
+    write_line(f"Description: {payload.get('description') or '-'}")
+    write_line("", step=12)
+
+    write_line("Phase 1 - First Visit", bold=True, size=11)
+    if payload["phase1_items"]:
+        for idx, item in enumerate(payload["phase1_items"], start=1):
+            write_line(
+                f"{idx}. {item['description']} | Qty {item['quantity']} x {_format_money(item['unit_price'])} = {_format_money(item['line_total'])}"
+            )
+    else:
+        write_line("No billed items.")
+    write_line(f"Subtotal phase 1: {_format_money(payload['subtotal_phase1'])}", bold=True)
+    write_line("", step=12)
+
+    write_line("Phase 2 - Additional Costs", bold=True, size=11)
+    if payload["phase2_items"]:
+        for idx, item in enumerate(payload["phase2_items"], start=1):
+            write_line(
+                f"{idx}. {item['description']} ({item['category']}) | Qty {item['quantity']} x {_format_money(item['unit_price'])} = {_format_money(item['line_total'])}"
+            )
+    else:
+        write_line("No additional billed items.")
+    write_line(f"Subtotal phase 2: {_format_money(payload['subtotal_phase2'])}", bold=True)
+    write_line("", step=14)
+
+    write_line(f"GRAND TOTAL: {_format_money(payload['grand_total'])}", bold=True, size=12)
+
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+    return buffer.getvalue()
 
 
 # --- HANDYMAN VIEWS ---
@@ -769,6 +1058,62 @@ class EscrowStatusView(APIView):
         if not hold:
             return Response({"booking_id": booking.id, "escrow": None}, status=200)
         return Response({"booking_id": booking.id, "escrow": EscrowHoldSerializer(hold).data}, status=200)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class BookingInvoiceView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def _get_valid_booking(self, request, booking_id):
+        booking = get_object_or_404(
+            Booking.objects.select_related("client", "handyman"),
+            id=booking_id,
+        )
+        if request.user != booking.client:
+            return None, Response({"error": "Only the client can access this invoice."}, status=403)
+        if booking.status != "closed":
+            return None, Response({"error": "Invoice is available only for closed bookings."}, status=400)
+        return booking, None
+
+    def get(self, request, booking_id):
+        booking, error_response = self._get_valid_booking(request, booking_id)
+        if error_response:
+            return error_response
+        payload = _build_booking_invoice_payload(booking)
+        serializer = BookingInvoiceSerializer(payload)
+        return Response(serializer.data, status=200)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class BookingInvoicePdfView(APIView):
+    authentication_classes = [TokenAuthentication, CookieTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def _get_valid_booking(self, request, booking_id):
+        booking = get_object_or_404(
+            Booking.objects.select_related("client", "handyman"),
+            id=booking_id,
+        )
+        if request.user != booking.client:
+            return None, Response({"error": "Only the client can access this invoice."}, status=403)
+        if booking.status != "closed":
+            return None, Response({"error": "Invoice is available only for closed bookings."}, status=400)
+        return booking, None
+
+    def get(self, request, booking_id):
+        booking, error_response = self._get_valid_booking(request, booking_id)
+        if error_response:
+            return error_response
+        payload = _build_booking_invoice_payload(booking)
+        try:
+            pdf_bytes = _draw_invoice_pdf(payload)
+        except RuntimeError as exc:
+            return Response({"error": str(exc)}, status=500)
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="invoice-{booking.ticket_id}.pdf"'
+        return response
 
 
 @method_decorator(csrf_exempt, name='dispatch')
