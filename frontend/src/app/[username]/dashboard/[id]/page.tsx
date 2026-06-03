@@ -279,6 +279,9 @@ const formatMs = (ms: number) => {
   return `${minutes}m ${seconds}s`;
 };
 
+const formatKm = (value: number | null | undefined) =>
+  `${Number(value ?? 0).toFixed(2)} KM`;
+
 type BusySlotResponse = {
   scheduled_time: string;
   duration_minutes?: number | null;
@@ -860,6 +863,17 @@ export default function HandymanRequestDetailsPage() {
     );
 
   const statusInfo = getStatusInfo(booking);
+  const phase1Pricing = booking.visit_fee_pricing;
+  const quotePricingFromHold =
+    booking.latest_escrow_hold?.purpose === "quote"
+      ? {
+        base_amount: booking.latest_escrow_hold.handyman_amount,
+        app_fee_amount: booking.latest_escrow_hold.app_fee_amount,
+        pdv_amount: booking.latest_escrow_hold.pdv_amount,
+        client_total_amount: booking.latest_escrow_hold.amount,
+      }
+      : null;
+  const quotePricing = quotePricingFromHold ?? booking.latest_quote_pricing ?? null;
   const showActions = shouldShowHandymanActions(booking);
   const showSendOffer = showActions && canHandymanSendOffer(booking);
   const phaseHint = getPhaseHint(booking);
@@ -1480,17 +1494,50 @@ export default function HandymanRequestDetailsPage() {
                           </p>
                         )}
                         <p className="text-lg font-black text-[#EF9D39] mt-1">
-                          {Number(booking.latest_quote.total_amount).toFixed(2)}{" "}
-                          KM
+                          Handyman subtotal:{" "}
+                          {Number(booking.latest_quote.total_amount).toFixed(2)} KM
                         </p>
+                        {quotePricing && (
+                          <div className="mt-3 p-3 border-2 border-black rounded-lg bg-indigo-50 dark:bg-indigo-950/20 space-y-1">
+                            <div className="flex justify-between text-xs font-black">
+                              <span>App fee</span>
+                              <span className="tabular-nums">{formatKm(quotePricing.app_fee_amount)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-black">
+                              <span>PDV</span>
+                              <span className="tabular-nums">{formatKm(quotePricing.pdv_amount)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-black pt-1 border-t border-black">
+                              <span>Client total</span>
+                              <span className="tabular-nums">{formatKm(quotePricing.client_total_amount)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {booking.status === "funds_locked" && (
-                      <p className="text-sm font-black text-cyan-800 dark:text-cyan-300">
-                        Escrow locked:{" "}
-                        {Number(booking.quote_locked_amount ?? 0).toFixed(2)} KM
-                      </p>
+                      <div className="p-3 border-2 border-black rounded-lg bg-cyan-100/70 dark:bg-cyan-900/30 space-y-1">
+                        <p className="text-sm font-black text-cyan-800 dark:text-cyan-300">
+                          Escrow locked (client paid): {formatKm(booking.quote_locked_amount ?? quotePricing?.client_total_amount ?? 0)}
+                        </p>
+                        {quotePricing && (
+                          <>
+                            <div className="flex justify-between text-xs font-black">
+                              <span>Your net amount</span>
+                              <span className="tabular-nums">{formatKm(quotePricing.base_amount)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-black">
+                              <span>App fee</span>
+                              <span className="tabular-nums">{formatKm(quotePricing.app_fee_amount)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-black">
+                              <span>PDV withheld</span>
+                              <span className="tabular-nums">{formatKm(quotePricing.pdv_amount)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </>
                 )}
@@ -1510,11 +1557,11 @@ export default function HandymanRequestDetailsPage() {
                       Payment received
                     </p>
                     <p className="text-xs font-bold text-gray-600 dark:text-zinc-400">
-                      The client paid{" "}
+                      Client paid total{" "}
                       {booking.payment_amount != null
                         ? Number(booking.payment_amount).toFixed(2)
                         : "—"}{" "}
-                      KM to your wallet. Tap below to close the job.
+                      KM. Your wallet receives handyman net amount; app fee and PDV are split separately. Tap below to close the job.
                     </p>
                   </div>
                 </div>
@@ -2024,11 +2071,16 @@ export default function HandymanRequestDetailsPage() {
                   {booking.agreed_price != null && (
                     <div className="pt-2 border-t border-gray-100 mt-1">
                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                        Agreed job price
+                        Handyman net amount
                       </p>
                       <p className="font-black text-black text-lg tabular-nums">
                         {Number(booking.agreed_price).toFixed(2)} KM
                       </p>
+                      {phase1Pricing && (
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mt-1">
+                          Client total: {formatKm(phase1Pricing.client_total_amount)}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

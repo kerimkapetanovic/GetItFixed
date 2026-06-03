@@ -15,6 +15,7 @@ from django.db import transaction
 from django.http import HttpResponse
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 from .models import Booking, Review
 
 from .models import Booking, Quote, QuoteLineItem, EscrowHold
@@ -56,7 +57,16 @@ class BookingInvoiceSerializer(serializers.Serializer):
     phase1_items = InvoiceLineItemSerializer(many=True)
     phase2_items = InvoiceLineItemSerializer(many=True)
     subtotal_phase1 = serializers.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_phase1_app_fee = serializers.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_phase1_pdv = serializers.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_phase1_total = serializers.DecimalField(max_digits=10, decimal_places=2)
     subtotal_phase2 = serializers.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_phase2_app_fee = serializers.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_phase2_pdv = serializers.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_phase2_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_handyman_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_app_fee_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_pdv_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     grand_total = serializers.DecimalField(max_digits=10, decimal_places=2)
 
 
@@ -105,10 +115,19 @@ def _build_booking_invoice_payload(booking: Booking) -> dict:
     phase1_items: list[dict] = []
     phase2_items: list[dict] = []
     subtotal_phase1 = Decimal("0.00")
+    subtotal_phase1_app_fee = Decimal("0.00")
+    subtotal_phase1_pdv = Decimal("0.00")
     subtotal_phase2 = Decimal("0.00")
+    subtotal_phase2_app_fee = Decimal("0.00")
+    subtotal_phase2_pdv = Decimal("0.00")
 
     for hold in released_holds:
         hold_amount = _decimal_to_money(hold.amount or Decimal("0.00"))
+        handyman_amount = _decimal_to_money(
+            hold.handyman_amount if hold.handyman_amount and hold.handyman_amount > 0 else hold_amount
+        )
+        app_fee_amount = _decimal_to_money(hold.app_fee_amount or Decimal("0.00"))
+        pdv_amount = _decimal_to_money(hold.pdv_amount or Decimal("0.00"))
         if hold.purpose == "visit_fee":
             phase1_items.append(
                 {
@@ -116,11 +135,13 @@ def _build_booking_invoice_payload(booking: Booking) -> dict:
                     "category": "service",
                     "description": "First visit service fee",
                     "quantity": Decimal("1.00"),
-                    "unit_price": hold_amount,
-                    "line_total": hold_amount,
+                    "unit_price": handyman_amount,
+                    "line_total": handyman_amount,
                 }
             )
-            subtotal_phase1 += hold_amount
+            subtotal_phase1 += handyman_amount
+            subtotal_phase1_app_fee += app_fee_amount
+            subtotal_phase1_pdv += pdv_amount
             continue
 
         quote = hold.quote
@@ -140,6 +161,8 @@ def _build_booking_invoice_payload(booking: Booking) -> dict:
                         }
                     )
                     subtotal_phase2 += line_total
+                subtotal_phase2_app_fee += app_fee_amount
+                subtotal_phase2_pdv += pdv_amount
                 continue
 
         phase2_items.append(
@@ -148,13 +171,20 @@ def _build_booking_invoice_payload(booking: Booking) -> dict:
                 "category": "other",
                 "description": "Additional work payment",
                 "quantity": Decimal("1.00"),
-                "unit_price": hold_amount,
-                "line_total": hold_amount,
+                "unit_price": handyman_amount,
+                "line_total": handyman_amount,
             }
         )
-        subtotal_phase2 += hold_amount
+        subtotal_phase2 += handyman_amount
+        subtotal_phase2_app_fee += app_fee_amount
+        subtotal_phase2_pdv += pdv_amount
 
-    grand_total = _decimal_to_money(subtotal_phase1 + subtotal_phase2)
+    subtotal_phase1_total = _decimal_to_money(subtotal_phase1 + subtotal_phase1_app_fee + subtotal_phase1_pdv)
+    subtotal_phase2_total = _decimal_to_money(subtotal_phase2 + subtotal_phase2_app_fee + subtotal_phase2_pdv)
+    total_handyman_amount = _decimal_to_money(subtotal_phase1 + subtotal_phase2)
+    total_app_fee_amount = _decimal_to_money(subtotal_phase1_app_fee + subtotal_phase2_app_fee)
+    total_pdv_amount = _decimal_to_money(subtotal_phase1_pdv + subtotal_phase2_pdv)
+    grand_total = _decimal_to_money(subtotal_phase1_total + subtotal_phase2_total)
 
     if not phase1_items and booking.visit_fee_amount:
         visit_fee_amount = _decimal_to_money(booking.visit_fee_amount)
@@ -169,7 +199,9 @@ def _build_booking_invoice_payload(booking: Booking) -> dict:
             }
         )
         subtotal_phase1 += visit_fee_amount
-        grand_total = _decimal_to_money(subtotal_phase1 + subtotal_phase2)
+        subtotal_phase1_total = _decimal_to_money(subtotal_phase1 + subtotal_phase1_app_fee + subtotal_phase1_pdv)
+        total_handyman_amount = _decimal_to_money(subtotal_phase1 + subtotal_phase2)
+        grand_total = _decimal_to_money(subtotal_phase1_total + subtotal_phase2_total)
 
     return {
         "booking_id": booking.id,
@@ -192,7 +224,16 @@ def _build_booking_invoice_payload(booking: Booking) -> dict:
         "phase1_items": phase1_items,
         "phase2_items": phase2_items,
         "subtotal_phase1": _decimal_to_money(subtotal_phase1),
+        "subtotal_phase1_app_fee": _decimal_to_money(subtotal_phase1_app_fee),
+        "subtotal_phase1_pdv": _decimal_to_money(subtotal_phase1_pdv),
+        "subtotal_phase1_total": _decimal_to_money(subtotal_phase1_total),
         "subtotal_phase2": _decimal_to_money(subtotal_phase2),
+        "subtotal_phase2_app_fee": _decimal_to_money(subtotal_phase2_app_fee),
+        "subtotal_phase2_pdv": _decimal_to_money(subtotal_phase2_pdv),
+        "subtotal_phase2_total": _decimal_to_money(subtotal_phase2_total),
+        "total_handyman_amount": _decimal_to_money(total_handyman_amount),
+        "total_app_fee_amount": _decimal_to_money(total_app_fee_amount),
+        "total_pdv_amount": _decimal_to_money(total_pdv_amount),
         "grand_total": grand_total,
     }
 
@@ -250,6 +291,8 @@ def _build_fallback_pdf(lines: list[str]) -> bytes:
 def _draw_invoice_pdf(payload: dict) -> bytes:
     try:
         from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.utils import ImageReader
         from reportlab.pdfgen import canvas
     except Exception as exc:
         fallback_lines = [
@@ -257,8 +300,11 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
             f"Ticket: {payload['ticket_id']}",
             f"Client: {payload['client_name']}",
             f"Handyman: {payload.get('handyman_name') or '-'}",
-            f"Phase 1 subtotal: {_format_money(payload['subtotal_phase1'])}",
-            f"Phase 2 subtotal: {_format_money(payload['subtotal_phase2'])}",
+            f"Phase 1 total: {_format_money(payload['subtotal_phase1_total'])}",
+            f"Phase 2 total: {_format_money(payload['subtotal_phase2_total'])}",
+            f"Handyman services: {_format_money(payload['total_handyman_amount'])}",
+            f"App fee: {_format_money(payload['total_app_fee_amount'])}",
+            f"PDV: {_format_money(payload['total_pdv_amount'])}",
             f"Grand total: {_format_money(payload['grand_total'])}",
         ]
         line_index = 1
@@ -277,66 +323,148 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
-    x_left = 42
-    y = height - 50
+    yellow = colors.HexColor("#EF9D39")
+    black = colors.HexColor("#111111")
+    light = colors.HexColor("#FFF7E9")
+    gray = colors.HexColor("#5F5F5F")
 
-    def write_line(text: str, *, bold: bool = False, size: int = 10, step: int = 14):
-        nonlocal y
-        if y < 50:
-            pdf.showPage()
-            y = height - 50
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
-        pdf.setFont(font_name, size)
-        pdf.drawString(x_left, y, text)
-        y -= step
+    # Watermark/logo accent
+    pdf.saveState()
+    pdf.setFillColor(colors.Color(0.95, 0.62, 0.22, alpha=0.08))
+    pdf.setFont("Helvetica-Bold", 74)
+    pdf.translate(width / 2, height / 2)
+    pdf.rotate(35)
+    pdf.drawCentredString(0, 0, "GETITFIXED")
+    pdf.restoreState()
 
-    write_line("GETITFIXED - INVOICE", bold=True, size=16, step=22)
-    write_line(f"Ticket: {payload['ticket_id']}", bold=True)
-    write_line(f"Booking ID: {payload['booking_id']}")
-    write_line(f"Status: {payload['status']}")
-    if payload.get("closed_at"):
-        closed_value = payload["closed_at"].strftime("%Y-%m-%d %H:%M")
-        write_line(f"Closed at: {closed_value}")
-    write_line("", step=10)
+    logo_candidates = [
+        Path(__file__).resolve().parents[2] / "frontend" / "public" / "logo.png",
+        Path(__file__).resolve().parents[2] / "frontend" / "public" / "logo.svg",
+        Path(__file__).resolve().parents[2] / "frontend" / "public" / "getitfixed-logo.png",
+    ]
+    logo_reader = None
+    for logo_path in logo_candidates:
+        if logo_path.exists():
+            try:
+                logo_reader = ImageReader(str(logo_path))
+                break
+            except Exception:
+                continue
 
-    write_line("Client", bold=True, size=11)
-    write_line(f"Name: {payload['client_name']}")
-    write_line(f"Email: {payload.get('client_email') or '-'}")
-    write_line("", step=8)
+    # Header band
+    pdf.setFillColor(yellow)
+    pdf.rect(32, height - 120, width - 64, 86, fill=1, stroke=0)
+    pdf.setStrokeColor(black)
+    pdf.setLineWidth(2)
+    pdf.rect(32, height - 120, width - 64, 86, fill=0, stroke=1)
+    if logo_reader is not None:
+        pdf.drawImage(logo_reader, 40, height - 110, width=64, height=64, mask="auto", preserveAspectRatio=True)
+    pdf.setFillColor(black)
+    pdf.setFont("Helvetica-Bold", 22)
+    pdf.drawString(118, height - 73, "INVOICE")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(118, height - 91, f"Ticket: {payload['ticket_id']}")
+    pdf.drawString(118, height - 106, f"Booking ID: {payload['booking_id']}")
 
-    write_line("Handyman", bold=True, size=11)
-    write_line(f"Name: {payload.get('handyman_name') or '-'}")
-    write_line(f"Email: {payload.get('handyman_email') or '-'}")
-    write_line("", step=8)
+    # Info cards
+    info_top = height - 155
+    info_h = 70
+    info_w = (width - 80) / 2
+    pdf.setFillColor(light)
+    pdf.rect(32, info_top - info_h, info_w, info_h, fill=1, stroke=1)
+    pdf.rect(40 + info_w, info_top - info_h, info_w, info_h, fill=1, stroke=1)
 
-    write_line("Service", bold=True, size=11)
-    write_line(f"Type: {payload.get('service_type') or '-'}")
-    write_line(f"Description: {payload.get('description') or '-'}")
-    write_line("", step=12)
+    pdf.setFillColor(gray)
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawString(42, info_top - 16, "BILLED TO")
+    pdf.drawString(50 + info_w, info_top - 16, "SERVICE PROVIDER")
 
-    write_line("Phase 1 - First Visit", bold=True, size=11)
-    if payload["phase1_items"]:
-        for idx, item in enumerate(payload["phase1_items"], start=1):
-            write_line(
-                f"{idx}. {item['description']} | Qty {item['quantity']} x {_format_money(item['unit_price'])} = {_format_money(item['line_total'])}"
-            )
-    else:
-        write_line("No billed items.")
-    write_line(f"Subtotal phase 1: {_format_money(payload['subtotal_phase1'])}", bold=True)
-    write_line("", step=12)
+    pdf.setFillColor(black)
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(42, info_top - 30, payload["client_name"])
+    pdf.drawString(50 + info_w, info_top - 30, payload.get("handyman_name") or "-")
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(42, info_top - 44, payload.get("client_email") or "-")
+    pdf.drawString(50 + info_w, info_top - 44, payload.get("handyman_email") or "-")
+    closed_label = payload["closed_at"].strftime("%Y-%m-%d %H:%M") if payload.get("closed_at") else "-"
+    pdf.drawString(42, info_top - 58, f"Closed: {closed_label}")
+    pdf.drawString(50 + info_w, info_top - 58, f"Service: {payload.get('service_type') or '-'}")
 
-    write_line("Phase 2 - Additional Costs", bold=True, size=11)
-    if payload["phase2_items"]:
-        for idx, item in enumerate(payload["phase2_items"], start=1):
-            write_line(
-                f"{idx}. {item['description']} ({item['category']}) | Qty {item['quantity']} x {_format_money(item['unit_price'])} = {_format_money(item['line_total'])}"
-            )
-    else:
-        write_line("No additional billed items.")
-    write_line(f"Subtotal phase 2: {_format_money(payload['subtotal_phase2'])}", bold=True)
-    write_line("", step=14)
+    # Item table
+    y = info_top - 98
+    table_x = 32
+    table_w = width - 64
+    row_h = 18
+    headers = ["Description", "Category", "Phase", "Qty", "Unit", "Total"]
+    col_w = [210, 80, 65, 45, 70, 70]
+    pdf.setFillColor(black)
+    pdf.rect(table_x, y, table_w, row_h, fill=1, stroke=1)
+    pdf.setFillColor(yellow)
+    pdf.setFont("Helvetica-Bold", 9)
+    x = table_x + 6
+    for i, title in enumerate(headers):
+        pdf.drawString(x, y + 5, title)
+        x += col_w[i]
 
-    write_line(f"GRAND TOTAL: {_format_money(payload['grand_total'])}", bold=True, size=12)
+    items = payload["phase1_items"] + payload["phase2_items"]
+    y -= row_h
+    for idx, item in enumerate(items):
+        fill_color = colors.white if idx % 2 == 0 else colors.HexColor("#FFF1D6")
+        pdf.setFillColor(fill_color)
+        pdf.rect(table_x, y, table_w, row_h, fill=1, stroke=1)
+        pdf.setFillColor(black)
+        pdf.setFont("Helvetica", 8.5)
+        phase_label = "Phase 1" if item["source"] == "phase1" else "Phase 2"
+        row_values = [
+            str(item["description"])[:40],
+            str(item["category"])[:12],
+            phase_label,
+            f"{Decimal(item['quantity']):.2f}",
+            f"{Decimal(item['unit_price']):.2f}",
+            f"{Decimal(item['line_total']):.2f}",
+        ]
+        x = table_x + 6
+        for i, value in enumerate(row_values):
+            pdf.drawString(x, y + 5, value)
+            x += col_w[i]
+        y -= row_h
+        if y < 180:
+            break
+
+    # Totals summary block
+    summary_x = width - 260
+    summary_w = 228
+    summary_h = 126
+    summary_y = max(y - summary_h - 12, 92)
+    pdf.setFillColor(light)
+    pdf.rect(summary_x, summary_y, summary_w, summary_h, fill=1, stroke=1)
+    pdf.setFillColor(gray)
+    pdf.setFont("Helvetica-Bold", 9)
+    pdf.drawString(summary_x + 10, summary_y + summary_h - 14, "TOTALS")
+
+    lines = [
+        ("Handyman services", payload["total_handyman_amount"]),
+        ("App fee (20%)", payload["total_app_fee_amount"]),
+        ("PDV (17%)", payload["total_pdv_amount"]),
+    ]
+    current_y = summary_y + summary_h - 32
+    pdf.setFillColor(black)
+    pdf.setFont("Helvetica", 9)
+    for label, amount in lines:
+        pdf.drawString(summary_x + 10, current_y, label)
+        pdf.drawRightString(summary_x + summary_w - 10, current_y, _format_money(amount))
+        current_y -= 16
+
+    pdf.setStrokeColor(black)
+    pdf.line(summary_x + 10, current_y + 4, summary_x + summary_w - 10, current_y + 4)
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(summary_x + 10, current_y - 12, "GRAND TOTAL")
+    pdf.setFillColor(yellow)
+    pdf.drawRightString(summary_x + summary_w - 10, current_y - 12, _format_money(payload["grand_total"]))
+
+    pdf.setFillColor(gray)
+    pdf.setFont("Helvetica", 8)
+    pdf.drawString(32, 56, "GetItFixed invoice — app fee collected by platform, PDV withheld for pre-production compliance simulation.")
 
     pdf.showPage()
     pdf.save()

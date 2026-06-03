@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Booking, Quote, QuoteLineItem, EscrowHold, Review
 from django.contrib.auth import get_user_model
+from decimal import Decimal
+from .pricing import compute_pricing_breakdown
 
 User = get_user_model()
 
@@ -15,6 +17,8 @@ class BookingSerializer(serializers.ModelSerializer):
     estimated_price = serializers.ReadOnlyField(source='get_estimated_price')
     latest_quote = serializers.SerializerMethodField()
     latest_escrow_hold = serializers.SerializerMethodField()
+    visit_fee_pricing = serializers.SerializerMethodField()
+    latest_quote_pricing = serializers.SerializerMethodField()
     
     handyman = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
@@ -65,6 +69,8 @@ class BookingSerializer(serializers.ModelSerializer):
             'knows_fix',
             'latest_quote',
             'latest_escrow_hold',
+            'visit_fee_pricing',
+            'latest_quote_pricing',
             
         ]
         read_only_fields = [
@@ -130,6 +136,32 @@ class BookingSerializer(serializers.ModelSerializer):
         if not hold:
             return None
         return EscrowHoldSerializer(hold).data
+
+    def get_visit_fee_pricing(self, obj):
+        if obj.agreed_price is None or obj.agreed_price <= 0:
+            return None
+        pricing = compute_pricing_breakdown(Decimal(obj.agreed_price))
+        return {
+            "base_amount": pricing["base_amount"],
+            "app_fee_amount": pricing["app_fee_amount"],
+            "pdv_amount": pricing["pdv_amount"],
+            "client_total_amount": pricing["client_total_amount"],
+        }
+
+    def get_latest_quote_pricing(self, obj):
+        quote = obj.quotes.order_by('-version', '-created_at').first()
+        if not quote:
+            return None
+        quote_total = Decimal(quote.total_amount or 0)
+        if quote_total <= 0:
+            return None
+        pricing = compute_pricing_breakdown(quote_total)
+        return {
+            "base_amount": pricing["base_amount"],
+            "app_fee_amount": pricing["app_fee_amount"],
+            "pdv_amount": pricing["pdv_amount"],
+            "client_total_amount": pricing["client_total_amount"],
+        }
 
 
 class QuoteLineItemSerializer(serializers.ModelSerializer):
@@ -197,6 +229,9 @@ class EscrowHoldSerializer(serializers.ModelSerializer):
             'client',
             'handyman',
             'purpose',
+            'handyman_amount',
+            'app_fee_amount',
+            'pdv_amount',
             'amount',
             'status',
             'reason',

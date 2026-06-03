@@ -13,6 +13,16 @@ User = get_user_model()
 
 class EscrowFirstE2ETests(APITestCase):
     def setUp(self):
+        self.admin_user = User.objects.create_user(
+            username="admin",
+            email="admin@getitfixed.com",
+            password="password",
+            role="admin",
+        )
+        self.admin_user.wallet_balance = Decimal("0.00")
+        self.admin_user.wallet_locked_balance = Decimal("0.00")
+        self.admin_user.save()
+
         self.client_user = User.objects.create_user(
             username="client",
             email="client_e2e@test.com",
@@ -128,5 +138,7 @@ class EscrowFirstE2ETests(APITestCase):
         self.assertEqual(self.booking.status, "paid")
         self.client_user.refresh_from_db()
         self.handyman.refresh_from_db()
-        self.assertEqual(self.client_user.wallet_balance, Decimal("350.00"))
+        self.admin_user.refresh_from_db()
+        self.assertEqual(self.client_user.wallet_balance, Decimal("289.40"))
         self.assertEqual(self.handyman.wallet_balance, Decimal("150.00"))
+        self.assertEqual(self.admin_user.wallet_balance, Decimal("30.00"))

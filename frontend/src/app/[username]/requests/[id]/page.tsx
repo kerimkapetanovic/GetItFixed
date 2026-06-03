@@ -239,6 +239,9 @@ const prettyInvoiceCategory = (category: string) => {
   return "Other";
 };
 
+const formatKm = (value: number | null | undefined) =>
+  `${Number(value ?? 0).toFixed(2)} KM`;
+
 function getBackendErrorMessage(error: unknown) {
   if (
     typeof error === "object" &&
@@ -835,6 +838,21 @@ export default function RequestDetailsPage() {
     );
 
   const statusInfo = getStatusInfo(booking);
+  const phase1Pricing = booking.visit_fee_pricing;
+  const quotePricingFromHold =
+    booking.latest_escrow_hold?.purpose === "quote"
+      ? {
+        base_amount: booking.latest_escrow_hold.handyman_amount,
+        app_fee_amount: booking.latest_escrow_hold.app_fee_amount,
+        pdv_amount: booking.latest_escrow_hold.pdv_amount,
+        client_total_amount: booking.latest_escrow_hold.amount,
+      }
+      : null;
+  const quotePricing = quotePricingFromHold ?? booking.latest_quote_pricing ?? null;
+  const paymentDueAmount =
+    booking.latest_escrow_hold?.purpose === "quote"
+      ? booking.latest_escrow_hold.amount
+      : quotePricing?.client_total_amount ?? booking.estimated_price ?? 0;
   const offerPriceText =
     booking.agreed_price != null
       ? Number(booking.agreed_price).toFixed(2)
@@ -1022,7 +1040,7 @@ export default function RequestDetailsPage() {
                         </p>
                         {booking.agreed_price != null && (
                           <p className="text-sm font-black text-[#EF9D39] mt-2 tabular-nums">
-                            Total job price:{" "}
+                            Handyman price:{" "}
                             {Number(booking.agreed_price).toFixed(2)} KM
                           </p>
                         )}
@@ -1256,13 +1274,35 @@ export default function RequestDetailsPage() {
                       </div>
                       <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl flex justify-between items-center">
                         <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">
-                          Quote total
+                          Handyman quote subtotal
                         </span>
                         <span className="text-xl font-black text-[#EF9D39] tabular-nums">
                           {Number(booking.latest_quote.total_amount).toFixed(2)}{" "}
                           KM
                         </span>
                       </div>
+                      {quotePricing && (
+                        <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl space-y-2">
+                          <div className="flex justify-between text-sm font-black">
+                            <span>Handyman services</span>
+                            <span className="tabular-nums">{formatKm(quotePricing.base_amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-black">
+                            <span>App fee (20%)</span>
+                            <span className="tabular-nums">{formatKm(quotePricing.app_fee_amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-black">
+                            <span>PDV (17%)</span>
+                            <span className="tabular-nums">{formatKm(quotePricing.pdv_amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-base font-black pt-2 border-t-2 border-black">
+                            <span>Total to pay</span>
+                            <span className="tabular-nums text-[#EF9D39]">
+                              {formatKm(quotePricing.client_total_amount)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       {booking.latest_quote.proposed_visit_time && (
                         <div className="p-4 bg-white dark:bg-zinc-900 border-2 border-black rounded-xl">
                           <span className="text-[11px] font-black uppercase tracking-widest text-gray-500">
@@ -1318,17 +1358,33 @@ export default function RequestDetailsPage() {
                               </h3>
                               <p className="text-sm font-bold text-gray-700 dark:text-zinc-300 mt-1">
                                 Your{" "}
-                                {Number(
+                                {formatKm(
                                   booking.quote_locked_amount ??
-                                  booking.latest_quote?.total_amount ??
+                                  quotePricing?.client_total_amount ??
                                   0,
-                                ).toFixed(2)}{" "}
-                                KM is safely held in escrow for the second visit.
+                                )}{" "}
+                                is safely held in escrow for the second visit.
                                 Payment is released only after completion is
                                 confirmed.
                               </p>
                             </div>
                           </div>
+                          {quotePricing && (
+                            <div className="p-3 bg-cyan-100/70 dark:bg-cyan-900/30 border-2 border-black rounded-xl space-y-1">
+                              <div className="flex justify-between text-xs font-black">
+                                <span>Handyman</span>
+                                <span className="tabular-nums">{formatKm(quotePricing.base_amount)}</span>
+                              </div>
+                              <div className="flex justify-between text-xs font-black">
+                                <span>App fee</span>
+                                <span className="tabular-nums">{formatKm(quotePricing.app_fee_amount)}</span>
+                              </div>
+                              <div className="flex justify-between text-xs font-black">
+                                <span>PDV</span>
+                                <span className="tabular-nums">{formatKm(quotePricing.pdv_amount)}</span>
+                              </div>
+                            </div>
+                          )}
 
                           {actionError && (
                             <p className="text-sm font-black text-red-600">
@@ -1378,7 +1434,7 @@ export default function RequestDetailsPage() {
                       Due
                     </p>
                     <p className="text-2xl font-black text-black dark:text-white tabular-nums">
-                      {Number(booking.estimated_price ?? 0).toFixed(2)}{" "}
+                      {Number(paymentDueAmount).toFixed(2)}{" "}
                       <span className="text-sm uppercase">KM</span>
                     </p>
                   </div>
@@ -1541,7 +1597,7 @@ export default function RequestDetailsPage() {
                       <div className="p-4 bg-gray-50 dark:bg-zinc-800 border-2 border-black rounded-xl space-y-2">
                         <div className="flex justify-between text-sm font-black">
                           <span className="uppercase tracking-widest text-gray-500">
-                            First Visit Subtotal
+                            Phase 1 handyman
                           </span>
                           <span className="tabular-nums">
                             {Number(invoice.subtotal_phase1).toFixed(2)}{" "}
@@ -1550,10 +1606,28 @@ export default function RequestDetailsPage() {
                         </div>
                         <div className="flex justify-between text-sm font-black">
                           <span className="uppercase tracking-widest text-gray-500">
-                            Additional Costs Subtotal
+                            Phase 2 handyman
                           </span>
                           <span className="tabular-nums">
                             {Number(invoice.subtotal_phase2).toFixed(2)}{" "}
+                            {invoice.currency}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-black">
+                          <span className="uppercase tracking-widest text-gray-500">
+                            Platform fee total
+                          </span>
+                          <span className="tabular-nums">
+                            {Number(invoice.total_app_fee_amount).toFixed(2)}{" "}
+                            {invoice.currency}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-black">
+                          <span className="uppercase tracking-widest text-gray-500">
+                            PDV total
+                          </span>
+                          <span className="tabular-nums">
+                            {Number(invoice.total_pdv_amount).toFixed(2)}{" "}
                             {invoice.currency}
                           </span>
                         </div>
@@ -1646,7 +1720,7 @@ export default function RequestDetailsPage() {
                     </div>
                     <div className="bg-white dark:bg-zinc-900 border-[3px] border-black rounded-2xl p-5 min-h-[120px] flex flex-col justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
-                        Total job price
+                        Handyman price
                       </p>
                       <div className="min-w-0">
                         <p
@@ -1660,6 +1734,32 @@ export default function RequestDetailsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {phase1Pricing && (
+                    <div className="bg-white dark:bg-zinc-900 border-[3px] border-black rounded-2xl p-4 space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                        Payment breakdown
+                      </p>
+                      <div className="flex justify-between text-sm font-black">
+                        <span>Handyman service</span>
+                        <span className="tabular-nums">{formatKm(phase1Pricing.base_amount)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-black">
+                        <span>App fee (20%)</span>
+                        <span className="tabular-nums">{formatKm(phase1Pricing.app_fee_amount)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-black">
+                        <span>PDV (17%)</span>
+                        <span className="tabular-nums">{formatKm(phase1Pricing.pdv_amount)}</span>
+                      </div>
+                      <div className="flex justify-between text-base font-black pt-2 border-t-2 border-black">
+                        <span>Total to pay</span>
+                        <span className="tabular-nums text-[#EF9D39]">
+                          {formatKm(phase1Pricing.client_total_amount)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {booking.handyman_counter_message && (
                     <div className="inline-flex gap-2 items-start bg-violet-50 dark:bg-zinc-900 border-2 border-black rounded-xl px-4 py-3">

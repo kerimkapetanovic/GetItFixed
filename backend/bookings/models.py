@@ -289,6 +289,9 @@ class EscrowHold(models.Model):
         related_name='escrow_locks_received',
     )
     purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default='quote')
+    handyman_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    app_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    pdv_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='locked')
     reason = models.CharField(max_length=255, blank=True, null=True)

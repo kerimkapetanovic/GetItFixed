@@ -32,6 +32,13 @@ export type EscrowStatus = 'locked' | 'released' | 'refunded' | 'cancelled';
 export type EscrowPurpose = 'visit_fee' | 'quote';
 export type QuoteLineItemCategory = 'materials' | 'labor' | 'other';
 
+export interface PricingBreakdown {
+  base_amount: number;
+  app_fee_amount: number;
+  pdv_amount: number;
+  client_total_amount: number;
+}
+
 export interface BookingDetail {
   id: number;
   ticket_id: string; // DODAJ OVO OVDJE
@@ -77,6 +84,8 @@ export interface BookingDetail {
   funds_locked_at?: string | null;
   latest_quote?: Quote | null;
   latest_escrow_hold?: EscrowHold | null;
+  visit_fee_pricing?: PricingBreakdown | null;
+  latest_quote_pricing?: PricingBreakdown | null;
 
   estimated_price?: number;
   agreed_price?: number | null;
@@ -134,6 +143,9 @@ export interface EscrowHold {
   client: number;
   handyman: number;
   purpose: EscrowPurpose;
+  handyman_amount: number;
+  app_fee_amount: number;
+  pdv_amount: number;
   amount: number;
   status: EscrowStatus;
   reason: string | null;
@@ -170,6 +182,15 @@ export interface BookingInvoice {
   phase1_items: InvoiceLineItem[];
   phase2_items: InvoiceLineItem[];
   subtotal_phase1: number;
+  subtotal_phase1_app_fee: number;
+  subtotal_phase1_pdv: number;
+  subtotal_phase1_total: number;
   subtotal_phase2: number;
+  subtotal_phase2_app_fee: number;
+  subtotal_phase2_pdv: number;
+  subtotal_phase2_total: number;
+  total_handyman_amount: number;
+  total_app_fee_amount: number;
+  total_pdv_amount: number;
   grand_total: number;
 }

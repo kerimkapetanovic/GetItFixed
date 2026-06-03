@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import Booking, EscrowHold, Quote, WalletTransaction
+from .pricing import compute_pricing_breakdown, quantize_money
 
 User = get_user_model()
 
@@ -14,6 +15,16 @@ def _to_decimal(amount) -> Decimal:
     if value <= Decimal("0.00"):
         raise ValueError("Amount must be greater than zero.")
     return value
+
+
+def _resolve_admin_user() -> User:
+    admin = User.objects.filter(pk=1, email__iexact="admin@getitfixed.com").first()
+    if admin:
+        return admin
+    admin = User.objects.filter(email__iexact="admin@getitfixed.com").first()
+    if admin:
+        return admin
+    raise ValueError("Admin payout account is not configured.")
 
 
 def lock_client_funds(
@@ -42,9 +53,12 @@ def lock_client_funds(
     if amount is None:
         if quote is None:
             raise ValueError("Amount is required when quote is missing.")
-        lock_amount = _to_decimal(quote.total_amount)
+        base_amount = _to_decimal(quote.total_amount)
     else:
-        lock_amount = _to_decimal(amount)
+        base_amount = _to_decimal(amount)
+
+    pricing = compute_pricing_breakdown(base_amount)
+    lock_amount = pricing["client_total_amount"]
 
     with transaction.atomic():
         booking_locked = Booking.objects.select_for_update().get(pk=booking.pk)
@@ -65,6 +79,9 @@ def lock_client_funds(
             quote=quote,
             client=client,
             handyman=booking_locked.handyman,
+            handyman_amount=pricing["base_amount"],
+            app_fee_amount=pricing["app_fee_amount"],
+            pdv_amount=pricing["pdv_amount"],
             amount=lock_amount,
             purpose=purpose,
             status="locked",
@@ -127,21 +144,33 @@ def release_funds_to_handyman(
         client = User.objects.select_for_update().get(pk=hold_locked.client_id)
         handyman = User.objects.select_for_update().get(pk=hold_locked.handyman_id)
         booking = Booking.objects.select_for_update().get(pk=hold_locked.booking_id)
-        amount = _to_decimal(hold_locked.amount)
+        amount_gross = _to_decimal(hold_locked.amount)
+        handyman_amount = quantize_money(hold_locked.handyman_amount or Decimal("0.00"))
+        app_fee_amount = quantize_money(hold_locked.app_fee_amount or Decimal("0.00"))
+        if handyman_amount <= Decimal("0.00"):
+            handyman_amount = amount_gross
+        if app_fee_amount < Decimal("0.00"):
+            app_fee_amount = Decimal("0.00")
+        admin = _resolve_admin_user()
+        admin_locked = User.objects.select_for_update().get(pk=admin.pk)
 
         client_locked_before = client.wallet_locked_balance or Decimal("0.00")
         client_total_before = client.wallet_balance or Decimal("0.00")
         handyman_before = handyman.wallet_balance or Decimal("0.00")
+        admin_before = admin_locked.wallet_balance or Decimal("0.00")
 
-        if client_locked_before < amount or client_total_before < amount:
+        if client_locked_before < amount_gross or client_total_before < amount_gross:
             raise ValueError("Client wallet does not contain enough locked funds.")
 
-        client.wallet_locked_balance = client_locked_before - amount
-        client.wallet_balance = client_total_before - amount
-        handyman.wallet_balance = handyman_before + amount
+        client.wallet_locked_balance = client_locked_before - amount_gross
+        client.wallet_balance = client_total_before - amount_gross
+        handyman.wallet_balance = handyman_before + handyman_amount
+        admin_locked.wallet_balance = admin_before + app_fee_amount
 
         client.save(update_fields=["wallet_locked_balance", "wallet_balance"])
         handyman.save(update_fields=["wallet_balance"])
+        if app_fee_amount > Decimal("0.00"):
+            admin_locked.save(update_fields=["wallet_balance"])
 
         hold_locked.status = "released"
         hold_locked.released_at = timezone.now()
@@ -152,7 +181,7 @@ def release_funds_to_handyman(
             booking=booking,
             escrow_hold=hold_locked,
             tx_type="release",
-            amount=amount,
+            amount=amount_gross,
             balance_before=client_total_before,
             balance_after=client.wallet_balance,
             note=note or f"Escrow release for booking #{booking.id}",
@@ -162,16 +191,28 @@ def release_funds_to_handyman(
             booking=booking,
             escrow_hold=hold_locked,
             tx_type="credit",
-            amount=amount,
+            amount=handyman_amount,
             balance_before=handyman_before,
             balance_after=handyman.wallet_balance,
             note=note or f"Escrow credit from booking #{booking.id}",
         )
+        if app_fee_amount > Decimal("0.00"):
+            WalletTransaction.objects.create(
+                user=admin_locked,
+                booking=booking,
+                escrow_hold=hold_locked,
+                tx_type="credit",
+                amount=app_fee_amount,
+                balance_before=admin_before,
+                balance_after=admin_locked.wallet_balance,
+                note=f"Platform app fee for booking #{booking.id}",
+            )
+        # PDV is intentionally withheld for pre-production accounting mode.
 
         if set_booking_paid:
             booking.status = booking_status or "paid"
             booking.paid_at = timezone.now()
-            booking.payment_amount = amount
+            booking.payment_amount = amount_gross
             booking.save(update_fields=["status", "paid_at", "payment_amount", "updated_at"])
         elif booking_status:
             booking.status = booking_status

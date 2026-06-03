@@ -13,6 +13,16 @@ User = get_user_model()
 
 class EscrowFirstLifecycleTests(APITestCase):
     def setUp(self):
+        self.admin_user = User.objects.create_user(
+            username="admin",
+            email="admin@getitfixed.com",
+            password="Password123!",
+            role="admin",
+        )
+        self.admin_user.wallet_balance = Decimal("0.00")
+        self.admin_user.wallet_locked_balance = Decimal("0.00")
+        self.admin_user.save()
+
         self.client_user = User.objects.create_user(
             username="client_test",
             email="client@test.com",
@@ -55,15 +65,20 @@ class EscrowFirstLifecycleTests(APITestCase):
         self.client_user.refresh_from_db()
         self.assertEqual(self.booking.status, "accepted")
         self.assertEqual(self.booking.negotiation_status, "agreed")
-        self.assertEqual(self.client_user.wallet_locked_balance, Decimal("30.00"))
+        self.assertEqual(self.client_user.wallet_locked_balance, Decimal("42.12"))
         self.assertTrue(
             EscrowHold.objects.filter(
                 booking=self.booking,
                 purpose="visit_fee",
-                amount=Decimal("30.00"),
+                amount=Decimal("42.12"),
                 status="locked",
             ).exists()
         )
+
+        hold = EscrowHold.objects.get(booking=self.booking, purpose="visit_fee", status="locked")
+        self.assertEqual(hold.handyman_amount, Decimal("30.00"))
+        self.assertEqual(hold.app_fee_amount, Decimal("6.00"))
+        self.assertEqual(hold.pdv_amount, Decimal("6.12"))
 
     def test_confirm_done_releases_first_visit_hold(self):
         self.client.force_authenticate(user=self.client_user)
@@ -82,10 +97,12 @@ class EscrowFirstLifecycleTests(APITestCase):
         self.booking.refresh_from_db()
         self.client_user.refresh_from_db()
         self.handyman_user.refresh_from_db()
+        self.admin_user.refresh_from_db()
         self.assertEqual(self.booking.status, "visit_fee_paid")
-        self.assertEqual(self.client_user.wallet_balance, Decimal("270.00"))
+        self.assertEqual(self.client_user.wallet_balance, Decimal("257.88"))
         self.assertEqual(self.client_user.wallet_locked_balance, Decimal("0.00"))
         self.assertEqual(self.handyman_user.wallet_balance, Decimal("30.00"))
+        self.assertEqual(self.admin_user.wallet_balance, Decimal("6.00"))
 
     def test_mark_not_completed_refunds_first_visit_hold(self):
         self.client.force_authenticate(user=self.client_user)
@@ -171,10 +188,12 @@ class EscrowFirstLifecycleTests(APITestCase):
         self.booking.refresh_from_db()
         self.client_user.refresh_from_db()
         self.handyman_user.refresh_from_db()
+        self.admin_user.refresh_from_db()
         self.assertEqual(self.booking.status, "paid")
-        self.assertEqual(self.client_user.wallet_balance, Decimal("200.00"))
-        self.assertEqual(self.client_user.wallet_locked_balance, Decimal("30.00"))
+        self.assertEqual(self.client_user.wallet_balance, Decimal("159.60"))
+        self.assertEqual(self.client_user.wallet_locked_balance, Decimal("42.12"))
         self.assertEqual(self.handyman_user.wallet_balance, Decimal("100.00"))
+        self.assertEqual(self.admin_user.wallet_balance, Decimal("20.00"))
 
     def test_handyman_cannot_mark_done_before_second_visit_starts(self):
         self.client.force_authenticate(user=self.client_user)
@@ -323,8 +342,17 @@ class EscrowFirstLifecycleTests(APITestCase):
         self.assertEqual(len(response.data["phase1_items"]), 1)
         self.assertEqual(len(response.data["phase2_items"]), 2)
         self.assertEqual(Decimal(response.data["subtotal_phase1"]), Decimal("30.00"))
+        self.assertEqual(Decimal(response.data["subtotal_phase1_app_fee"]), Decimal("6.00"))
+        self.assertEqual(Decimal(response.data["subtotal_phase1_pdv"]), Decimal("6.12"))
+        self.assertEqual(Decimal(response.data["subtotal_phase1_total"]), Decimal("42.12"))
         self.assertEqual(Decimal(response.data["subtotal_phase2"]), Decimal("110.00"))
-        self.assertEqual(Decimal(response.data["grand_total"]), Decimal("140.00"))
+        self.assertEqual(Decimal(response.data["subtotal_phase2_app_fee"]), Decimal("22.00"))
+        self.assertEqual(Decimal(response.data["subtotal_phase2_pdv"]), Decimal("22.44"))
+        self.assertEqual(Decimal(response.data["subtotal_phase2_total"]), Decimal("154.44"))
+        self.assertEqual(Decimal(response.data["total_handyman_amount"]), Decimal("140.00"))
+        self.assertEqual(Decimal(response.data["total_app_fee_amount"]), Decimal("28.00"))
+        self.assertEqual(Decimal(response.data["total_pdv_amount"]), Decimal("28.56"))
+        self.assertEqual(Decimal(response.data["grand_total"]), Decimal("196.56"))
 
     def test_closed_booking_invoice_pdf_and_access_guards(self):
         self._close_booking_with_quote()
