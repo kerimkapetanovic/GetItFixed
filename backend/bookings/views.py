@@ -338,9 +338,11 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     pdf.restoreState()
 
     logo_candidates = [
+        Path(__file__).resolve().parents[2] / "frontend" / "public" / "GetItFixed Logo.png",
+        
         Path(__file__).resolve().parents[2] / "frontend" / "public" / "logo.png",
         Path(__file__).resolve().parents[2] / "frontend" / "public" / "logo.svg",
-        Path(__file__).resolve().parents[2] / "frontend" / "public" / "getitfixed-logo.png",
+        Path(__file__).resolve().parents[2] / "backend" / "static" / "images" / "GetItFixed Logo.svg",
     ]
     logo_reader = None
     for logo_path in logo_candidates:
@@ -358,14 +360,18 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     pdf.setLineWidth(2)
     pdf.rect(32, height - 120, width - 64, 86, fill=0, stroke=1)
     if logo_reader is not None:
-        pdf.drawImage(logo_reader, 40, height - 110, width=64, height=64, mask="auto", preserveAspectRatio=True)
-    pdf.setFillColor(black)
-    pdf.setFont("Helvetica-Bold", 22)
-    pdf.drawString(118, height - 73, "INVOICE")
+        pdf.drawImage(logo_reader, 40, height - 112, width=70, height=70, mask="auto", preserveAspectRatio=True)
+        pdf.setFillColor(black)
+        pdf.setFont("Helvetica-Bold", 22)
+        pdf.drawString(118, height - 73, "GetItFixed - INVOICE")
+    else:
+        pdf.setFillColor(black)
+        pdf.setFont("Helvetica-Bold", 22)
+        pdf.drawString(42, height - 73, "GetItFixed - INVOICE")
     pdf.setFont("Helvetica", 10)
     pdf.drawString(118, height - 91, f"Ticket: {payload['ticket_id']}")
     pdf.drawString(118, height - 106, f"Booking ID: {payload['booking_id']}")
-
+    
     # Info cards
     info_top = height - 155
     info_h = 70
