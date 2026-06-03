@@ -1161,9 +1161,9 @@ class CompleteBookingView(APIView):
             if user != booking.handyman:
                 return Response({"error": "Only the handyman can mark job as done."}, status=403)
             
-            # --- NOVO: Dodan 'funds_locked' ---
-            if booking.status not in ['in_progress', 'funds_locked']:
-                return Response({"error": "Job must be in_progress or funds_locked to mark as done."}, status=400)
+            # Handyman can finish only after the scheduled visit actually starts.
+            if booking.status != 'in_progress':
+                return Response({"error": "Job must be in_progress to mark as done."}, status=400)
 
             booking.status = 'handyman_done'
             booking.handyman_marked_done_at = timezone.now()

@@ -1208,8 +1208,7 @@ export default function HandymanRequestDetailsPage() {
                         You (handyman)
                       </p>
                     </div>
-                    {booking.status === "in_progress" ||
-                    booking.status === "funds_locked" ? (
+                    {booking.status === "in_progress" ? (
                       <button
                         type="button"
                         onClick={handleMarkDone}
@@ -1224,6 +1223,20 @@ export default function HandymanRequestDetailsPage() {
                           </>
                         )}
                       </button>
+                    ) : booking.status === "funds_locked" ? (
+                      <div className="flex flex-1 flex-col items-center justify-center gap-2 py-2 text-center">
+                        <Timer
+                          className="text-violet-500 shrink-0"
+                          size={32}
+                          strokeWidth={2.5}
+                        />
+                        <p className="font-black text-sm text-black dark:text-white leading-tight">
+                          Waiting for second visit start time
+                        </p>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                          Mark done unlocks at countdown zero
+                        </p>
+                      </div>
                     ) : (
                       <div className="flex flex-1 flex-col items-center justify-center gap-2 py-2 text-center">
                         <CheckCircle2

@@ -176,6 +176,62 @@ class EscrowFirstLifecycleTests(APITestCase):
         self.assertEqual(self.client_user.wallet_locked_balance, Decimal("30.00"))
         self.assertEqual(self.handyman_user.wallet_balance, Decimal("100.00"))
 
+    def test_handyman_cannot_mark_done_before_second_visit_starts(self):
+        self.client.force_authenticate(user=self.client_user)
+        self.client.post(f"/api/bookings/{self.booking.id}/client-action/", {"action": "accept"}, format="json")
+        self.booking.refresh_from_db()
+        self.booking.status = "visit_fee_paid"
+        self.booking.continue_job_requested = True
+        self.booking.continue_job_confirmed = True
+        self.booking.quote_status = "draft"
+        self.booking.save(
+            update_fields=[
+                "status",
+                "continue_job_requested",
+                "continue_job_confirmed",
+                "quote_status",
+                "updated_at",
+            ]
+        )
+
+        self.client.force_authenticate(user=self.handyman_user)
+        create_quote = self.client.post(
+            f"/api/bookings/{self.booking.id}/quotes/",
+            {
+                "line_items": [
+                    {
+                        "category": "labor",
+                        "description": "Install finishing strips",
+                        "quantity": 1,
+                        "unit_price": 100,
+                    }
+                ],
+                "proposed_visit_time": (timezone.now() + timedelta(days=1)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(create_quote.status_code, status.HTTP_201_CREATED)
+        quote = Quote.objects.get(id=create_quote.data["id"])
+
+        self.client.force_authenticate(user=self.client_user)
+        accept_quote = self.client.post(
+            f"/api/bookings/{self.booking.id}/quotes/{quote.id}/client-action/",
+            {"action": "accept"},
+            format="json",
+        )
+        self.assertEqual(accept_quote.status_code, status.HTTP_200_OK)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, "funds_locked")
+
+        self.client.force_authenticate(user=self.handyman_user)
+        mark_done = self.client.post(
+            f"/api/bookings/{self.booking.id}/complete/",
+            {"action": "mark_done"},
+            format="json",
+        )
+        self.assertEqual(mark_done.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("in_progress", str(mark_done.data.get("error", "")))
+
     def _close_booking_with_quote(self):
         self.client.force_authenticate(user=self.client_user)
         self.client.post(f"/api/bookings/{self.booking.id}/client-action/", {"action": "accept"}, format="json")
