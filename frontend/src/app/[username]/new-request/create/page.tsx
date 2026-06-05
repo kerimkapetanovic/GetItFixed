@@ -34,7 +34,9 @@ function BookingFormContent() {
     scheduled_time: null as Date | null,
     handyman_id: handymanIdFromUrl || "",
     handyman_name: handymanNameFromUrl || "",
-    is_urgent: false, // <-- DODAJ OVO
+    is_urgent: false,
+    attachments: [] as File[],
+
   });
 
   useEffect(() => { setMounted(true); }, []);
@@ -50,12 +52,16 @@ function BookingFormContent() {
 
     setLoading(true);
     try {
-      const res = await api.post("/api/bookings/create/", {
-        service_type: formData.service_type,
-        description: formData.description,
-        scheduled_time: formData.scheduled_time.toISOString(),
-        handyman_id: formData.handyman_id || null,
-        is_urgent: formData.is_urgent, // <-- OBAVEZNO POSLATI OVO
+      const data = new FormData();
+      data.append("service_type", formData.service_type);
+      data.append("description", formData.description);
+      data.append("scheduled_time", formData.scheduled_time!.toISOString());
+      if (formData.handyman_id) data.append("handyman_id", formData.handyman_id);
+      data.append("is_urgent", String(formData.is_urgent));
+      formData.attachments.forEach((file) => data.append("attachments", file));
+
+      const res = await api.post("/api/bookings/create/", data, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (res.data && res.data.ticket_id) {
@@ -137,6 +143,89 @@ function BookingFormContent() {
                 className="w-full bg-gray-50 dark:bg-zinc-800 border-2 border-black p-4 pl-12 rounded-xl font-bold min-h-[150px] outline-none focus:ring-2 focus:ring-[#EF9D39] dark:text-white"
               />
             </div>
+          </div>
+
+          {/* FILE UPLOAD */}
+          <div>
+            <label className="text-xs font-black uppercase tracking-widest mb-2 block text-gray-500 dark:text-zinc-400">
+              Photos / Videos (optional)
+            </label>
+            <div
+              onClick={() => document.getElementById('file-upload')?.click()}
+              className="relative cursor-pointer w-full bg-gray-50 dark:bg-zinc-800 border-2 border-dashed border-black p-6 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-[#FFF8EA] transition-all"
+            >
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                const MAX_SIZE = 100 * 1024 * 1024;
+                const MAX_SINGLE = 50 * 1024 * 1024;
+
+                const oversized = files.filter(f => f.size > MAX_SINGLE);
+                if (oversized.length > 0) {
+                  alert(`These files are too large (max 50MB per file):\n${oversized.map(f => f.name).join('\n')}`);
+                  return;
+                }
+
+                const combined = [...formData.attachments, ...files];
+
+                if (combined.length > 5) {
+                  alert("Maximum 5 files allowed.");
+                  return;
+                }
+
+                const totalSize = combined.reduce((sum, f) => sum + f.size, 0);
+                if (totalSize > MAX_SIZE) {
+                  alert("Total upload size exceeds 100MB. Please reduce the number of files.");
+                  return;
+                }
+
+                setFormData({ ...formData, attachments: combined });
+                e.target.value = ''; 
+}}
+              />
+              <span className="text-3xl">📎</span>
+              <p className="font-black uppercase text-sm text-gray-500">Click to attach photos or videos</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">JPG, PNG, MP4, MOV supported</p>
+            </div>
+
+            {/* Preview */}
+            {formData.attachments && formData.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {formData.attachments.map((file, idx) => (
+                  <div key={idx} className="relative border-2 border-black rounded-xl overflow-hidden w-20 h-20">
+                    {file.type.startsWith('image/') ? (
+                        <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="relative w-full h-full">
+                        <video
+                          src={URL.createObjectURL(file)}
+                          className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="text-white text-lg">▶</span>
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({
+                        ...formData,
+                        attachments: formData.attachments.filter((_, i) => i !== idx)
+                      })}
+                      className="cursor-pointer absolute top-0 right-0 bg-black text-white w-5 h-5 flex items-center justify-center text-xs"
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* DATE PICKER TRIGGER */}

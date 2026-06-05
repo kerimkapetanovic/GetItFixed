@@ -1,10 +1,22 @@
 from rest_framework import serializers
-from .models import Booking, Quote, QuoteLineItem, EscrowHold, Review
+from .models import Booking, Quote, QuoteLineItem, EscrowHold, Review, BookingAttachment
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 from .pricing import compute_pricing_breakdown
 
 User = get_user_model()
+
+class AttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BookingAttachment
+        fields = ['id', 'file', 'file_type', 'uploaded_at']
+
+    def get_file(self, obj):
+        if obj.file:
+            return obj.file.url
+        return None
 
 class BookingSerializer(serializers.ModelSerializer):
     client_name = serializers.SerializerMethodField()
@@ -19,6 +31,7 @@ class BookingSerializer(serializers.ModelSerializer):
     latest_escrow_hold = serializers.SerializerMethodField()
     visit_fee_pricing = serializers.SerializerMethodField()
     latest_quote_pricing = serializers.SerializerMethodField()
+    attachments = AttachmentSerializer(many=True, read_only=True)
     
     handyman = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), 
@@ -51,6 +64,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'expires_at', 'updated_at', 'created_at',
             'handyman_response_phase',
             'status',
+            'attachments',
             'negotiation_status',
             'duration_minutes',
             'agreed_price',

@@ -382,6 +382,7 @@ export default function HandymanRequestDetailsPage() {
   const [quoteProposedVisitTime, setQuoteProposedVisitTime] =
     useState<Date | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+const [lightboxUrl, setLightboxUrl] = useState<{ url: string; type: string } | null>(null);
 
   const syncWalletFromApi = async () => {
     const me = await api.get<WalletMeResponse>("/api/accounts/me/");
@@ -964,6 +965,76 @@ export default function HandymanRequestDetailsPage() {
                 {booking.description}
               </div>
             </div>
+            
+            {/* Attachments */}
+              {booking.attachments && booking.attachments.length > 0 && (
+                <div>
+                  <label className="text-xs font-black text-[#EF9D39] uppercase tracking-widest block mb-2">
+                    Problem Photos / Videos
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {booking.attachments.map((att: { id: number; file: string; file_type: string }) => (
+                      <div key={att.id}>
+                        {att.file_type === 'image' ? (
+                          <div
+                            onClick={() => setLightboxUrl({ url: att.file, type: 'image' })}
+                            className="w-24 h-24 border-2 border-black rounded-xl overflow-hidden cursor-zoom-in hover:shadow-[4px_4px_0px_0px_#EF9D39] transition-all"
+                          >
+                            <img src={att.file} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => setLightboxUrl({ url: att.file, type: 'video' })}
+                            className="relative w-24 h-24 border-2 border-black rounded-xl overflow-hidden cursor-pointer hover:shadow-[4px_4px_0px_0px_#EF9D39] transition-all"
+                          >
+                            <video
+                              src={att.file}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
+                              <PlayCircle size={28} className="text-white" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            {/* Lightbox */}
+            {lightboxUrl && (
+                  <div
+                    onClick={() => setLightboxUrl(null)}
+                    className={`fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 ${lightboxUrl.type === 'video' ? 'cursor-default' : 'cursor-zoom-out'}`}
+                  >
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setLightboxUrl(null); }}
+                    className="absolute top-6 right-6 p-2 bg-white dark:bg-black rounded-full border-2 border-black dark:border-white"
+                  >
+                    <X size={20} className="text-black dark:text-white" />
+                  </button>
+
+                  {lightboxUrl.type === 'video' ? (
+                    <video
+                      src={lightboxUrl.url}
+                      controls
+                      autoPlay
+                      className="max-w-full max-h-[90vh] rounded-2xl border-4 border-white dark:border-black shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <img
+                      src={lightboxUrl.url}
+                      className="max-w-full max-h-[90vh] rounded-2xl border-4 border-white dark:border-black shadow-2xl object-contain"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                </div>
+              )}
 
             {/* Scheduling Timeline */}
             <div className="border-2 border-black rounded-xl bg-white dark:bg-zinc-900 overflow-hidden">

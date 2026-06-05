@@ -16,7 +16,7 @@ from django.http import HttpResponse
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
-from .models import Booking, Review
+from .models import Booking, BookingAttachment, Review
 
 from .models import Booking, Quote, QuoteLineItem, EscrowHold
 from .serializers import BookingSerializer, QuoteSerializer, EscrowHoldSerializer, ReviewSerializer
@@ -338,8 +338,6 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
         _BOLD = "DejaVuSans-Bold"
     except Exception:
         pass
-
-
 
     yellow = colors.HexColor("#EF9D39")
     black = colors.HexColor("#111111")
@@ -785,6 +783,21 @@ class CreateBookingView(generics.CreateAPIView):
             set_handyman_response_deadline(booking)
             booking.save(update_fields=['expires_at', 'handyman_response_phase', 'updated_at'])
 
+        attachments = self.request.FILES.getlist('attachments')
+        MAX_SINGLE = 50 * 1024 * 1024
+        MAX_TOTAL = 100 * 1024 * 1024
+
+        total_size = sum(f.size for f in attachments)
+        if total_size > MAX_TOTAL:
+            booking.delete()
+            raise Exception("Total upload size exceeds 100MB.")
+
+        for f in attachments:
+            if f.size > MAX_SINGLE:
+                booking.delete()
+                raise Exception(f"File {f.name} exceeds 50MB limit.")
+            file_type = 'video' if f.content_type.startswith('video') else 'image'
+            BookingAttachment.objects.create(booking=booking, file=f, file_type=file_type)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ClientRequestsView(generics.ListAPIView):

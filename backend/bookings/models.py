@@ -3,6 +3,8 @@ from django.utils import timezone
 from django.db import models
 from django.conf import settings
 from decimal import Decimal
+from .storage import BookingAttachmentStorage
+
 
 class Booking(models.Model):
     STATUS_CHOICES = (
@@ -263,6 +265,15 @@ class QuoteLineItem(models.Model):
     def __str__(self):
         return f"{self.category}: {self.description}"
 
+
+class BookingAttachment(models.Model):
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(
+        storage=BookingAttachmentStorage(),
+        upload_to='%Y/%m/'
+    )
+    file_type = models.CharField(max_length=10)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
 class EscrowHold(models.Model):
     PURPOSE_CHOICES = (

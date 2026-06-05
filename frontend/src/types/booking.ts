@@ -86,6 +86,7 @@ export interface BookingDetail {
   latest_escrow_hold?: EscrowHold | null;
   visit_fee_pricing?: PricingBreakdown | null;
   latest_quote_pricing?: PricingBreakdown | null;
+  attachments?: { id: number; file: string; file_type: string }[];
 
   estimated_price?: number;
   agreed_price?: number | null;

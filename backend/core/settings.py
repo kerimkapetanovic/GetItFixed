@@ -45,10 +45,13 @@ AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME')
 AWS_S3_ENDPOINT_URL = env('AWS_S3_ENDPOINT_URL')
+AWS_S3_CUSTOM_DOMAIN = f'itqhsfuxuhrnbfrcwbbt.supabase.co/storage/v1/object/public/booking-attachments'
 
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
 AWS_S3_VERIFY = True
+AWS_QUERYSTRING_AUTH = False  
+
 
 # Puni URL za javni pristup slikama na Supabase-u
 MEDIA_URL = f'https://itqhsfuxuhrnbfrcwbbt.supabase.co/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}/'
