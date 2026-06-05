@@ -323,6 +323,24 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
+
+    # Font sa podrskom za dijakriticka slova
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    _FONTS_DIR = Path(__file__).resolve().parents[1] / "static" / "fonts"
+    _REGULAR = "Helvetica"
+    _BOLD = "Helvetica-Bold"
+    try:
+        pdfmetrics.registerFont(TTFont("DejaVuSans", str(_FONTS_DIR / "DejaVuSans.ttf")))
+        pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", str(_FONTS_DIR / "DejaVuSans-Bold.ttf")))
+        _REGULAR = "DejaVuSans"
+        _BOLD = "DejaVuSans-Bold"
+    except Exception:
+        pass
+
+
+
     yellow = colors.HexColor("#EF9D39")
     black = colors.HexColor("#111111")
     light = colors.HexColor("#FFF7E9")
@@ -331,7 +349,7 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     # Watermark/logo accent
     pdf.saveState()
     pdf.setFillColor(colors.Color(0.95, 0.62, 0.22, alpha=0.08))
-    pdf.setFont("Helvetica-Bold", 74)
+    pdf.setFont(_BOLD, 74)
     pdf.translate(width / 2, height / 2)
     pdf.rotate(35)
     pdf.drawCentredString(0, 0, "GETITFIXED")
@@ -362,13 +380,13 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     if logo_reader is not None:
         pdf.drawImage(logo_reader, 40, height - 112, width=70, height=70, mask="auto", preserveAspectRatio=True)
         pdf.setFillColor(black)
-        pdf.setFont("Helvetica-Bold", 22)
-        pdf.drawString(118, height - 73, "GetItFixed - INVOICE")
+        pdf.setFont(_BOLD, 22)
+        pdf.drawString(118, height - 73, "GetItFixed - Invoice")
     else:
         pdf.setFillColor(black)
-        pdf.setFont("Helvetica-Bold", 22)
-        pdf.drawString(42, height - 73, "GetItFixed - INVOICE")
-    pdf.setFont("Helvetica", 10)
+        pdf.setFont(_BOLD, 22)
+        pdf.drawString(42, height - 73, "GetItFixed - Invoice")
+    pdf.setFont(_REGULAR, 10)
     pdf.drawString(118, height - 91, f"Ticket: {payload['ticket_id']}")
     pdf.drawString(118, height - 106, f"Booking ID: {payload['booking_id']}")
     
@@ -381,15 +399,15 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     pdf.rect(40 + info_w, info_top - info_h, info_w, info_h, fill=1, stroke=1)
 
     pdf.setFillColor(gray)
-    pdf.setFont("Helvetica-Bold", 9)
+    pdf.setFont(_BOLD, 9)
     pdf.drawString(42, info_top - 16, "BILLED TO")
     pdf.drawString(50 + info_w, info_top - 16, "SERVICE PROVIDER")
 
     pdf.setFillColor(black)
-    pdf.setFont("Helvetica-Bold", 11)
+    pdf.setFont(_BOLD, 11)
     pdf.drawString(42, info_top - 30, payload["client_name"])
     pdf.drawString(50 + info_w, info_top - 30, payload.get("handyman_name") or "-")
-    pdf.setFont("Helvetica", 9)
+    pdf.setFont(_REGULAR, 9)
     pdf.drawString(42, info_top - 44, payload.get("client_email") or "-")
     pdf.drawString(50 + info_w, info_top - 44, payload.get("handyman_email") or "-")
     closed_label = payload["closed_at"].strftime("%Y-%m-%d %H:%M") if payload.get("closed_at") else "-"
@@ -406,7 +424,7 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     pdf.setFillColor(black)
     pdf.rect(table_x, y, table_w, row_h, fill=1, stroke=1)
     pdf.setFillColor(yellow)
-    pdf.setFont("Helvetica-Bold", 9)
+    pdf.setFont(_BOLD, 9)
     x = table_x + 6
     for i, title in enumerate(headers):
         pdf.drawString(x, y + 5, title)
@@ -419,11 +437,11 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
         pdf.setFillColor(fill_color)
         pdf.rect(table_x, y, table_w, row_h, fill=1, stroke=1)
         pdf.setFillColor(black)
-        pdf.setFont("Helvetica", 8.5)
+        pdf.setFont(_REGULAR, 8.5)
         phase_label = "Phase 1" if item["source"] == "phase1" else "Phase 2"
         row_values = [
             str(item["description"])[:40],
-            str(item["category"])[:12],
+            str(item["category"]).capitalize()[:12],
             phase_label,
             f"{Decimal(item['quantity']):.2f}",
             f"{Decimal(item['unit_price']):.2f}",
@@ -445,7 +463,7 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     pdf.setFillColor(light)
     pdf.rect(summary_x, summary_y, summary_w, summary_h, fill=1, stroke=1)
     pdf.setFillColor(gray)
-    pdf.setFont("Helvetica-Bold", 9)
+    pdf.setFont(_BOLD, 9)
     pdf.drawString(summary_x + 10, summary_y + summary_h - 14, "TOTALS")
 
     lines = [
@@ -455,7 +473,7 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
     ]
     current_y = summary_y + summary_h - 32
     pdf.setFillColor(black)
-    pdf.setFont("Helvetica", 9)
+    pdf.setFont(_REGULAR, 9)
     for label, amount in lines:
         pdf.drawString(summary_x + 10, current_y, label)
         pdf.drawRightString(summary_x + summary_w - 10, current_y, _format_money(amount))
@@ -463,13 +481,13 @@ def _draw_invoice_pdf(payload: dict) -> bytes:
 
     pdf.setStrokeColor(black)
     pdf.line(summary_x + 10, current_y + 4, summary_x + summary_w - 10, current_y + 4)
-    pdf.setFont("Helvetica-Bold", 11)
+    pdf.setFont(_BOLD, 11)
     pdf.drawString(summary_x + 10, current_y - 12, "GRAND TOTAL")
     pdf.setFillColor(yellow)
     pdf.drawRightString(summary_x + summary_w - 10, current_y - 12, _format_money(payload["grand_total"]))
 
     pdf.setFillColor(gray)
-    pdf.setFont("Helvetica", 8)
+    pdf.setFont(_REGULAR, 8)
     pdf.drawString(32, 56, "GetItFixed invoice — app fee collected by platform, PDV withheld for pre-production compliance simulation.")
 
     pdf.showPage()
