@@ -245,7 +245,7 @@ function BookingFormContent() {
 
           </div>
           {/* URGENT TOGGLE SECTION */}
-          <div
+          {/*<div
             onClick={() => setFormData({ ...formData, is_urgent: !formData.is_urgent })}
             className={`p-4 border-2 border-black rounded-xl cursor-pointer transition-all flex items-center justify-between ${formData.is_urgent
               ? "bg-red-50 dark:bg-red-900/20 border-red-600 shadow-[4px_4px_0px_0px_#dc2626]"
@@ -262,11 +262,11 @@ function BookingFormContent() {
               </div>
             </div>
 
-            {/* Custom Slide Toggle */}
+            {/* Custom Slide Toggle 
             <div className={`w-12 h-6 rounded-full border-2 border-black relative transition-colors ${formData.is_urgent ? 'bg-red-500' : 'bg-gray-200'}`}>
               <div className={`absolute top-0.5 w-4 h-4 bg-white border-2 border-black rounded-full transition-all ${formData.is_urgent ? 'left-6' : 'left-0.5'}`} />
             </div>
-          </div>
+          </div>*/}
           {/* MODAL POPUP */}
           {isCalendarOpen && (
             <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in h-full fade-in duration-200">

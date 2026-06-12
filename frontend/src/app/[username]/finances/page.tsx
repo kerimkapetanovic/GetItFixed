@@ -58,7 +58,7 @@ export default function AdminFinancesPage() {
         ) : (
           <div className="space-y-6">
             {/* Macro Capital Balance Lock Panel */}
-            <div className="bg-black text-white p-6 rounded-2xl shadow-[6px_6px_0px_0px_rgba(239,157,57,1)] border-2 border-black flex items-center justify-between">
+            <div className="bg-white dark:bg-zinc-900 text-white p-6 rounded-2xl shadow-[6px_6px_0px_0px_rgba(239,157,57,1)] border-2 border-black flex items-center justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-zinc-400">
                   Total Capital Vault Allocation (Escrow)
@@ -67,7 +67,7 @@ export default function AdminFinancesPage() {
                   {data.total_escrow_locked_systemwide.toFixed(2)} KM
                 </p>
               </div>
-              <div className="p-4 bg-zinc-900 border border-zinc-700 rounded-xl text-[#EF9D39]">
+              <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl text-[#EF9D39]">
                 <Landmark size={32} />
               </div>
             </div>
