@@ -20,6 +20,7 @@ interface HandymanUser {
   email: string;
   service_type: string;
   is_active: boolean;
+  verification_status: "pending" | "active" | "inactive";
   date_joined: string;
 }
 
@@ -30,7 +31,7 @@ export default function AdminVerificationPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   // Dodali smo filter state
   const [activeFilter, setActiveFilter] = useState<
-    "all" | "active" | "pending"
+    "all" | "active" | "pending" | "inactive"
   >("all");
 
   const fetchQueue = async () => {
@@ -52,7 +53,7 @@ export default function AdminVerificationPage() {
 
   const handleAction = async (
     userId: number,
-    actionType: "approve" | "suspend",
+    actionType: "approve" | "suspend" | "decline",
   ) => {
     setActionLoading(userId);
     try {
@@ -69,15 +70,16 @@ export default function AdminVerificationPage() {
 
   // Logika za filtriranje
   const filteredProviders = providers.filter((p) => {
-    if (activeFilter === "active") return p.is_active;
-    if (activeFilter === "pending") return !p.is_active;
+    if (activeFilter === "active") return p.verification_status === "active";
+    if (activeFilter === "pending") return p.verification_status === "pending";
+    if (activeFilter === "inactive") return p.verification_status === "inactive";
     return true;
   });
 
   return (
     <div className="min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">
       <Header />
-      <main className="flex-grow max-w-5xl mx-auto p-6 py-12 w-full">
+      <main className="grow max-w-5xl mx-auto p-6 py-12 w-full">
         <div className="mb-8">
           <span className="text-xs font-black uppercase tracking-widest text-[#EF9D39]">
             Administrative Workspace
@@ -88,7 +90,7 @@ export default function AdminVerificationPage() {
 
           {/* Filteri */}
           <div className="flex gap-2 mt-6">
-            {(["all", "active", "pending"] as const).map((f) => (
+            {(["all", "active", "pending", "inactive"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setActiveFilter(f)}
@@ -132,12 +134,18 @@ export default function AdminVerificationPage() {
                       </h3>
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded-md border border-black ${
-                          provider.is_active
+                          provider.verification_status === "active"
                             ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
+                            : provider.verification_status === "pending"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-zinc-200 text-zinc-700"
                         }`}
                       >
-                        {provider.is_active ? "Active" : "Pending"}
+                        {provider.verification_status === "active"
+                          ? "Active"
+                          : provider.verification_status === "pending"
+                            ? "Pending"
+                            : "Inactive"}
                       </span>
                     </div>
                     <div className="text-sm font-bold text-gray-500 space-y-0.5">
@@ -158,20 +166,34 @@ export default function AdminVerificationPage() {
                   </div>
 
                   <div className="flex gap-3 w-full sm:w-auto">
-                    {!provider.is_active ? (
-                      <button
-                        disabled={actionLoading === provider.id}
-                        onClick={() => handleAction(provider.id, "approve")}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border-2 border-black bg-green-500 hover:bg-green-600 text-white font-black uppercase text-xs rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
-                      >
-                        {actionLoading === provider.id ? (
-                          <Loader2 className="animate-spin" size={14} />
-                        ) : (
-                          <UserCheck size={14} />
-                        )}{" "}
-                        Approve
-                      </button>
-                    ) : (
+                    {provider.verification_status === "pending" ? (
+                      <>
+                        <button
+                          disabled={actionLoading === provider.id}
+                          onClick={() => handleAction(provider.id, "approve")}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border-2 border-black bg-green-500 hover:bg-green-600 text-white font-black uppercase text-xs rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
+                        >
+                          {actionLoading === provider.id ? (
+                            <Loader2 className="animate-spin" size={14} />
+                          ) : (
+                            <UserCheck size={14} />
+                          )}{" "}
+                          Approve
+                        </button>
+                        <button
+                          disabled={actionLoading === provider.id}
+                          onClick={() => handleAction(provider.id, "decline")}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border-2 border-black bg-red-500 hover:bg-red-600 text-white font-black uppercase text-xs rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
+                        >
+                          {actionLoading === provider.id ? (
+                            <Loader2 className="animate-spin" size={14} />
+                          ) : (
+                            <UserX size={14} />
+                          )}{" "}
+                          Decline
+                        </button>
+                      </>
+                    ) : provider.verification_status === "active" ? (
                       <button
                         disabled={actionLoading === provider.id}
                         onClick={() => handleAction(provider.id, "suspend")}
@@ -183,6 +205,19 @@ export default function AdminVerificationPage() {
                           <UserX size={14} />
                         )}{" "}
                         Suspend
+                      </button>
+                    ) : (
+                      <button
+                        disabled={actionLoading === provider.id}
+                        onClick={() => handleAction(provider.id, "approve")}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border-2 border-black bg-green-500 hover:bg-green-600 text-white font-black uppercase text-xs rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
+                      >
+                        {actionLoading === provider.id ? (
+                          <Loader2 className="animate-spin" size={14} />
+                        ) : (
+                          <UserCheck size={14} />
+                        )}{" "}
+                        Reactivate
                       </button>
                     )}
                   </div>

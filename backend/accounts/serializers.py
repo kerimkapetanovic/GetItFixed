@@ -223,6 +223,7 @@ class UserSerializer(serializers.ModelSerializer):
             'wallet_balance',
             'date_joined',
             'is_active',
+            'verification_status',
             'county',
             'city',
             'zip_code',

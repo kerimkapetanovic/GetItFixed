@@ -152,7 +152,8 @@ class RegisterView(generics.CreateAPIView):
             # --- TASK 2: Handyman Verification Logic ---
             if user.role == 'handyman':
                 user.is_active = False
-                user.save(update_fields=['is_active'])
+                user.verification_status = "pending"
+                user.save(update_fields=['is_active', 'verification_status'])
                 return Response(
                     {"message": "Registration successful! Your account is pending admin approval."}, 
                     status=status.HTTP_201_CREATED

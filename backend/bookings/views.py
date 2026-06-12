@@ -1533,6 +1533,7 @@ class AdminVerificationQueueView(generics.ListAPIView):
             "email": h.email,
             "service_type": getattr(h, 'service_type', 'N/A'),
             "is_active": h.is_active,
+            "verification_status": getattr(h, "verification_status", "active"),
             "date_joined": h.date_joined
         } for h in handymen]
         return Response(data, status=status.HTTP_200_OK)
@@ -1551,12 +1552,19 @@ class AdminVerifyUserActionView(APIView):
         
         if action == "approve":
             user.is_active = True
-            user.save()
+            user.verification_status = "active"
+            user.save(update_fields=["is_active", "verification_status"])
             return Response({"message": f"User {user.email} approved successfully."}, status=status.HTTP_200_OK)
         elif action == "suspend":
             user.is_active = False
-            user.save()
+            user.verification_status = "inactive"
+            user.save(update_fields=["is_active", "verification_status"])
             return Response({"message": f"User {user.email} suspended successfully."}, status=status.HTTP_200_OK)
+        elif action == "decline":
+            user.is_active = False
+            user.verification_status = "inactive"
+            user.save(update_fields=["is_active", "verification_status"])
+            return Response({"message": f"User {user.email} declined successfully."}, status=status.HTTP_200_OK)
             
         return Response({"error": "Invalid action parameter specified."}, status=status.HTTP_400_BAD_REQUEST)
 

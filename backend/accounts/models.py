@@ -9,6 +9,11 @@ class User(AbstractUser):
         ('handyman', 'Handyman'),
         ('admin', 'Administrator'),
     )
+    VERIFICATION_STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    )
     
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='client')
     service_type = models.CharField(max_length=50, blank=True, null=True)
@@ -27,6 +32,11 @@ class User(AbstractUser):
     avatar = models.TextField(blank=True, null=True)  # čuva Supabase URL kao string
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
     terms_accepted = models.BooleanField(default=False)
+    verification_status = models.CharField(
+        max_length=10,
+        choices=VERIFICATION_STATUS_CHOICES,
+        default='active',
+    )
     wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     wallet_locked_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
