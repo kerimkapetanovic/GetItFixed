@@ -193,11 +193,10 @@ export default function AdminUserDetailsPage() {
                     {user.role}
                   </span>
                   <span
-                    className={`inline-flex items-center gap-1 rounded-lg border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase ${
-                      user.is_active
+                    className={`inline-flex items-center gap-1 rounded-lg border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase ${user.is_active
                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
                         : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-                    }`}
+                      }`}
                   >
                     {user.is_active ? <CheckCircle2 size={14} /> : <Clock3 size={14} />}
                     {user.is_active ? "Active" : "Pending"}
