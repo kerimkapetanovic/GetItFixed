@@ -22,7 +22,13 @@ export default function TermsPage() {
         },
         {
             title: "3. Payments & Fees",
-            content: "Payment terms are set between clients and providers. GetItFixed may collect a platform fee when the backend is implemented. Currently, this is a frontend prototype."
+            content: "Platform Fee and PDV Disclosure: GetItFixed charges a platform fee of 20% on the agreed service price. In addition, PDV (VAT) of 17% is applied to the amount consisting of the service price plus platform fee. By using the platform and confirming a booking, you acknowledge and accept this pricing structure. GetItFixed will always show the full breakdown (service price, platform fee, PDV, and total) before final booking confirmation.",
+            list: [
+                "Service price = amount agreed between Client and Provider",
+                "Platform fee = 20% of service price",
+                "PDV = 17% of (service price + platform fee)",
+                "Total paid by Client = service price + platform fee + PDV"
+            ]
         },
         {
             title: "4. Cancellations & Refunds",

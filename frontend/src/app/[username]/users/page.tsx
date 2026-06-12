@@ -240,7 +240,13 @@ export default function AdminUsersPage() {
                             <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400">
                                 Filter by role
                             </p>
-                            <div className="flex gap-3 overflow-x-auto">
+                            <div
+                                className="custom-scroll flex gap-3 overflow-x-auto pb-2 mt-1"
+                                style={{
+                                    scrollbarWidth: "auto",
+                                    scrollbarColor: "#EF9D39 transparent",
+                                }}
+                            >
                                 {["all", "client", "handyman", "admin"].map((role) => (
                                     <button
                                         key={role}
@@ -262,7 +268,13 @@ export default function AdminUsersPage() {
                                 <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400">
                                     Filter by service (Handymen)
                                 </p>
-                                <div className="flex gap-3 overflow-x-auto">
+                                <div
+                                    className="custom-scroll flex gap-3 overflow-x-auto pb-2 mt-1"
+                                    style={{
+                                        scrollbarWidth: "auto",
+                                        scrollbarColor: "#EF9D39 transparent",
+                                    }}
+                                >
                                     {serviceOptions.map((service) => (
                                         <button
                                             key={service}
@@ -284,7 +296,13 @@ export default function AdminUsersPage() {
                             <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400">
                                 Filter by city
                             </p>
-                            <div className="flex gap-3 overflow-x-auto">
+                            <div
+                                className="custom-scroll flex gap-3 overflow-x-auto pb-2 mt-1"
+                                style={{
+                                    scrollbarWidth: "auto",
+                                    scrollbarColor: "#EF9D39 transparent",
+                                }}
+                            >
                                 {cityOptions.map((city) => (
                                     <button
                                         key={city.value}
@@ -414,7 +432,7 @@ export default function AdminUsersPage() {
 
                                 {/* View Details Button */}
                                 <Link
-                                    href={`/admin/${username}/users/${user.id}`}
+                                    href={`/${username}/users/${encodeURIComponent(user.username)}`}
                                     className="group flex w-full items-center justify-between border-[3px] border-black bg-white dark:bg-zinc-800 px-6 py-4 font-black uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] hover:shadow-none"
                                     style={{ borderRadius: "18px" }}
                                 >
