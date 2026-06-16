@@ -22,6 +22,7 @@ import {
   Clock3,
   Loader2,
 } from "lucide-react";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 interface UserData {
   id: number;
@@ -74,6 +75,7 @@ function getRoleBadge(role: UserData["role"]) {
 }
 
 export default function AdminUserDetailsPage() {
+    const { checking } = useRequireRole(["admin"]);
   const params = useParams() as { username: string; targetUsername: string };
   const adminUsername = params.username;
   const targetUsername = decodeURIComponent(params.targetUsername || "");
@@ -122,6 +124,7 @@ export default function AdminUserDetailsPage() {
     const combined = `${user.first_name || ""} ${user.last_name || ""}`.trim();
     return combined || user.username;
   }, [user]);
+        if (checking) return null;
 
   return (
     <div className="page-gradient flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950 dark:text-white">

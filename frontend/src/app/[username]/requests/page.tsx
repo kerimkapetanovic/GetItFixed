@@ -10,6 +10,7 @@ import { ArrowUpRight } from "lucide-react";
 
 import { BookingDetail } from "@/types/booking";
 import { JobTimer } from "@/components/JobTimer";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 const formatDateTime = (value: string | Date | null) => {
   if (!value) return "Not set";
@@ -212,6 +213,7 @@ function getRequestCategory(
 }
 
 export default function MyRequestsPage() {
+  const {checking}= useRequireRole(["client"]);
   const params = useParams() as { username: string };
   const username = params.username;
 
@@ -273,6 +275,8 @@ export default function MyRequestsPage() {
   }, []);
 
   const cardStyle = { borderRadius: "24px" };
+        if (checking) return null;
+
 
   return (
     <div className="page-gradient flex flex-col min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950">

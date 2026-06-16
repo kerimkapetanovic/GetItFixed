@@ -12,6 +12,7 @@ import {
   Clock,
   Lock,
 } from "lucide-react";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 interface Metrics {
   total_jobs: number;
@@ -29,6 +30,8 @@ interface Booking {
 }
 
 export default function AdminTrackingPage() {
+  const { checking } = useRequireRole(["admin"]);
+  
   const [data, setData] = useState<{
     metrics: Metrics;
     results: Booking[];
@@ -53,6 +56,8 @@ export default function AdminTrackingPage() {
   useEffect(() => {
     fetchTrackingData(selectedStatus);
   }, [selectedStatus]);
+      
+  if (checking) return null;
 
   return (
     <div className="min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">

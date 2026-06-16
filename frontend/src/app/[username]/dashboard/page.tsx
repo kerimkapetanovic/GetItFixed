@@ -5,9 +5,12 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import HandymanDashboard from "@/components/HandymanDashboard";
 import { LayoutDashboard } from "lucide-react";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 export default function DashboardPage() {
+  const {checking}=useRequireRole(["handyman"]);
   const brandColor = "#EF9D39";
+      if (checking) return null;
 
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white font-sans">
