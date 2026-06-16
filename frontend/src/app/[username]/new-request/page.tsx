@@ -7,6 +7,7 @@ import api from "../../../../lib/axios";
 import { Star, MapPin, Wrench, Loader2, ArrowUpRight } from "lucide-react";
 import Link from "next/link"; // IMPORT LINK
 import { useParams } from "next/navigation"; // IMPORT USEPARAMS
+import { useRequireRole } from "@/lib/useRequireRole";
 
 interface Handyman {
   id: number;
@@ -19,6 +20,7 @@ interface Handyman {
 }
 
 export default function NewRequestPage() {
+  const {checking} = useRequireRole(["client"]); 
   const params = useParams() as { username: string };
   const username = params.username;
 
@@ -75,6 +77,9 @@ export default function NewRequestPage() {
       (pro.location || "").trim().toLowerCase() === selectedCity;
     return serviceMatch && cityMatch;
   });
+    
+  if (checking) return null;
+
 
   return (
     <div className="page-gradient min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">

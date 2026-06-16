@@ -33,6 +33,7 @@ import {
   getResponseDeadlineLabel,
 } from "@/lib/handymanDeadline";
 import { createQuote, getLatestQuote } from "@/lib/quoteEscrowApi";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 export const formatDateTime = (value: string | Date | null) => {
   if (!value) return "Not set";
@@ -320,6 +321,7 @@ function shouldShowHandymanActions(booking: BookingDetail) {
 }
 
 export default function HandymanRequestDetailsPage() {
+  const {checking}=useRequireRole(["handyman"]);
   const params = useParams() as { id: string; username: string };
   const bookingId = params.id;
   const username = params.username;
@@ -878,6 +880,8 @@ const [lightboxUrl, setLightboxUrl] = useState<{ url: string; type: string } | n
   const showActions = shouldShowHandymanActions(booking);
   const showSendOffer = showActions && canHandymanSendOffer(booking);
   const phaseHint = getPhaseHint(booking);
+        if (checking) return null;
+
 
   return (
     <div className="page-gradient flex flex-col min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950">

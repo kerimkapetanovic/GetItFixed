@@ -19,6 +19,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useLanguage } from "@/components/providers/language-provider";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 const phoneInputCustomStyles = `
   .PhoneInput {
@@ -121,6 +122,7 @@ type ApiErrorResponse = {
 };
 
 export default function ProfilePage() {
+   const { checking } =useRequireRole(["client", "handyman","admin"]);
   const brandColor = "#EF9D39";
   const { t } = useLanguage();
   const profileTitleParts = t("profile.title").split(" ");
@@ -596,6 +598,8 @@ export default function ProfilePage() {
     }
     return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.username || "User")}`;
   }, [formData.avatarUrl, formData.username]);
+        if (checking) return null;
+
 
   return (
     <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">

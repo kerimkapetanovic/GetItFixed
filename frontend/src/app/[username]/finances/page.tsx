@@ -12,6 +12,7 @@ import {
   Coins,
   User,
 } from "lucide-react";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 interface EscrowHoldData {
   id: number;
@@ -27,6 +28,7 @@ interface FinancialOverview {
 }
 
 export default function AdminFinancesPage() {
+  const { checking } = useRequireRole(["admin"]);
   const [data, setData] = useState<FinancialOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +39,7 @@ export default function AdminFinancesPage() {
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
+      if (checking) return null;
 
   return (
     <div className="min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">

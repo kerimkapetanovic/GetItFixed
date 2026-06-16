@@ -11,6 +11,7 @@ import {
 import { ChevronLeft, ChevronRight, Loader2, X, Clock, User, MessageSquare, Ticket, Wrench, CalendarCheck } from "lucide-react";
 
 import { BookingDetail } from "@/types/booking";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 // ─── Helper: iste boje kao u getStatusInfo iz request-details ───────────────
 export function getBookingColorClass(booking: BookingDetail): string {
@@ -92,6 +93,7 @@ const STATUS_LEGEND = [
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function CalendarPage() {
+  const {checking}=useRequireRole(["handyman"]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bookings, setBookings] = useState<BookingDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,6 +151,8 @@ export default function CalendarPage() {
       </button>
     </div>
   );
+      if (checking) return null;
+
 
   return (
     <div className="page-gradient bg-[#EF9D39] flex flex-col min-h-screen text-black dark:text-white selection:bg-black selection:text-white font-sans">

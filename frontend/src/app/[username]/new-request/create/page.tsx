@@ -10,8 +10,11 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../../../datepicker-custom.css";
 import { addMinutes, isWithinInterval } from "date-fns";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 function BookingFormContent() {
+    const {checking} = useRequireRole(["client"]); 
+  
   const params = useParams() as { username: string };
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -106,6 +109,7 @@ function BookingFormContent() {
   };
 
   if (!mounted) return null;
+  if (checking) return null;
 
   return (
     <main className="flex-grow max-w-3xl mx-auto p-6 py-12 w-full">

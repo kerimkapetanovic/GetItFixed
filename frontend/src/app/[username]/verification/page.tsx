@@ -13,6 +13,7 @@ import {
   Calendar,
   Hammer,
 } from "lucide-react";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 interface HandymanUser {
   id: number;
@@ -25,6 +26,8 @@ interface HandymanUser {
 }
 
 export default function AdminVerificationPage() {
+    const { checking } = useRequireRole(["admin"]);
+      
   const [providers, setProviders] = useState<HandymanUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +78,8 @@ export default function AdminVerificationPage() {
     if (activeFilter === "inactive") return p.verification_status === "inactive";
     return true;
   });
+        if (checking) return null;
+
 
   return (
     <div className="min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">

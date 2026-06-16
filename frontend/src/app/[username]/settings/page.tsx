@@ -6,8 +6,10 @@ import { useLanguage } from "@/components/providers/language-provider";
 import { useTheme, type Theme } from "@/components/providers/theme-provider";
 import { localeLabels, type Locale } from "@/lib/i18n/translations";
 import { Check, Globe2, Moon, Palette, Settings2, Sun } from "lucide-react";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 export default function SettingsPage() {
+  const { checking } =useRequireRole(["client", "handyman","admin"]);
   const { locale, setLocale, t } = useLanguage();
   const { theme, setTheme } = useTheme();
 
@@ -47,6 +49,7 @@ export default function SettingsPage() {
       icon: <Moon size={24} />,
     },
   ];
+      if (checking) return null;
 
   return (
     <div className="page-gradient flex min-h-screen flex-col text-black dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">

@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 interface ServiceMetric {
   service_type: string;
@@ -19,6 +20,7 @@ interface ServiceMetric {
 }
 
 export default function AdminServicesPage() {
+  const { checking } = useRequireRole(["admin"]);
   const [metrics, setMetrics] = useState<ServiceMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,8 @@ export default function AdminServicesPage() {
 
     fetchServiceData();
   }, []);
+        if (checking) return null;
+
 
   return (
     <div className="min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950 flex flex-col">

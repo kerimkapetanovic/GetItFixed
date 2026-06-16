@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 interface UserData {
     id: number;
@@ -38,6 +39,7 @@ interface UserData {
 }
 
 export default function AdminUsersPage() {
+      const { checking } = useRequireRole(["admin"]);    
     const params = useParams() as { username: string };
     const username = params.username;
 
@@ -148,6 +150,8 @@ export default function AdminUsersPage() {
                 return <User size={16} />;
         }
     };
+          if (checking) return null;
+
 
     return (
         <div className="page-gradient flex flex-col min-h-screen dark:text-white bg-zinc-50 dark:bg-zinc-950">
