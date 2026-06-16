@@ -12,7 +12,6 @@ const INITIAL_MESSAGES: Message[] = [
     id: 'm1',
     role: 'assistant',
     text: 'Hi — I am the AI Repair Assistant. Describe the problem (e.g. "leaky faucet", "AC not cooling") and I will suggest troubleshooting steps.',
-    // NOTE: no timestamp here to avoid server/client mismatch
   },
 ];
 
@@ -23,7 +22,6 @@ export default function ChatClient() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // auto-scroll on new message
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -71,7 +69,7 @@ export default function ChatClient() {
       id: `u-${Date.now()}`,
       role: 'user',
       text: text.trim(),
-      timestamp: new Date().toISOString(), // created on client interaction — OK
+      timestamp: new Date().toISOString(),
     };
     appendMessage(userMsg);
     setInput('');
@@ -88,17 +86,23 @@ export default function ChatClient() {
   return (
     <div className={styles.container}>
       <div className={styles.panel}>
-       
 
+        {/* QUICK PROMPTS */}
         <div className={styles.quickArea}>
-          <label className="text-xs font-semibold mr-2 text-gray-700 dark:text-zinc-300">Quick prompts:</label>
+          <label className="text-[11px] font-semibold whitespace-nowrap text-gray-500 dark:text-[#555]">
+            Quick prompts:
+          </label>
           <div className={styles.quickButtons}>
             {quickPrompts.map((p) => (
               <button
                 key={p}
                 type="button"
-                className="px-3 py-1 text-xs bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-zinc-200 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700"
                 onClick={() => handleSend(p)}
+                className="px-3 py-1 text-[11px] rounded-full border transition-all
+                  bg-gray-100 border-gray-200 text-gray-600
+                  hover:bg-[#EF9D39] hover:text-black hover:border-[#EF9D39]
+                  dark:bg-[#1e1e1e] dark:border-[#2a2a2a] dark:text-[#888]
+                  dark:hover:bg-[#EF9D39] dark:hover:text-black dark:hover:border-[#EF9D39]"
               >
                 {p}
               </button>
@@ -106,21 +110,33 @@ export default function ChatClient() {
           </div>
         </div>
 
-        <div className={styles.chatArea} ref={scrollRef} aria-live="polite">
+        {/* CHAT AREA */}
+        <div
+          className={`${styles.chatArea} bg-gray-50 border border-gray-100 dark:bg-[#0f0f0f] dark:border-[#1e1e1e]`}
+          ref={scrollRef}
+          aria-live="polite"
+        >
           {messages.map((m) => (
             <MessageBubble key={m.id} message={m} />
           ))}
 
           {isThinking && (
-            <div className="flex items-start gap-2 mt-2">
-              <div className={styles.assistantAvatar} aria-hidden />
-              <div className="bg-gray-100 dark:bg-zinc-800 px-3 py-2 rounded-md text-sm text-gray-700 dark:text-zinc-300">
-                <em>Thinking...</em>
+            <div className="flex items-center gap-2 mt-3">
+              <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center font-extrabold text-[9px] flex-shrink-0
+                bg-gray-200 text-gray-600
+                dark:bg-[#1e1e1e] dark:border dark:border-[#EF9D39] dark:text-[#EF9D39]">
+                AI
+              </div>
+              <div className="px-4 py-2 rounded-[14px] rounded-bl-[4px] text-[12px] italic
+                bg-gray-100 text-gray-400
+                dark:bg-[#1a1a1a] dark:border dark:border-[#252525] dark:text-[#555]">
+                Thinking...
               </div>
             </div>
           )}
         </div>
 
+        {/* INPUT */}
         <div className={styles.footer}>
           <InputBar
             value={input}

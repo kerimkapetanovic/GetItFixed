@@ -49,31 +49,29 @@ export default function TermsPage() {
     ];
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen font-sans text-black">
+        <div className="page-gradient flex flex-col min-h-screen font-sans text-black dark:text-white">
             <Header />
 
             <main className="flex-grow max-w-4xl mx-auto px-6 py-12 w-full">
                 
-                {/* 1. HERO SECTION - Compact Style */}
-                <div className="bg-white force-light-surface-text border-[3px] border-black p-8 md:p-12 rounded-[32px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mb-12 text-center">
-                    {/* Italic uklonjen ovdje */}
-                    <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-6 leading-none text-black">
+                {/* HERO SECTION */}
+                <div className="bg-white dark:bg-[#141414] border-[3px] border-black dark:border-[#222] p-8 md:p-12 rounded-[32px] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-none mb-12 text-center">
+                    <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-6 leading-none text-black dark:text-[#f0f0f0]">
                         TERMS <span style={{ color: brandColor }}>OF SERVICE</span>
                     </h1>
-                    {/* Povećan "PLEASE READ CAREFULLY" */}
-                    <p className="inline-block bg-black text-white px-8 py-3 font-black uppercase tracking-[0.2em] text-[12px] rounded-xl shadow-[4px_4px_0px_0px_rgba(239,157,57,0.5)]">
+                    <p className="inline-block bg-black dark:bg-[#EF9D39] text-white dark:text-black px-8 py-3 font-black uppercase tracking-[0.2em] text-[12px] rounded-xl shadow-[4px_4px_0px_0px_rgba(239,157,57,0.5)]">
                         PLEASE READ CAREFULLY
                     </p>
                 </div>
 
-                {/* 2. TERMS CONTENT - Smaller fonts & tighter spacing */}
+                {/* TERMS CONTENT */}
                 <div className="space-y-5">
                     {sections.map((s, i) => (
-                        <div key={i} className="bg-white force-light-surface-text border-[3px] border-black p-6 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                            <h3 className="font-black uppercase text-lg mb-3 tracking-tight">{s.title}</h3>
+                        <div key={i} className="bg-white dark:bg-[#141414] border-[3px] border-black dark:border-[#222] p-6 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
+                            <h3 className="font-black uppercase text-lg mb-3 tracking-tight text-black dark:text-[#f0f0f0]">{s.title}</h3>
                             
                             {s.content && (
-                                <p className="text-[13px] font-medium text-gray-600 leading-relaxed">
+                                <p className="text-[13px] font-medium text-gray-600 dark:text-[#888] leading-relaxed">
                                     {s.content}
                                 </p>
                             )}
@@ -81,7 +79,7 @@ export default function TermsPage() {
                             {s.list && (
                                 <ul className="mt-2 space-y-2">
                                     {s.list.map((li, idx) => (
-                                        <li key={idx} className="text-[12px] font-bold text-gray-700 flex items-start">
+                                        <li key={idx} className="text-[12px] font-bold text-gray-700 dark:text-[#aaa] flex items-start">
                                             <span className="mr-2 text-[#EF9D39]">•</span>
                                             {li}
                                         </li>
@@ -94,8 +92,8 @@ export default function TermsPage() {
 
                 {/* BOTTOM TIMESTAMP */}
                 <div className="mt-12 flex flex-col items-center">
-                    <div className="h-1 w-12 bg-black mb-3" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
+                    <div className="h-1 w-12 bg-black dark:bg-[#333] mb-3" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-[#555]">
                         Updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
                     </p>
                 </div>

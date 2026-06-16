@@ -44,27 +44,27 @@ export default function StoriesPage() {
     ];
 
     return (
-        <div className="page-gradient flex flex-col min-h-screen text-black">
+        <div className="page-gradient flex flex-col min-h-screen text-black dark:text-white">
             <Header />
 
             <main className="flex-grow max-w-3xl mx-auto px-6 py-12 w-full">
                 
-                {/* NASLOV SEKCIJA SA BIJELIM BOXOM */}
+                {/* NASLOV SEKCIJA */}
                 <div 
-                    className="text-center mb-10 p-8 border-[3px] border-black bg-white force-light-surface-text shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                    className="text-center mb-10 p-8 border-[3px] border-black dark:border-[#222] bg-white dark:bg-[#141414] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-none"
                     style={{ borderRadius: '30px' }}
                 >
-                    <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
+                    <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2 text-black dark:text-[#f0f0f0]">
                         SUCCESS <span style={{ color: brandColor }}>STORIES</span>
                     </h1>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em]">
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-[#555] uppercase tracking-[0.3em]">
                         Real stories from happy customers
                     </p>
                 </div>
 
-                {/* CONTAINER ZA CHAT - Bijeli box */}
+                {/* CONTAINER */}
                 <div 
-                    className="relative border-[3px] border-black p-6 md:p-10 bg-white force-light-surface-text shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                    className="relative border-[3px] border-black dark:border-[#222] p-6 md:p-10 bg-white dark:bg-[#141414] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-none"
                     style={{ borderRadius: '30px' }}
                 >
                     <div className="space-y-8">
@@ -80,23 +80,23 @@ export default function StoriesPage() {
                                     <div
                                         onMouseEnter={() => setHoveredId(story.id)}
                                         onMouseLeave={() => setHoveredId(null)}
-                                        className={`w-full max-w-md border-[3px] border-black p-5 relative transition-all duration-200 bg-white force-light-surface-text`}
+                                        className={`w-full max-w-md border-[3px] border-black dark:border-[#333] p-5 relative transition-all duration-200 bg-white dark:bg-[#181818] ${isHovered ? 'translate-x-[2px] translate-y-[2px]' : ''}`}
                                         style={{ 
                                             borderRadius: '24px',
-                                            boxShadow: isHovered ? '4px 4px 0px 0px #000' : '6px 6px 0px 0px #000',
-                                            transform: isHovered ? 'translate(2px, 2px)' : 'none',
-                                            backgroundColor: isHovered ? '#FAFAFA' : '#FFF'
+                                            boxShadow: isHovered 
+                                                ? '4px 4px 0px 0px #000' 
+                                                : '6px 6px 0px 0px #000',
                                         }}
                                     >
                                         <div className="flex items-center gap-3 mb-3">
                                             <img 
                                                 src={story.image} 
                                                 alt={story.name}
-                                                className="w-10 h-10 rounded-full border-2 border-black flex-shrink-0"
+                                                className="w-10 h-10 rounded-full border-2 border-black dark:border-[#444] flex-shrink-0"
                                             />
                                             <div>
-                                                <h3 className="font-black text-xs uppercase tracking-tight">{story.name}</h3>
-                                                <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
+                                                <h3 className="font-black text-xs uppercase tracking-tight text-black dark:text-[#f0f0f0]">{story.name}</h3>
+                                                <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 dark:text-[#555]">
                                                     <MapPin size={10} /> {story.location}
                                                 </div>
                                             </div>
@@ -107,17 +107,17 @@ export default function StoriesPage() {
                                             </div>
                                         </div>
 
-                                        <p className="text-sm font-medium text-gray-700 mb-4 leading-snug">
+                                        <p className="text-sm font-medium text-gray-700 dark:text-[#aaa] mb-4 leading-snug">
                                             "{story.quote}"
                                         </p>
 
-                                        <div className="flex gap-6 pt-3 border-t-[1px] border-gray-100">
+                                        <div className="flex gap-6 pt-3 border-t-[1px] border-gray-100 dark:border-[#2a2a2a]">
                                             <div>
-                                                <span className="block text-[9px] font-black text-gray-400 uppercase">Before</span>
-                                                <span className="text-xs font-bold">{story.before}</span>
+                                                <span className="block text-[9px] font-black text-gray-400 dark:text-[#555] uppercase">Before</span>
+                                                <span className="text-xs font-bold text-black dark:text-[#f0f0f0]">{story.before}</span>
                                             </div>
                                             <div>
-                                                <span className="block text-[9px] font-black text-gray-400 uppercase">After</span>
+                                                <span className="block text-[9px] font-black text-gray-400 dark:text-[#555] uppercase">After</span>
                                                 <span className="text-xs font-bold" style={{ color: brandColor }}>{story.after}</span>
                                             </div>
                                         </div>
@@ -128,19 +128,19 @@ export default function StoriesPage() {
                     </div>
                 </div>
 
-                {/* CTA DUGME - POVEĆANO */}
+                {/* CTA DUGME */}
                 <div className="mt-10 flex flex-col items-center">
-                    <p className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] mb-8 dark:text-white">
+                    <p className="text-xs font-black text-gray-900 dark:text-[#f0f0f0] uppercase tracking-[0.2em] mb-8">
                         Ready to share your own story?
                     </p>
                     <Link
                         href="/login"
                         style={{ borderRadius: "20px" }}
-                        className="flex items-center gap-6 bg-white border-[4px] border-black px-10 py-5 font-black uppercase text-xs tracking-[0.2em] shadow-[10px_10px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] transition-all group"
+                        className="flex items-center gap-6 bg-white dark:bg-[#141414] border-[4px] border-black dark:border-[#222] px-10 py-5 font-black uppercase text-xs tracking-[0.2em] text-black dark:text-[#f0f0f0] shadow-[10px_10px_0px_0px_#000] dark:shadow-none hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-[#EF9D39] dark:hover:bg-[#EF9D39] dark:hover:border-[#EF9D39] dark:hover:text-black transition-all group"
                     >
                         <span>Share Your Experience</span>
-                        <div className="bg-black p-2 rounded-full group-hover:bg-white transition-colors">
-                            <ArrowUpRight size={18} className="text-white group-hover:text-black transition-transform group-hover:rotate-45" />
+                        <div className="bg-black dark:bg-[#EF9D39] p-2 rounded-full group-hover:bg-white transition-colors">
+                            <ArrowUpRight size={18} className="text-white dark:text-black group-hover:text-black transition-transform group-hover:rotate-45" />
                         </div>
                     </Link>
                 </div>
